@@ -10,6 +10,7 @@ import 'package:musified/extensions/l10n.dart';
 import 'package:musified/main.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/data_manager.dart';
+import 'package:musified/services/download_transfer.dart';
 import 'package:musified/services/io_service.dart';
 import 'package:musified/services/playlists_manager.dart';
 import 'package:musified/services/settings_manager.dart';
@@ -30,7 +31,9 @@ class OfflinePlaylistService {
   final offlinePlaylists = ValueNotifier<List<dynamic>>(() {
     try {
       if (Hive.isBoxOpen('userNoBackup')) {
-        return Hive.box('userNoBackup').get('offlinePlaylists', defaultValue: []);
+        return Hive.box(
+          'userNoBackup',
+        ).get('offlinePlaylists', defaultValue: []);
       }
     } catch (_) {}
     return [];
@@ -132,18 +135,26 @@ class OfflinePlaylistService {
           ? songsList.length
           : maxConcurrent;
 
-      await Future.wait([
+      final batchSource = downloadSource.value;
+      final batchQuality = downloadQuality.value;
+      final workers = Future.wait([
         for (var i = 0; i < workerCount; i++)
-          _processDownloadQueue(songQueue, progressNotifier),
-      ]).timeout(
-        Duration(minutes: songsList.length * 2),
-        onTimeout: () {
-          logger.log('Download timeout for playlist $playlistId');
-          progressNotifier.value.isCancelled = true;
-          progressNotifier.notifyListeners();
-          return <void>[];
-        },
-      );
+          _processDownloadQueue(
+            songQueue,
+            progressNotifier,
+            batchSource,
+            batchQuality,
+          ),
+      ]);
+      try {
+        await workers.timeout(Duration(minutes: songsList.length * 2));
+      } on TimeoutException {
+        progressNotifier.value.isCancelled = true;
+        progressNotifier.notifyListeners();
+        // Cancellation closes active transfers. Do not reset shared progress
+        // or permit another batch until the workers have actually stopped.
+        await workers;
+      }
 
       // Handle completion
       await _handleDownloadCompletion(
@@ -187,10 +198,11 @@ class OfflinePlaylistService {
       }).length;
       // Do not mark the playlist offline when many tracks failed or are
       // truncated stubs — require nearly-complete playable coverage.
-      final mostlyComplete = !progressNotifier.value.isCancelled &&
-          failed <= (total * 0.1).ceil() &&
-          playableCount >= (total * 0.9).ceil() &&
-          completed > failed;
+      final mostlyComplete =
+          !progressNotifier.value.isCancelled &&
+          failed == 0 &&
+          playableCount == total &&
+          completed == total;
 
       // Only add to offline playlists if not cancelled and most songs succeeded
       if (mostlyComplete) {
@@ -308,18 +320,16 @@ class OfflinePlaylistService {
 
         if (DateTime.now().difference(startTime) > maxWaitTime) {
           logger.log('Timeout waiting for download cancellation');
-          activeDownloads.remove(playlistId);
-          cleanupProgressNotifier(playlistId);
-          break;
+          throw TimeoutException(
+            'Downloads are still stopping; retry shortly.',
+          );
         }
       }
 
       showToast(context, context.l10n.downloadCancelled);
     } catch (e, stackTrace) {
       logger.log('Error cancelling download', error: e, stackTrace: stackTrace);
-      // Force remove from active downloads and cleanup on error
-      activeDownloads.remove(playlistId);
-      cleanupProgressNotifier(playlistId);
+      if (context.mounted) showToast(context, 'Downloads are still stopping');
     }
   }
 
@@ -474,8 +484,9 @@ class OfflinePlaylistService {
     while (activeDownloads.isNotEmpty) {
       if (DateTime.now().difference(startTime) > maxWaitTime) {
         logger.log('Timeout waiting for downloads to cancel before delete');
-        activeDownloads.clear();
-        break;
+        throw TimeoutException(
+          'Downloads are still stopping; retry deletion shortly.',
+        );
       }
       await Future.delayed(const Duration(milliseconds: 100));
     }
@@ -537,6 +548,8 @@ class OfflinePlaylistService {
   Future<void> _processDownloadQueue(
     Queue<dynamic> songQueue,
     ValueNotifier<DownloadProgress> progressNotifier,
+    String source,
+    String quality,
   ) async {
     while (songQueue.isNotEmpty && !progressNotifier.value.isCancelled) {
       final song = songQueue.removeFirst();
@@ -551,27 +564,22 @@ class OfflinePlaylistService {
           continue;
         }
 
-        // Skip if already offline with a real playable file (not a stub).
-        if (hasPlayableOfflineFile(song['ytid']?.toString())) {
-          // Find the existing offline song to get the correct audioPath
+        final success = await makeSongOffline(
+          song,
+          source: source,
+          quality: quality,
+          cancellation: progressNotifier.value.cancellation,
+        );
+        if (progressNotifier.value.isCancelled) break;
+        if (success && hasPlayableOfflineFile(song['ytid']?.toString())) {
           final offlineSong = getOfflineSongByYtid(song['ytid']);
-          if (offlineSong.isNotEmpty) {
-            // Update the song in the playlist with the correct offline properties
-            song['audioPath'] = offlineSong['audioPath'];
-            song['artworkPath'] = offlineSong['artworkPath'];
-          }
-          // Update progress
+          song['audioPath'] = offlineSong['audioPath'];
+          song['artworkPath'] = offlineSong['artworkPath'];
           progressNotifier.value.completed++;
-          progressNotifier.notifyListeners();
         } else {
-          final success = await makeSongOffline(song, source: downloadSource.value, quality: downloadQuality.value);
-          if (success && hasPlayableOfflineFile(song['ytid']?.toString())) {
-            progressNotifier.value.completed++;
-          } else {
-            progressNotifier.value.failed++;
-          }
-          progressNotifier.notifyListeners();
+          progressNotifier.value.failed++;
         }
+        progressNotifier.notifyListeners();
       } catch (e, stackTrace) {
         logger.log(
           'Failed to download song: ${song?['title']}',
@@ -590,13 +598,19 @@ class DownloadProgress {
     required this.total,
     this.completed = 0,
     this.failed = 0,
-    this.isCancelled = false,
-  });
+    bool isCancelled = false,
+  }) {
+    this.isCancelled = isCancelled;
+  }
 
   final int total;
   int completed;
   int failed;
-  bool isCancelled;
+  final cancellation = DownloadCancellation();
+  bool get isCancelled => cancellation.isCancelled;
+  set isCancelled(bool value) {
+    if (value) cancellation.cancel();
+  }
 
   double get progress {
     if (total <= 0) return 0;

@@ -40,10 +40,9 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     if (searchHistoryNotifier.value.isEmpty) {
-      searchHistoryNotifier.value = Hive.box('user').get(
-        'searchHistory',
-        defaultValue: <dynamic>[],
-      );
+      searchHistoryNotifier.value = Hive.box(
+        'user',
+      ).get('searchHistory', defaultValue: <dynamic>[]);
     }
   }
 
@@ -81,6 +80,9 @@ class _SearchPageState extends State<SearchPage> {
 
     setState(() {
       _isSearching = true;
+      _songsSearchResult = [];
+      _artistsSearchResult = [];
+      _playlistsSearchResult = [];
     });
 
     try {
@@ -89,29 +91,47 @@ class _SearchPageState extends State<SearchPage> {
         searchHistory.insert(0, query);
         if (searchHistory.length > 20) searchHistory.removeLast();
         searchHistoryNotifier.value = searchHistory;
-        unawaited(addOrUpdateData<List>('user', 'searchHistory', searchHistory));
+        unawaited(
+          addOrUpdateData<List>('user', 'searchHistory', searchHistory),
+        );
       }
 
-      final results = await Future.wait([
-        fetchSongsList(query),
-        searchArtists(query),
-        getPlaylists(query: query),
+      Future<void> load(
+        Future<dynamic> Function() fetch,
+        void Function(dynamic) publish,
+      ) async {
+        try {
+          final value = await fetch().timeout(const Duration(seconds: 15));
+          if (mounted && requestId == _latestSearchRequest) {
+            setState(() => publish(value));
+          }
+        } catch (e) {
+          logger.log('Search section failed: $e');
+        }
+      }
+
+      await Future.wait([
+        load(
+          () => fetchSongsList(query),
+          (value) => _songsSearchResult = value as List,
+        ),
+        load(
+          () => searchArtists(query),
+          (value) => _artistsSearchResult = List<Map<String, dynamic>>.from(
+            value as List,
+          ),
+        ),
+        load(
+          () => getPlaylists(query: query),
+          (value) => _playlistsSearchResult = value as List,
+        ),
       ]);
-      if (requestId != _latestSearchRequest || !mounted) return;
-
-      final songResults = results[0];
-      final artistResults = results[1] as List<Map<String, dynamic>>;
-      final playlistResults = results[2];
-
-      setState(() {
-        _songsSearchResult = songResults;
-        _artistsSearchResult = artistResults;
-        _playlistsSearchResult = playlistResults;
-        _isSearching = false;
-      });
+      if (mounted && requestId == _latestSearchRequest) {
+        setState(() => _isSearching = false);
+      }
     } catch (e) {
       logger.log('Search error: $e');
-      if (mounted) {
+      if (mounted && requestId == _latestSearchRequest) {
         setState(() {
           _isSearching = false;
         });
@@ -120,6 +140,8 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _onQueryChanged(String query) {
+    ++_latestSearchRequest;
+    _isSearching = false;
     _debounce?.cancel();
     if (query.trim().isEmpty) {
       setState(() {
@@ -151,15 +173,20 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final navBarColor = isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
-    final hasResults = _songsSearchResult.isNotEmpty ||
+    final navBarColor = isDark
+        ? const Color(0xB3121214)
+        : const Color(0xB3FFFFFF);
+    final hasResults =
+        _songsSearchResult.isNotEmpty ||
         _artistsSearchResult.isNotEmpty ||
         _playlistsSearchResult.isNotEmpty;
 
     return CupertinoPageScaffold(
       backgroundColor: musifiedCanvas(isDark),
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: const Text(
@@ -173,7 +200,9 @@ class _SearchPageState extends State<SearchPage> {
             backgroundColor: navBarColor,
             border: Border(
               bottom: BorderSide(
-                color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
+                color: isDark
+                    ? const Color(0x26FFFFFF)
+                    : const Color(0x1F000000),
                 width: 0.5,
               ),
             ),
@@ -194,7 +223,7 @@ class _SearchPageState extends State<SearchPage> {
               ),
             ),
           ),
-          if (_isSearching)
+          if (_isSearching && !hasResults)
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
@@ -203,23 +232,26 @@ class _SearchPageState extends State<SearchPage> {
             )
           else if (_suggestionsList.isNotEmpty)
             SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final suggestion = _suggestionsList[index];
-                  return CupertinoListTile(
-                    leading: const Icon(CupertinoIcons.search, size: 18, color: CupertinoColors.systemGrey),
-                    title: Text(
-                      suggestion,
-                      style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
-                        color: isDark ? CupertinoColors.white : CupertinoColors.black,
-                      ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final suggestion = _suggestionsList[index];
+                return CupertinoListTile(
+                  leading: const Icon(
+                    CupertinoIcons.search,
+                    size: 18,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                  title: Text(
+                    suggestion,
+                    style: TextStyle(
+                      fontFamily: MusifiedStyle.uiFont,
+                      color: isDark
+                          ? CupertinoColors.white
+                          : CupertinoColors.black,
                     ),
-                    onTap: () => _submitSearch(suggestion),
-                  );
-                },
-                childCount: _suggestionsList.length,
-              ),
+                  ),
+                  onTap: () => _submitSearch(suggestion),
+                );
+              }, childCount: _suggestionsList.length),
             )
           else if (!hasResults && _searchBar.text.isEmpty)
             _buildSearchHistory(isDark)
@@ -232,8 +264,14 @@ class _SearchPageState extends State<SearchPage> {
                   children: [
                     if (_songsSearchResult.isNotEmpty) ...[
                       const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: SectionHeader(title: 'Songs', icon: CupertinoIcons.music_note_list),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: SectionHeader(
+                          title: 'Songs',
+                          icon: CupertinoIcons.music_note_list,
+                        ),
                       ),
                       ..._songsSearchResult.map(
                         (s) => SongTile(
@@ -247,8 +285,14 @@ class _SearchPageState extends State<SearchPage> {
                     ],
                     if (_artistsSearchResult.isNotEmpty) ...[
                       const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: SectionHeader(title: 'Artists', icon: CupertinoIcons.person_2_fill),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: SectionHeader(
+                          title: 'Artists',
+                          icon: CupertinoIcons.person_2_fill,
+                        ),
                       ),
                       ..._artistsSearchResult.map(
                         (a) => ArtistBar(
@@ -256,7 +300,10 @@ class _SearchPageState extends State<SearchPage> {
                           onTap: () {
                             if (a['ytid'] != null) {
                               context.push(
-                                NavigationManager.artistPath(context, a['ytid'].toString()),
+                                NavigationManager.artistPath(
+                                  context,
+                                  a['ytid'].toString(),
+                                ),
                                 extra: a,
                               );
                             }
@@ -266,8 +313,14 @@ class _SearchPageState extends State<SearchPage> {
                     ],
                     if (_playlistsSearchResult.isNotEmpty) ...[
                       const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: SectionHeader(title: 'Playlists', icon: CupertinoIcons.music_albums_fill),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: SectionHeader(
+                          title: 'Playlists',
+                          icon: CupertinoIcons.music_albums_fill,
+                        ),
                       ),
                       ..._playlistsSearchResult.map(
                         (p) => PlaylistBar(
@@ -352,26 +405,37 @@ class _SearchPageState extends State<SearchPage> {
                     return GestureDetector(
                       onTap: () => _submitSearch(query.toString()),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: musifiedElevatedSurface(isDark),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
+                            color: isDark
+                                ? const Color(0x33FFFFFF)
+                                : const Color(0x1F000000),
                             width: 0.5,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(CupertinoIcons.clock, size: 14, color: CupertinoColors.systemGrey),
+                            const Icon(
+                              CupertinoIcons.clock,
+                              size: 14,
+                              color: CupertinoColors.systemGrey,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               query.toString(),
                               style: TextStyle(
                                 fontFamily: MusifiedStyle.uiFont,
                                 fontSize: 14,
-                                color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                                color: isDark
+                                    ? CupertinoColors.white
+                                    : CupertinoColors.black,
                               ),
                             ),
                           ],

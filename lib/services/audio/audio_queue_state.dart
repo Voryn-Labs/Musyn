@@ -32,10 +32,10 @@ class AudioQueueState {
 
   static String? songKey(Map? song) {
     if (song == null) return null;
-    final ytid = song['ytid']?.toString();
-    if (ytid != null && ytid.isNotEmpty) return ytid;
     final entryId = song['queueEntryId']?.toString();
-    return (entryId == null || entryId.isEmpty) ? null : entryId;
+    if (entryId != null && entryId.isNotEmpty) return entryId;
+    final ytid = song['ytid']?.toString();
+    return (ytid == null || ytid.isEmpty) ? null : ytid;
   }
 
   bool containsIndex(int index) => index >= 0 && index < items.length;

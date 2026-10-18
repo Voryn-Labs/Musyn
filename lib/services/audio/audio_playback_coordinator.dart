@@ -8,11 +8,10 @@ import 'package:musified/services/audio/audio_playback_install.dart';
 import 'package:musified/services/audio/playback_source.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/utilities/app_utils.dart';
+import 'package:musified/utilities/async_operation_queue.dart';
 
-typedef PlaybackLogFn = void Function(
-  String message, {
-  Map<String, Object?>? extra,
-});
+typedef PlaybackLogFn =
+    void Function(String message, {Map<String, Object?>? extra});
 
 /// Gapless install inputs — handler builds from hub queue state.
 class GaplessInstallContext {
@@ -47,6 +46,7 @@ class AudioPlaybackCoordinator {
   });
 
   final AudioPlayer audioPlayer;
+  final AsyncOperationQueue _installQueue = AsyncOperationQueue();
   final Duration offlineTransitionTimeout;
   final Duration streamTransitionTimeout;
 
@@ -68,7 +68,7 @@ class AudioPlaybackCoordinator {
   }
 
   /// Detach the current AVPlayer item before installing a new stream URL.
-  /// 
+  ///
   /// Previously this called `audioPlayer.stop()`, which deactivated the iOS
   /// audio session. A deactivated session causes iOS to suspend the app while
   /// backgrounded — killing lock-screen playback between tracks.
@@ -97,7 +97,9 @@ class AudioPlaybackCoordinator {
     required PlaybackLogFn logPlayer,
     int? transitionId,
     Duration timeout = const Duration(seconds: 15),
+    required bool Function() shouldPlay,
   }) async {
+    if (isStale(transitionId) || !shouldPlay()) return false;
     try {
       final session = await AudioSession.instance;
       await session.setActive(true);
@@ -105,6 +107,7 @@ class AudioPlaybackCoordinator {
       logger.log('setActive before play failed', error: e, stackTrace: st);
     }
 
+    if (isStale(transitionId) || !shouldPlay()) return false;
     unawaited(
       audioPlayer.play().catchError((Object e, StackTrace st) {
         logger.log('play() error', error: e, stackTrace: st);
@@ -114,7 +117,7 @@ class AudioPlaybackCoordinator {
 
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
-      if (isStale(transitionId)) return false;
+      if (isStale(transitionId) || !shouldPlay()) return false;
 
       final state = audioPlayer.processingState;
       if (audioPlayer.playing &&
@@ -123,10 +126,7 @@ class AudioPlaybackCoordinator {
         lastError = null;
         logPlayer(
           'playback started',
-          extra: {
-            'state': state.name,
-            'pos': audioPlayer.position.inSeconds,
-          },
+          extra: {'state': state.name, 'pos': audioPlayer.position.inSeconds},
         );
         return true;
       }
@@ -146,10 +146,7 @@ class AudioPlaybackCoordinator {
     }
     logPlayer(
       'playback start wait finished',
-      extra: {
-        'playing': playing,
-        'state': audioPlayer.processingState.name,
-      },
+      extra: {'playing': playing, 'state': audioPlayer.processingState.name},
     );
     return playing;
   }
@@ -267,9 +264,7 @@ class AudioPlaybackCoordinator {
     void rejectStale(String source, String url) {
       logger.log(
         'Rejecting stale $source stream URL for $ytid',
-        data: {
-          'expire': Uri.tryParse(url)?.queryParameters['expire'] ?? '-',
-        },
+        data: {'expire': Uri.tryParse(url)?.queryParameters['expire'] ?? '-'},
       );
       song.remove('_preloadedStreamUrl');
       if (ytid != null) preloadedUrls.remove(ytid);
@@ -292,11 +287,7 @@ class AudioPlaybackCoordinator {
       rejectStale('preloaded', cached);
     }
 
-    return fetchSongStreamUrl(
-      song,
-      song['isLive'] ?? false,
-      abandon: abandon,
-    );
+    return fetchSongStreamUrl(song, song['isLive'] ?? false, abandon: abandon);
   }
 
   Future<PlaybackSource?> resolvePlaybackSource(
@@ -308,8 +299,8 @@ class AudioPlaybackCoordinator {
     if (abandon?.call() == true) return null;
     final forceSource = songData['forceSource']?.toString();
     final skipOffline =
-        (forceSource == 'youtube' || forceSource == 'jiosaavn') &&
-        sourceSwitchInFlight;
+        !offlineModeEnabled &&
+        (forceSource == 'youtube' || forceSource == 'jiosaavn');
 
     if (skipOffline) {
       logger.log(
@@ -331,14 +322,11 @@ class AudioPlaybackCoordinator {
         if (songUrl != null && songUrl.isNotEmpty) {
           logger.log(
             'Playing from local file',
-            data: {
-              'ytid': songData['ytid'],
-              'path': songUrl,
-            },
+            data: {'ytid': songData['ytid'], 'path': songUrl},
           );
           return PlaybackSource(songUrl: songUrl, isOffline: true);
         }
-        if (offlineModeEnabled) {
+        if (offlineModeEnabled || forceSource == 'offline') {
           logger.log(
             'Offline file missing for ${songData['ytid']} while offline mode on',
           );
@@ -349,7 +337,7 @@ class AudioPlaybackCoordinator {
         );
       }
 
-      if (!isOffline && offlineModeEnabled) {
+      if (!isOffline && (offlineModeEnabled || forceSource == 'offline')) {
         logger.log(
           'Offline mode enabled and no local file found for ${songData['ytid']}',
         );
@@ -399,6 +387,51 @@ class AudioPlaybackCoordinator {
     required bool Function(int?) isStale,
     required PlaybackLogFn logPlayer,
     required bool Function() offlineModeEnabled,
+    required bool Function() shouldPlay,
+    required void Function(Duration duration) onDurationKnown,
+    required void Function() onPlaybackStateChanged,
+    required Future<void> Function(int? transitionId) ensureActuallyPlaying,
+    required Future<void> Function(Map song) onRecentlyPlayed,
+    required void Function() schedulePreload,
+    String? mediaId,
+    bool allowOnlineRetry = true,
+    int? transitionId,
+    Duration? resumeAt,
+  }) async {
+    return _installQueue.run(
+      () => _setAudioSourceAndPlay(
+        song: song,
+        audioSource: audioSource,
+        songUrl: songUrl,
+        isOffline: isOffline,
+        gaplessCtx: gaplessCtx,
+        isStale: isStale,
+        logPlayer: logPlayer,
+        offlineModeEnabled: offlineModeEnabled,
+        shouldPlay: shouldPlay,
+        onDurationKnown: onDurationKnown,
+        onPlaybackStateChanged: onPlaybackStateChanged,
+        ensureActuallyPlaying: ensureActuallyPlaying,
+        onRecentlyPlayed: onRecentlyPlayed,
+        schedulePreload: schedulePreload,
+        mediaId: mediaId,
+        allowOnlineRetry: allowOnlineRetry,
+        transitionId: transitionId,
+        resumeAt: resumeAt,
+      ),
+    );
+  }
+
+  Future<bool> _setAudioSourceAndPlay({
+    required Map song,
+    required AudioSource audioSource,
+    required String songUrl,
+    required bool isOffline,
+    required GaplessInstallContext gaplessCtx,
+    required bool Function(int?) isStale,
+    required PlaybackLogFn logPlayer,
+    required bool Function() offlineModeEnabled,
+    required bool Function() shouldPlay,
     required void Function(Duration duration) onDurationKnown,
     required void Function() onPlaybackStateChanged,
     required Future<void> Function(int? transitionId) ensureActuallyPlaying,
@@ -446,8 +479,11 @@ class AudioPlaybackCoordinator {
         }
       }
 
-      final installSource =
-          await maybeAppendGaplessNext(audioSource, isOffline, gaplessCtx);
+      final installSource = await maybeAppendGaplessNext(
+        audioSource,
+        isOffline,
+        gaplessCtx,
+      );
 
       final needsHardReset = isOffline || lastInstalledWasOffline;
 
@@ -461,15 +497,12 @@ class AudioPlaybackCoordinator {
           'clip': audioSource is ClippingAudioSource,
           'hardReset': needsHardReset,
           'gapless': gaplessSourceActive,
-          'preload': isOffline,
+          'preload': true,
         },
       );
 
       await audioPlayer
-          .setAudioSources(
-            [installSource],
-            preload: isOffline,
-          )
+          .setAudioSources([installSource])
           .timeout(
             isOffline ? offlineTransitionTimeout : streamTransitionTimeout,
           );
@@ -504,8 +537,9 @@ class AudioPlaybackCoordinator {
 
       if (resumeAt != null && resumeAt > Duration.zero) {
         final duration = audioPlayer.duration;
-        final target =
-            duration != null && resumeAt > duration ? duration : resumeAt;
+        final target = duration != null && resumeAt > duration
+            ? duration
+            : resumeAt;
         try {
           await audioPlayer.seek(target);
         } catch (e, st) {
@@ -517,21 +551,33 @@ class AudioPlaybackCoordinator {
         }
       } else {
         try {
-          await audioPlayer.seek(Duration.zero).timeout(const Duration(seconds: 2));
+          await audioPlayer
+              .seek(Duration.zero)
+              .timeout(const Duration(seconds: 2));
         } catch (e, st) {
-          logger.log(
-            'Seek to start failed',
-            error: e,
-            stackTrace: st,
-          );
+          logger.log('Seek to start failed', error: e, stackTrace: st);
         }
       }
 
-      await beginPlaybackAfterInstall(
+      if (isStale(transitionId)) return false;
+      if (!shouldPlay()) {
+        await audioPlayer.pause();
+        onPlaybackStateChanged();
+        return true;
+      }
+      final started = await beginPlaybackAfterInstall(
         isStale: isStale,
         logPlayer: logPlayer,
         transitionId: transitionId,
+        shouldPlay: shouldPlay,
       );
+      if (isStale(transitionId)) return false;
+      if (!shouldPlay()) {
+        await audioPlayer.pause();
+        onPlaybackStateChanged();
+        return true;
+      }
+      if (!started) return false;
 
       unawaited(ensureActuallyPlaying(transitionId));
       unawaited(onRecentlyPlayed(song));
@@ -543,6 +589,7 @@ class AudioPlaybackCoordinator {
 
       return true;
     } catch (e, stackTrace) {
+      if (isStale(transitionId)) return false;
       logPlayer(
         'Error setting audio source',
         extra: {'title': song['title'], 'offline': isOffline},
@@ -564,6 +611,7 @@ class AudioPlaybackCoordinator {
           isStale: isStale,
           logPlayer: logPlayer,
           offlineModeEnabled: offlineModeEnabled,
+          shouldPlay: shouldPlay,
           onDurationKnown: onDurationKnown,
           onPlaybackStateChanged: onPlaybackStateChanged,
           ensureActuallyPlaying: ensureActuallyPlaying,
@@ -598,7 +646,7 @@ class AudioPlaybackCoordinator {
             );
 
             if (refreshedSource != null) {
-              return setAudioSourceAndPlay(
+              return _setAudioSourceAndPlay(
                 song: song,
                 audioSource: refreshedSource,
                 songUrl: refreshedUrl,
@@ -607,6 +655,7 @@ class AudioPlaybackCoordinator {
                 isStale: isStale,
                 logPlayer: logPlayer,
                 offlineModeEnabled: offlineModeEnabled,
+                shouldPlay: shouldPlay,
                 onDurationKnown: onDurationKnown,
                 onPlaybackStateChanged: onPlaybackStateChanged,
                 ensureActuallyPlaying: ensureActuallyPlaying,
@@ -623,7 +672,7 @@ class AudioPlaybackCoordinator {
       }
 
       lastError = e.toString();
-      await recoverPlayerAfterLoadFailure();
+      if (!isStale(transitionId)) await _recoverPlayerAfterLoadFailure();
       return false;
     }
   }
@@ -631,7 +680,14 @@ class AudioPlaybackCoordinator {
   /// Clears a poisoned AVPlayer session after -1004 / timeout load failures.
   /// Uses pause() (via detachCurrentStream) instead of stop() so the iOS
   /// audio session stays alive and lock-screen controls remain functional.
-  Future<void> recoverPlayerAfterLoadFailure() async {
+  Future<void> recoverPlayerAfterLoadFailure({bool Function()? abandon}) {
+    return _installQueue.run(() async {
+      if (abandon?.call() == true) return;
+      await _recoverPlayerAfterLoadFailure();
+    });
+  }
+
+  Future<void> _recoverPlayerAfterLoadFailure() async {
     gaplessSourceActive = false;
     installedSourceTransitionId = null;
     lastInstalledWasOffline = false;
@@ -651,6 +707,7 @@ class AudioPlaybackCoordinator {
     required bool Function(int?) isStale,
     required PlaybackLogFn logPlayer,
     required bool Function() offlineModeEnabled,
+    required bool Function() shouldPlay,
     required void Function(Duration duration) onDurationKnown,
     required void Function() onPlaybackStateChanged,
     required Future<void> Function(int? transitionId) ensureActuallyPlaying,
@@ -660,14 +717,20 @@ class AudioPlaybackCoordinator {
     int? transitionId,
     Duration? resumeAt,
   }) async {
-    if (offlineModeEnabled()) return false;
+    if (offlineModeEnabled() ||
+        isStale(transitionId) ||
+        song['forceSource'] == 'offline')
+      return false;
 
     final onlineUrl = await fetchSongStreamUrl(song, song['isLive'] ?? false);
     if (onlineUrl != null && onlineUrl.isNotEmpty) {
-      final onlineSource =
-          await AudioPlaybackInstall.buildSource(song, onlineUrl, false);
+      final onlineSource = await AudioPlaybackInstall.buildSource(
+        song,
+        onlineUrl,
+        false,
+      );
       if (onlineSource != null) {
-        return setAudioSourceAndPlay(
+        return _setAudioSourceAndPlay(
           song: song,
           audioSource: onlineSource,
           songUrl: onlineUrl,
@@ -676,6 +739,7 @@ class AudioPlaybackCoordinator {
           isStale: isStale,
           logPlayer: logPlayer,
           offlineModeEnabled: offlineModeEnabled,
+          shouldPlay: shouldPlay,
           onDurationKnown: onDurationKnown,
           onPlaybackStateChanged: onPlaybackStateChanged,
           ensureActuallyPlaying: ensureActuallyPlaying,

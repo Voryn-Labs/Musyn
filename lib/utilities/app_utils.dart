@@ -89,9 +89,8 @@ String formatMonthPeriodLabel(Locale locale, String monthKey) {
   final month = int.tryParse(parts[1]);
   if (year == null || month == null) return monthKey;
 
-  final label = DateFormat.yMMMM(locale.toString()).format(
-    DateTime(year, month),
-  );
+  final label = DateFormat.yMMMM(locale.toString())
+      .format(DateTime(year, month));
   return label.isEmpty
       ? monthKey
       : '${label[0].toUpperCase()}${label.substring(1)}';
@@ -306,8 +305,9 @@ bool isAudioOnlyMimeStream(AudioOnlyStreamInfo stream) {
 }
 
 AudioOnlyStreamInfo selectAudioOnlyStreamForQuality(
-  List<AudioOnlyStreamInfo> availableSources,
-) {
+  List<AudioOnlyStreamInfo> availableSources, {
+  int? requestedKbps,
+}) {
   // Select by mime type (audio/*), never by a hardcoded itag table.
   // Prefer AAC/m4a, then Opus. CRITICAL FOR IOS: AVPlayer rejects WebM
   // (AVError -11828), so Opus/webm is last-resort only.
@@ -348,25 +348,33 @@ AudioOnlyStreamInfo selectAudioOnlyStreamForQuality(
       .where((stream) => isAacFamily(stream) && isHeAacStream(stream))
       .toList();
 
-  final opusFallback =
-      audioOnly.where((stream) => isOpusFamily(stream)).toList();
+  final opusFallback = audioOnly
+      .where((stream) => isOpusFamily(stream))
+      .toList();
 
   final selectionPool = aacLcSources.isNotEmpty
       ? aacLcSources
       : (heAacFallback.isNotEmpty
-          ? heAacFallback
-          : (opusFallback.isNotEmpty ? opusFallback : audioOnly));
+            ? heAacFallback
+            : (opusFallback.isNotEmpty ? opusFallback : audioOnly));
   final sortedPool = selectionPool.sortByBitrate();
   if (sortedPool.isEmpty) {
     // Never fall through to a video/muxed stream — prefer first audio-only
     // candidate from the original list, else first entry as absolute last resort.
-    final audioFallback =
-        availableSources.where(isAudioOnlyMimeStream).toList();
+    final audioFallback = availableSources
+        .where(isAudioOnlyMimeStream)
+        .toList();
     return audioFallback.isNotEmpty
         ? audioFallback.first
         : availableSources.first;
   }
 
+  if (requestedKbps != null && requestedKbps > 0) {
+    return sortedPool.firstWhere(
+      (stream) => stream.bitrate.kiloBitsPerSecond <= requestedKbps,
+      orElse: () => sortedPool.last,
+    );
+  }
   final qualitySetting = audioQualitySetting.value;
 
   // sortByBitrate() is descending (highest first). Low quality must use the

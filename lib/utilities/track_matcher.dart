@@ -35,11 +35,14 @@ class TrackMatcher {
     ];
 
     for (final word in noiseWords) {
-      t = t.replaceAll(RegExp(r'\b' + RegExp.escape(word) + r'\b', caseSensitive: false), ' ');
+      t = t.replaceAll(
+        RegExp(r'\b' + RegExp.escape(word) + r'\b', caseSensitive: false),
+        ' ',
+      );
     }
 
     // Keep only alphanumeric characters and spaces
-    t = t.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ');
+    t = t.replaceAll(RegExp(r'[^\p{L}\p{N}\s]', unicode: true), ' ');
     t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
     return t;
   }
@@ -59,14 +62,37 @@ class TrackMatcher {
   }
 
   static Set<String> _tokens(String cleaned) {
-    return cleaned
-        .split(' ')
-        .where((t) => t.length > 1)
-        .toSet();
+    return cleaned.split(' ').where((t) => t.length > 1).toSet();
   }
 
   /// Check if two titles match based on candidates.
+  static Set<String> _versions(String title) {
+    final result = <String>{};
+    for (final tag in [
+      'remix',
+      'acoustic',
+      'instrumental',
+      'karaoke',
+      'nightcore',
+      'slowed',
+      'sped up',
+    ]) {
+      if (RegExp(r'\b' + tag + r'\b', caseSensitive: false).hasMatch(title))
+        result.add(tag);
+    }
+    if (RegExp(
+      r'[\(\[][^(\]]*\blive\b|\s[-–—]\s*live\b|\blive\s+(at|from|in)\b',
+      caseSensitive: false,
+    ).hasMatch(title))
+      result.add('live');
+    return result;
+  }
+
   static bool titlesMatch(String a, String b) {
+    final aVersions = _versions(a), bVersions = _versions(b);
+    if (aVersions.length != bVersions.length ||
+        !aVersions.containsAll(bVersions))
+      return false;
     final candA = getTitleCandidates(a);
     final candB = getTitleCandidates(b);
     for (final ca in candA) {
@@ -129,10 +155,12 @@ class TrackMatcher {
 
     final cleanArtA = _normalizeArtist(artistA);
     final cleanArtB = _normalizeArtist(artistB);
-    final artistMatches = (cleanArtA.isEmpty && cleanArtB.isEmpty) ||
+    final artistMatches =
+        (cleanArtA.isEmpty && cleanArtB.isEmpty) ||
         (cleanArtA.isNotEmpty &&
             cleanArtB.isNotEmpty &&
-            (cleanArtA == cleanArtB || _artistTokensOverlap(cleanArtA, cleanArtB)));
+            (cleanArtA == cleanArtB ||
+                _artistTokensOverlap(cleanArtA, cleanArtB)));
 
     if (!artistMatches) return false;
 
@@ -154,6 +182,8 @@ class TrackMatcher {
   static bool _artistTokensOverlap(String a, String b) {
     final ta = a.split(' ').where((t) => t.length > 2).toSet();
     final tb = b.split(' ').where((t) => t.length > 2).toSet();
-    return ta.isNotEmpty && tb.isNotEmpty && ta.intersection(tb).isNotEmpty;
+    return ta.isNotEmpty &&
+        tb.isNotEmpty &&
+        (ta.containsAll(tb) || tb.containsAll(ta));
   }
 }

@@ -12,7 +12,6 @@ import 'package:musified/services/playlist_download_service.dart';
 import 'package:musified/services/youtube_client.dart';
 import 'package:musified/services/jiosaavn_service.dart';
 import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/youtube_auth_service.dart';
 import 'package:musified/services/youtube_music_sync_service.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/flutter_toast.dart';
@@ -46,17 +45,16 @@ final userPlaylistFolders = ValueNotifier<List<Map>>(
   List<Map>.from(_safeUserListGet<List>('playlistFolders', [])),
 );
 final pinnedPlaylistIds = ValueNotifier<List<String>>(
-  List<String>.from(
-    _safeUserListGet<List>('pinnedPlaylistIds', []),
-  ),
+  List<String>.from(_safeUserListGet<List>('pinnedPlaylistIds', [])),
 );
 final onlinePlaylists = ValueNotifier<List<Map>>([]);
 const _maxOnlinePlaylistsCache = 200;
 
 void _trimOnlinePlaylistsCache() {
   if (onlinePlaylists.value.length <= _maxOnlinePlaylistsCache) return;
-  onlinePlaylists.value = onlinePlaylists.value
-      .sublist(onlinePlaylists.value.length - _maxOnlinePlaylistsCache);
+  onlinePlaylists.value = onlinePlaylists.value.sublist(
+    onlinePlaylists.value.length - _maxOnlinePlaylistsCache,
+  );
 }
 
 void reloadPlaylistsStateFromStorage() {
@@ -272,8 +270,7 @@ Future<String> addUserPlaylist(String input, BuildContext context) async {
 
 Map enrichSongForPlaylist(Map song) {
   final copy = Map<String, dynamic>.from(song);
-  final image =
-      copy['highResImage'] ?? copy['image'] ?? copy['lowResImage'];
+  final image = copy['highResImage'] ?? copy['image'] ?? copy['lowResImage'];
   if (image != null) {
     copy['highResImage'] ??= image;
     copy['image'] ??= image;
@@ -1237,9 +1234,11 @@ Future<Map?> _fetchYouTubePlaylist(String id) async {
 
   // 4. Fetch from YouTube as a last resort.
   if (playlist == null) {
-    if (YouTubeAuthService().isSignedIn.value) {
+    {
       try {
-        final ytTracks = await YouTubeMusicSyncService().fetchPlaylistTracks(id);
+        final ytTracks = await YouTubeMusicSyncService().fetchPlaylistTracks(
+          id,
+        );
         if (ytTracks.isNotEmpty) {
           playlist = {
             'ytid': id,
@@ -1252,7 +1251,9 @@ Future<Map?> _fetchYouTubePlaylist(String id) async {
           return playlist;
         }
       } catch (e) {
-        logger.log('Error fetching playlist in _fetchYouTubePlaylist via sync service: $e');
+        logger.log(
+          'Error fetching playlist in _fetchYouTubePlaylist via sync service: $e',
+        );
       }
     }
     try {
@@ -1316,9 +1317,11 @@ Future<List> getSongsFromPlaylist(
   final songList = await getData('cache', 'playlistSongs$playlistId') ?? [];
 
   if (songList.isEmpty) {
-    if (YouTubeAuthService().isSignedIn.value) {
+    {
       try {
-        final ytTracks = await YouTubeMusicSyncService().fetchPlaylistTracks(playlistId.toString());
+        final ytTracks = await YouTubeMusicSyncService().fetchPlaylistTracks(
+          playlistId.toString(),
+        );
         if (ytTracks.isNotEmpty) {
           songList.addAll(ytTracks);
         }
@@ -1331,7 +1334,11 @@ Future<List> getSongsFromPlaylist(
       try {
         await for (final song in ytClient.playlists.getVideos(playlistId)) {
           songList.add(
-            returnSongLayout(songList.length, song, playlistImage: playlistImage),
+            returnSongLayout(
+              songList.length,
+              song,
+              playlistImage: playlistImage,
+            ),
           );
         }
       } catch (e) {

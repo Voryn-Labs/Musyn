@@ -10,13 +10,14 @@ import 'package:musified/services/common_services.dart';
 import 'package:musified/services/data_manager.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/services/youtube_auth_service.dart';
+import 'package:musified/utilities/youtube_playlist_parser.dart';
 
 class YouTubeMusicSyncService {
-
   factory YouTubeMusicSyncService() => _instance;
 
   YouTubeMusicSyncService._internal();
-  static final YouTubeMusicSyncService _instance = YouTubeMusicSyncService._internal();
+  static final YouTubeMusicSyncService _instance =
+      YouTubeMusicSyncService._internal();
 
   static const _remixContext = {
     'client': {
@@ -28,7 +29,8 @@ class YouTubeMusicSyncService {
 
   static const _baseUrl = 'https://music.youtube.com/youtubei/v1';
 
-  final ValueNotifier<List<Map<String, dynamic>>> ytMusicPlaylists = ValueNotifier([]);
+  final ValueNotifier<List<Map<String, dynamic>>> ytMusicPlaylists =
+      ValueNotifier([]);
   final ValueNotifier<DateTime?> lastSyncTime = ValueNotifier(null);
   final ValueNotifier<bool> isSyncing = ValueNotifier(false);
 
@@ -68,11 +70,7 @@ class YouTubeMusicSyncService {
 
   Future<void> _persistPlaylists(List<Map<String, dynamic>> playlists) async {
     try {
-      await addOrUpdateData<List>(
-        'user',
-        'ytMusicPlaylists',
-        playlists,
-      );
+      await addOrUpdateData<List>('user', 'ytMusicPlaylists', playlists);
     } catch (e) {
       logger.log('Error persisting YT playlists: $e');
     }
@@ -82,7 +80,10 @@ class YouTubeMusicSyncService {
     return id.length == 11 && RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(id);
   }
 
-  Future<Map<String, dynamic>> _authenticatedPost(String endpoint, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> _authenticatedPost(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final authService = YouTubeAuthService();
     final headers = authService.getAuthHeaders();
     if (headers.isEmpty) {
@@ -113,16 +114,15 @@ class YouTubeMusicSyncService {
     final headers = Map<String, String>.from(extraHeaders)
       ..['Content-Type'] = 'application/json';
 
-    final fullBody = {
-      'context': _remixContext,
-      ...body,
-    };
+    final fullBody = {'context': _remixContext, ...body};
 
-    final response = await http.post(
-      Uri.parse('$_baseUrl$endpoint'),
-      headers: headers,
-      body: jsonEncode(fullBody),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$_baseUrl$endpoint'),
+          headers: headers,
+          body: jsonEncode(fullBody),
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw Exception('YouTube API error: ${response.statusCode}');
@@ -174,7 +174,10 @@ class YouTubeMusicSyncService {
     return ints[0] * 3600 + ints[1] * 60 + ints[2];
   }
 
-  Iterable<Map<String, dynamic>> _findRenderers(dynamic node, String key) sync* {
+  Iterable<Map<String, dynamic>> _findRenderers(
+    dynamic node,
+    String key,
+  ) sync* {
     if (node is Map) {
       final match = node[key];
       if (match is Map) yield Map<String, dynamic>.from(match);
@@ -210,9 +213,14 @@ class YouTubeMusicSyncService {
     return watch?['videoId']?.toString();
   }
 
-  List<Map<String, dynamic>> _parseTrackRenderers(Map<String, dynamic> response) {
+  List<Map<String, dynamic>> _parseTrackRenderers(
+    Map<String, dynamic> response,
+  ) {
     final tracks = <Map<String, dynamic>>[];
-    for (final item in _findRenderers(response, 'musicResponsiveListItemRenderer')) {
+    for (final item in _findRenderers(
+      response,
+      'musicResponsiveListItemRenderer',
+    )) {
       final videoId = _extractVideoId(item);
       if (videoId == null) continue;
 
@@ -224,19 +232,23 @@ class YouTubeMusicSyncService {
 
       if (flexColumns.isNotEmpty) {
         final col0 = flexColumns[0] as Map?;
-        final col0Renderer = col0?['musicResponsiveListItemFlexColumnRenderer'] as Map?;
+        final col0Renderer =
+            col0?['musicResponsiveListItemFlexColumnRenderer'] as Map?;
         title = _runsText(col0Renderer?['text'] as Map<String, dynamic>?) ?? '';
       }
 
       if (flexColumns.length > 1) {
         final col1 = flexColumns[1] as Map?;
-        final col1Renderer = col1?['musicResponsiveListItemFlexColumnRenderer'] as Map?;
-        artist = _runsText(col1Renderer?['text'] as Map<String, dynamic>?) ?? '';
+        final col1Renderer =
+            col1?['musicResponsiveListItemFlexColumnRenderer'] as Map?;
+        artist =
+            _runsText(col1Renderer?['text'] as Map<String, dynamic>?) ?? '';
       }
 
       String? imageUrl;
       final thumbnailMap = item['thumbnail'] as Map?;
-      final musicThumbnailRenderer = thumbnailMap?['musicThumbnailRenderer'] as Map?;
+      final musicThumbnailRenderer =
+          thumbnailMap?['musicThumbnailRenderer'] as Map?;
       final thumbnailData = musicThumbnailRenderer?['thumbnail'] as Map?;
       final thumbnails = thumbnailData?['thumbnails'];
       if (thumbnails is List && thumbnails.isNotEmpty) {
@@ -261,134 +273,55 @@ class YouTubeMusicSyncService {
 
   Future<List<Map<String, dynamic>>> fetchTrendingTracks() async {
     try {
-      var tracks = await _browseChartTracks('FEmusic_charts');
-      if (tracks.isEmpty) {
-        tracks = await _browseChartTracks('FEmusic_explore');
+      final charts = await fetchChartPlaylists();
+      final chartId = YouTubePlaylistParser.topSongsId(charts);
+      if (chartId == null) {
+        trendingSongs.value = [];
+        trendingError.value = 'Song charts are unavailable. Pull to refresh.';
+        return [];
       }
-      if (tracks.length > 20) {
-        tracks = tracks.take(20).toList();
+      final tracks = await fetchPlaylistTracks(chartId);
+      final ranked = tracks.take(20).toList();
+      for (var i = 0; i < ranked.length; i++) {
+        ranked[i] = {...ranked[i], 'chartId': chartId, 'chartRank': i + 1};
       }
-      if (tracks.isNotEmpty) {
-        trendingSongs.value = tracks;
-      }
-      return tracks;
+      trendingSongs.value = ranked;
+      trendingError.value = ranked.isEmpty
+          ? 'Unable to load this chart.'
+          : null;
+      return ranked;
     } catch (e) {
-      logger.log('Error fetching trending tracks: $e');
+      logger.log('Error fetching chart tracks: $e');
+      trendingError.value = 'Unable to refresh song charts.';
       return [];
     }
   }
 
-  /// Fetch chart playlists (Top 100, Top Songs, etc.) from YouTube Music.
-  /// Returns playlist-like maps with real `ytid` playlist IDs that can be
-  /// loaded by the playlist page.
-  Future<List<Map<String, dynamic>>> fetchChartPlaylists() async {
+  Future<List<Map<String, dynamic>>>? _chartRequest;
+
+  Future<List<Map<String, dynamic>>> fetchChartPlaylists() {
+    return _chartRequest ??= _fetchChartPlaylists().whenComplete(() {
+      _chartRequest = null;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchChartPlaylists() async {
     try {
-      Map<String, dynamic> response;
-      try {
-        response = await _authenticatedPost('/browse', {'browseId': 'FEmusic_charts'});
-      } catch (_) {
-        response = await _publicPost('/browse', {'browseId': 'FEmusic_charts'});
-      }
-
-      final playlists = <Map<String, dynamic>>[];
-      final seen = <String>{};
-
-      for (final item in _findRenderers(response, 'musicTwoRowItemRenderer')) {
-        final nav = item['navigationEndpoint'] as Map?;
-        final browseEndpoint = nav?['browseEndpoint'] as Map?;
-        final browseId = browseEndpoint?['browseId']?.toString();
-
-        // Skip songs (they have a videoId, not a playlist browseId)
-        final videoId = _extractVideoId(item);
-        if (videoId != null && _isValidYouTubeVideoId(videoId)) continue;
-
-        if (browseId == null || browseId.isEmpty) continue;
-        if (!browseId.startsWith('VL') && !browseId.startsWith('RDCLAK')) continue;
-        final playlistId = browseId.startsWith('VL') ? browseId.substring(2) : browseId;
-        if (seen.contains(playlistId)) continue;
-        seen.add(playlistId);
-
-        final title = _runsText(item['title'] as Map<String, dynamic>?) ?? '';
-        final subtitle = _runsText(item['subtitle'] as Map<String, dynamic>?) ?? '';
-
-        String? imageUrl;
-        final thumbnailRenderer = item['thumbnailRenderer'] as Map?;
-        final musicThumbnailRenderer =
-            thumbnailRenderer?['musicThumbnailRenderer'] as Map?;
-        final thumbnail = musicThumbnailRenderer?['thumbnail'] as Map?;
-        final thumbnails = thumbnail?['thumbnails'];
-        if (thumbnails is List && thumbnails.isNotEmpty) {
-          final lastThumb = thumbnails.last as Map?;
-          imageUrl = lastThumb?['url']?.toString();
-        }
-
-        if (title.isEmpty) continue;
-
-        playlists.add({
-          'ytid': playlistId,
-          'title': title,
-          'subtitle': subtitle,
-          'image': imageUrl ?? '',
-          'source': 'youtube',
-        });
-      }
-
-      return playlists;
+      final response = await _browsePost({'browseId': 'FEmusic_charts'});
+      return YouTubePlaylistParser.charts(response);
     } catch (e) {
       logger.log('Error fetching chart playlists: $e');
       return [];
     }
   }
 
-  Future<List<Map<String, dynamic>>> _browseChartTracks(String browseId) async {
-    Map<String, dynamic> response;
-    try {
-      response = await _authenticatedPost('/browse', {'browseId': browseId});
-    } catch (_) {
-      response = await _publicPost('/browse', {'browseId': browseId});
+  Future<Map<String, dynamic>> _browsePost(Map<String, dynamic> body) async {
+    if (YouTubeAuthService().isSignedIn.value) {
+      try {
+        return await _authenticatedPost('/browse', body);
+      } catch (_) {}
     }
-    final tracks = <Map<String, dynamic>>[];
-    final seen = <String>{};
-    _appendUniqueTracks(tracks, seen, _parseTrackRenderers(response));
-    if (tracks.length < 20) {
-      _appendUniqueTracks(tracks, seen, _parseTwoRowSongRenderers(response));
-    }
-    return tracks.take(20).toList();
-  }
-
-  List<Map<String, dynamic>> _parseTwoRowSongRenderers(
-    Map<String, dynamic> response,
-  ) {
-    final tracks = <Map<String, dynamic>>[];
-    for (final item in _findRenderers(response, 'musicTwoRowItemRenderer')) {
-      final videoId = _extractVideoId(item);
-      if (videoId == null || !_isValidYouTubeVideoId(videoId)) continue;
-
-      final title = _runsText(item['title'] as Map<String, dynamic>?) ?? '';
-      final subtitle =
-          _runsText(item['subtitle'] as Map<String, dynamic>?) ?? '';
-
-      String? imageUrl;
-      final thumbnailRenderer = item['thumbnailRenderer'] as Map?;
-      final musicThumbnailRenderer =
-          thumbnailRenderer?['musicThumbnailRenderer'] as Map?;
-      final thumbnail = musicThumbnailRenderer?['thumbnail'] as Map?;
-      final thumbnails = thumbnail?['thumbnails'];
-      if (thumbnails is List && thumbnails.isNotEmpty) {
-        final lastThumb = thumbnails.last as Map?;
-        imageUrl = lastThumb?['url']?.toString();
-      }
-
-      tracks.add({
-        'ytid': videoId,
-        'title': title,
-        'artist': subtitle,
-        'image': imageUrl ?? '',
-        'source': 'youtube',
-        'catalogOrigin': 'youtube',
-      });
-    }
-    return tracks;
+    return _publicPost('/browse', body);
   }
 
   Future<List<Map<String, dynamic>>> fetchLikedSongs() async {
@@ -418,7 +351,8 @@ class YouTubeMusicSyncService {
 
         String? imageUrl;
         final thumbnailRenderer = item['thumbnailRenderer'] as Map?;
-        final musicThumbnailRenderer = thumbnailRenderer?['musicThumbnailRenderer'] as Map?;
+        final musicThumbnailRenderer =
+            thumbnailRenderer?['musicThumbnailRenderer'] as Map?;
         final thumbnail = musicThumbnailRenderer?['thumbnail'] as Map?;
         final thumbnails = thumbnail?['thumbnails'];
         if (thumbnails is List && thumbnails.isNotEmpty) {
@@ -426,7 +360,8 @@ class YouTubeMusicSyncService {
           imageUrl = lastThumb?['url']?.toString();
         }
 
-        final subtitle = _runsText(item['subtitle'] as Map<String, dynamic>?) ?? '';
+        final subtitle =
+            _runsText(item['subtitle'] as Map<String, dynamic>?) ?? '';
         final count = _parseTrackCount(subtitle);
 
         playlists.add({
@@ -453,18 +388,22 @@ class YouTubeMusicSyncService {
       r'(\d[\d,]*)\s*(songs?|tracks?)',
       caseSensitive: false,
     ).firstMatch(subtitle);
-    final raw = withUnit?.group(1) ??
+    final raw =
+        withUnit?.group(1) ??
         RegExp(r'(\d[\d,]*)').firstMatch(subtitle)?.group(1);
     if (raw == null) return null;
     return int.tryParse(raw.replaceAll(',', ''));
   }
 
-  Future<List<Map<String, dynamic>>> fetchPlaylistTracks(String playlistId) async {
+  Future<List<Map<String, dynamic>>> fetchPlaylistTracks(
+    String playlistId,
+  ) async {
     try {
       if (isLikedMusicPlaylist({'playlistId': playlistId})) {
         return await fetchLikedSongs();
       }
-      final browseId = playlistId.startsWith('VL') || playlistId.startsWith('FE')
+      final browseId =
+          playlistId.startsWith('VL') || playlistId.startsWith('FE')
           ? playlistId
           : 'VL$playlistId';
       return await _browseAllTracks(browseId);
@@ -479,12 +418,16 @@ class YouTubeMusicSyncService {
     final tracks = <Map<String, dynamic>>[];
     final seen = <String>{};
 
-    var response = await _authenticatedPost('/browse', {
-      'browseId': browseId,
-    });
-    _appendUniqueTracks(tracks, seen, _parseTrackRenderers(response));
+    var response = await _browsePost({'browseId': browseId});
+    _appendUniqueTracks(
+      tracks,
+      seen,
+      _parseTrackRenderers(YouTubePlaylistParser.playlistScope(response)),
+    );
 
-    var continuation = _extractContinuation(response);
+    var continuation = _extractContinuation(
+      YouTubePlaylistParser.playlistScope(response),
+    );
     var pages = 0;
     const maxPages = 25;
 
@@ -492,15 +435,17 @@ class YouTubeMusicSyncService {
         continuation.isNotEmpty &&
         pages < maxPages) {
       pages++;
-      response = await _authenticatedPost('/browse', {
-        'continuation': continuation,
-      });
-      final pageTracks = _parseTrackRenderers(response);
+      response = await _browsePost({'continuation': continuation});
+      final pageTracks = _parseTrackRenderers(
+        YouTubePlaylistParser.playlistScope(response),
+      );
       if (pageTracks.isEmpty) break;
       final before = tracks.length;
       _appendUniqueTracks(tracks, seen, pageTracks);
       if (tracks.length == before) break;
-      continuation = _extractContinuation(response);
+      continuation = _extractContinuation(
+        YouTubePlaylistParser.playlistScope(response),
+      );
     }
 
     return tracks;
@@ -550,7 +495,8 @@ class YouTubeMusicSyncService {
 
           String? imageUrl;
           final thumbnailRenderer = item['thumbnailRenderer'] as Map?;
-          final musicThumbnailRenderer = thumbnailRenderer?['musicThumbnailRenderer'] as Map?;
+          final musicThumbnailRenderer =
+              thumbnailRenderer?['musicThumbnailRenderer'] as Map?;
           final thumbnail = musicThumbnailRenderer?['thumbnail'] as Map?;
           final thumbnails = thumbnail?['thumbnails'];
           if (thumbnails is List && thumbnails.isNotEmpty) {
@@ -617,10 +563,7 @@ class YouTubeMusicSyncService {
       await _authenticatedPost('browse/edit_playlist', {
         'playlistId': cleanId,
         'actions': [
-          {
-            'action': 'ACTION_ADD_VIDEO',
-            'addedVideoId': videoId,
-          },
+          {'action': 'ACTION_ADD_VIDEO', 'addedVideoId': videoId},
         ],
       });
       return true;
@@ -630,10 +573,7 @@ class YouTubeMusicSyncService {
     }
   }
 
-  Future<String?> createUserPlaylist(
-    String title, {
-    String? videoId,
-  }) async {
+  Future<String?> createUserPlaylist(String title, {String? videoId}) async {
     final trimmed = title.trim();
     if (trimmed.isEmpty) return null;
     try {
@@ -696,18 +636,23 @@ class YouTubeMusicSyncService {
         });
       }
 
-      for (final item in _findRenderers(response, 'playlistPanelVideoRenderer')) {
+      for (final item in _findRenderers(
+        response,
+        'playlistPanelVideoRenderer',
+      )) {
         final id = item['videoId']?.toString();
         if (id == null || id.isEmpty || id == videoId) continue;
         if (!_isValidYouTubeVideoId(id)) continue;
 
         final title =
             _runsText(item['title'] as Map<String, dynamic>?)?.trim() ?? '';
-        final artist = _runsText(
+        final artist =
+            _runsText(
               item['longBylineText'] as Map<String, dynamic>?,
             )?.trim() ??
-            _runsText(item['shortBylineText'] as Map<String, dynamic>?)
-                ?.trim() ??
+            _runsText(
+              item['shortBylineText'] as Map<String, dynamic>?,
+            )?.trim() ??
             '';
         if (title.isEmpty || artist.isEmpty) continue;
 
@@ -841,10 +786,7 @@ class YouTubeMusicSyncService {
         return;
       }
 
-      await Future.wait([
-        syncLikedSongs(),
-        syncPlaylists(),
-      ]);
+      await Future.wait([syncLikedSongs(), syncPlaylists()]);
     } catch (e) {
       logger.log('Error during full sync: $e');
     } finally {
@@ -856,7 +798,13 @@ class YouTubeMusicSyncService {
     final now = DateTime.now();
     lastSyncTime.value = now;
     if (Hive.isBoxOpen('settings')) {
-      unawaited(addOrUpdateData<int>('settings', 'lastYtSyncTime', now.millisecondsSinceEpoch));
+      unawaited(
+        addOrUpdateData<int>(
+          'settings',
+          'lastYtSyncTime',
+          now.millisecondsSinceEpoch,
+        ),
+      );
     }
   }
 

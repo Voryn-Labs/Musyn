@@ -86,9 +86,7 @@ class _PlaylistDownloadButtonState extends State<PlaylistDownloadButton> {
                 return const SizedBox(
                   width: 44,
                   height: 44,
-                  child: Center(
-                    child: CupertinoActivityIndicator(),
-                  ),
+                  child: Center(child: CupertinoActivityIndicator()),
                 );
               }
 
@@ -111,26 +109,34 @@ class _PlaylistDownloadButtonState extends State<PlaylistDownloadButton> {
   }
 
   Widget _buildProgress(BuildContext context, DownloadProgress progress) {
-    return SizedBox(
-      width: 44,
-      height: 44,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const SizedBox(
-            width: 32,
-            height: 32,
-            child: CupertinoActivityIndicator(),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          progress.isCancelled
+              ? 'Stopping…'
+              : '${progress.completed}/${progress.total}'
+                    '${progress.failed > 0 ? ' · ${progress.failed} failed' : ''}',
+          style: const TextStyle(
+            fontSize: 12,
+            color: CupertinoColors.secondaryLabel,
           ),
-          if (!progress.isCancelled)
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () =>
-                  offlinePlaylistService.cancelDownload(context, playlistId),
-              child: const Icon(CupertinoIcons.xmark, size: 14, color: CupertinoColors.destructiveRed),
-            ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 6),
+        CupertinoButton(
+          padding: const EdgeInsets.all(10),
+          onPressed: progress.isCancelled
+              ? null
+              : () =>
+                    offlinePlaylistService.cancelDownload(context, playlistId),
+          child: progress.isCancelled
+              ? const CupertinoActivityIndicator()
+              : const Icon(
+                  CupertinoIcons.stop_circle,
+                  semanticLabel: 'Cancel download',
+                ),
+        ),
+      ],
     );
   }
 

@@ -22,12 +22,18 @@ class DownloadPickerSheet extends StatefulWidget {
 }
 
 class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
-  late String _selectedSource = downloadSource.value == 'jiosaavn'
-      ? 'saavn'
-      : downloadSource.value;
+  late String _selectedSource = switch (downloadSource.value) {
+    'saavn' || 'jiosaavn' => 'saavn',
+    'youtube' => 'youtube',
+    _ =>
+      widget.song['resolvedSource'] == 'youtube' || !jiosaavnEnabled.value
+          ? 'youtube'
+          : 'saavn',
+  };
   late String _selectedQuality = downloadQuality.value;
 
   bool _isCheckingSaavn = true;
+  bool _availabilityUnknown = false;
   bool _isSaavnAvailable = true;
 
   @override
@@ -52,7 +58,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
 
       final match = await SourceResolver()
           .resolveAudioSource(widget.song)
-          .timeout(const Duration(seconds: 2), onTimeout: () => null);
+          .timeout(const Duration(seconds: 4));
 
       if (mounted) {
         setState(() {
@@ -67,12 +73,9 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _isSaavnAvailable = false;
           _isCheckingSaavn = false;
-          if (_selectedSource == 'saavn') {
-            _selectedSource = 'youtube';
-            if (_selectedQuality == '320') _selectedQuality = '160';
-          }
+          _availabilityUnknown = true;
+          _isSaavnAvailable = true;
         });
       }
     }
@@ -114,7 +117,9 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 width: 36,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0x66FFFFFF) : const Color(0x33000000),
+                  color: isDark
+                      ? const Color(0x66FFFFFF)
+                      : const Color(0x33000000),
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -180,12 +185,14 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
             const SizedBox(height: 8),
             _buildSourceOption(
               value: 'saavn',
-              title: 'JioSaavn Studio Master',
+              title: 'JioSaavn',
               subtitle: _isCheckingSaavn
                   ? 'Checking availability...'
-                  : (_isSaavnAvailable
-                      ? 'Lossless 320 kbps AAC stream'
-                      : 'Unavailable on JioSaavn for this track'),
+                  : (_availabilityUnknown
+                        ? 'Availability checked when downloading'
+                        : _isSaavnAvailable
+                        ? 'AAC · up to 320 kbps'
+                        : 'Unavailable on JioSaavn for this track'),
               icon: CupertinoIcons.waveform,
               iconBg: CupertinoColors.systemGreen,
               isEnabled: !_isCheckingSaavn && _isSaavnAvailable,
@@ -197,8 +204,8 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
             ),
             _buildSourceOption(
               value: 'youtube',
-              title: 'YouTube Music Original',
-              subtitle: 'Standard Stream (Max 160 kbps Opus/AAC)',
+              title: 'YouTube Music',
+              subtitle: 'AAC · best available within the quality limit',
               icon: CupertinoIcons.play_rectangle_fill,
               iconBg: const Color(0xFFFF0033),
               isEnabled: true,
@@ -213,7 +220,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'BITRATE QUALITY',
+                  'AUDIO QUALITY',
                   style: TextStyle(
                     fontFamily: MusifiedStyle.uiFont,
                     fontSize: 12,
@@ -224,7 +231,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                   ),
                 ),
                 Text(
-                  _selectedSource == 'saavn' ? '320k Lossless' : 'YouTube Max 160k',
+                  'Up to $_selectedQuality kbps',
                   style: const TextStyle(
                     fontFamily: MusifiedStyle.uiFont,
                     fontSize: 11,
@@ -236,42 +243,28 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
               ],
             ),
             const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  for (final q in _availableBitrates)
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _selectedQuality = q);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _selectedQuality == q ? primaryColor : const Color(0x00000000),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '$q kbps',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: MusifiedStyle.uiFont,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: _selectedQuality == q ? CupertinoColors.white : secondaryTextColor,
-                              decoration: TextDecoration.none,
-                            ),
-                          ),
-                        ),
-                      ),
+            SizedBox(
+              width: double.infinity,
+              child: CupertinoSlidingSegmentedControl<String>(
+                groupValue: _selectedQuality,
+                children: {
+                  for (final quality in _availableBitrates)
+                    quality: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text('$quality kbps'),
                     ),
-                ],
+                },
+                onValueChanged: (quality) {
+                  if (quality == null) return;
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedQuality = quality);
+                },
               ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Downloads use the selected source. If unavailable, you can choose another source and retry.',
+              style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -288,7 +281,11 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(CupertinoIcons.arrow_down_circle_fill, color: CupertinoColors.white, size: 20),
+                    Icon(
+                      CupertinoIcons.arrow_down_circle_fill,
+                      color: CupertinoColors.white,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Download Track',
@@ -390,7 +387,9 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 ),
               ),
               Icon(
-                selected ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.circle,
+                selected
+                    ? CupertinoIcons.checkmark_circle_fill
+                    : CupertinoIcons.circle,
                 color: selected ? primaryColor : secondaryTextColor,
                 size: 20,
               ),
@@ -413,7 +412,9 @@ Future<void> showDownloadPicker(
     context: context,
     builder: (ctx) => Container(
       decoration: BoxDecoration(
-        color: isDark ? musifiedElevatedSurface(isDark) : const Color(0xFFFFFFFF),
+        color: isDark
+            ? musifiedElevatedSurface(isDark)
+            : const Color(0xFFFFFFFF),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: DownloadPickerSheet(song: song, onDownload: onDownload),

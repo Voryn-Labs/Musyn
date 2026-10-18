@@ -25,6 +25,7 @@ class SongArtworkWidget extends StatelessWidget {
     final ytid = metadata.extras?['ytid']?.toString() ?? metadata.id;
     return {
       'ytid': ytid,
+      'catalogImage': metadata.extras?['catalogImage'],
       'highResImage': metadata.extras?['highResImage'],
       'image': metadata.extras?['image'],
       'lowResImage': metadata.extras?['lowResImage'],

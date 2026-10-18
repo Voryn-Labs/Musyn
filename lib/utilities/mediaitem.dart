@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/utilities/app_utils.dart';
@@ -13,10 +14,12 @@ Map mediaItemToMap(MediaItem mediaItem) {
     'title': mediaItem.title,
     'artistId': extras?['artistId'],
     'videoAuthor': extras?['videoAuthor'],
-    'highResImage': extras?['highResImage'] ??
+    'highResImage':
+        extras?['highResImage'] ??
         extras?['image'] ??
         mediaItem.artUri?.toString(),
-    'image': extras?['image'] ??
+    'image':
+        extras?['image'] ??
         extras?['highResImage'] ??
         mediaItem.artUri?.toString(),
     'lowResImage': extras?['lowResImage'],
@@ -43,13 +46,10 @@ String? _nonEmptyUrl(dynamic value) {
 
 /// Square-friendly artwork URL for lock-screen / in-app art.
 /// Prefers googleusercontent, ggpht, and saavncdn over 16:9 ytimg thumbs.
-String? resolveMediaArtworkUrl(
-  Map song, {
-  String? ytid,
-  int targetSize = 400,
-}) {
+String? resolveMediaArtworkUrl(Map song, {String? ytid, int targetSize = 400}) {
   final candidates = <String>[
     for (final key in [
+      'catalogImage',
       'highResImage',
       'image',
       'lowResImage',
@@ -59,8 +59,9 @@ String? resolveMediaArtworkUrl(
       if (_nonEmptyUrl(song[key]) != null) _nonEmptyUrl(song[key])!,
   ];
 
-  String? chosen;
+  String? chosen = _nonEmptyUrl(song['catalogImage']);
   for (final url in candidates) {
+    if (chosen != null) break;
     if (_isSquareArtworkCdn(url)) {
       chosen = url;
       break;
@@ -68,21 +69,12 @@ String? resolveMediaArtworkUrl(
   }
   chosen ??= candidates.isNotEmpty ? candidates.first : null;
 
-  final resolvedSource = song['resolvedSource']?.toString();
-  final catalogYoutube = resolvedSource == 'youtube' ||
-      song['catalogOrigin']?.toString() == 'youtube' ||
-      song['source']?.toString() == 'youtube';
-  if (catalogYoutube && ytid != null && ytid.isNotEmpty) {
-    final square = chosen != null && _isSquareArtworkCdn(chosen);
-    if (!square) {
-      return 'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
-    }
-  }
-
+  final validYoutubeId =
+      ytid != null && RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(ytid);
   if (chosen != null) {
     return upgradeArtworkUrl(chosen, targetSize: targetSize);
   }
-  if (ytid != null && ytid.isNotEmpty) {
+  if (validYoutubeId) {
     return 'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
   }
   return null;
@@ -149,15 +141,17 @@ MediaItem mapToMediaItem(Map song) {
 
   final artworkUrl = resolveMediaArtworkUrl(song, ytid: ytid);
 
-  final artUri = isOffline && offlineSong['artworkPath'] != null
+  final artworkPath = offlineSong['artworkPath']?.toString();
+  final hasLocalArt = artworkPath != null && File(artworkPath).existsSync();
+  final artUri = isOffline && hasLocalArt
       ? Uri.file(offlineSong['artworkPath'].toString())
-      : (artworkUrl != null &&
-              artworkUrl.isNotEmpty &&
-              artworkUrl != 'null'
-          ? Uri.parse(artworkUrl)
-          : (ytid != null && ytid.isNotEmpty
-              ? Uri.parse('https://i.ytimg.com/vi/$ytid/hqdefault.jpg')
-              : null));
+      : (artworkUrl != null && artworkUrl.isNotEmpty && artworkUrl != 'null'
+            ? Uri.parse(artworkUrl)
+            : (ytid != null &&
+                      ytid.isNotEmpty &&
+                      RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(ytid)
+                  ? Uri.parse('https://i.ytimg.com/vi/$ytid/hqdefault.jpg')
+                  : null));
   // ytid is the canonical track identity shared by YouTube and JioSaavn.
   // Provider URLs, source labels, and queue-entry ids must never change it.
   final stableId = (ytid == null || ytid.isEmpty)
@@ -189,6 +183,8 @@ MediaItem mapToMediaItem(Map song) {
       'isLive': song['isLive'],
       'isOffline': isOffline,
       'downloadSource': downloadSource,
+      'catalogImage': song['catalogImage'],
+      'catalogOrigin': song['catalogOrigin'],
       'highResImage': artworkUrl ?? song['highResImage'] ?? song['image'],
       'artWorkPath': artworkFilePath,
       'artworkPath': artworkFilePath,

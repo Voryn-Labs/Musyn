@@ -8,17 +8,21 @@ import 'package:musified/constants/clients.dart';
 import 'package:musified/main.dart' show logger;
 import 'package:musified/services/artist_service.dart' show ytMusicClient;
 import 'package:musified/services/data_manager.dart';
+import 'package:musified/services/download_transfer.dart';
 import 'package:musified/services/io_service.dart';
 import 'package:musified/services/lyrics_manager.dart';
+import 'package:musified/services/offline_song_registry.dart';
 import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/youtube_client.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/services/source_resolver.dart';
-import 'package:musified/services/ytdlp_client_sync_service.dart';
 import 'package:musified/services/youtube_auth_service.dart';
+import 'package:musified/services/youtube_client.dart';
 import 'package:musified/services/youtube_music_sync_service.dart';
+import 'package:musified/services/ytdlp_client_sync_service.dart';
 import 'package:musified/utilities/app_utils.dart';
+import 'package:musified/utilities/async_operation_queue.dart';
 import 'package:musified/utilities/formatter.dart';
+import 'package:musified/utilities/track_matcher.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 T _safeUserGet<T>(String key, T defaultValue) {
@@ -59,10 +63,14 @@ ValueNotifier<List> userOfflineSongs = ValueNotifier<List>(
 );
 
 final Set<String> _likedSongIdsSet = {
-  ...userLikedSongsList.value.map((s) => s['ytid']?.toString() ?? '').where((id) => id.isNotEmpty),
+  ...userLikedSongsList.value
+      .map((s) => s['ytid']?.toString() ?? '')
+      .where((id) => id.isNotEmpty),
 };
 final Set<String> _offlineSongIdsSet = {
-  ...userOfflineSongs.value.map((s) => s['ytid']?.toString() ?? '').where((id) => id.isNotEmpty),
+  ...userOfflineSongs.value
+      .map((s) => s['ytid']?.toString() ?? '')
+      .where((id) => id.isNotEmpty),
 };
 
 void _syncLikedSongIdsSet() {
@@ -177,7 +185,8 @@ bool _isCachedHeAacYoutube(Map metadata) {
 /// Needed so iOS can clip HE-AAC/SBR streams to the real track length.
 Future<void> ensureYoutubeCatalogDuration(Map song) async {
   if (parseSongDuration(song['duration']) != null) return;
-  final source = song['resolvedSource']?.toString() ?? song['source']?.toString();
+  final source =
+      song['resolvedSource']?.toString() ?? song['source']?.toString();
   if (source == 'jiosaavn' || source == 'saavn') return;
   final songId = song['ytid']?.toString();
   if (songId == null || songId.isEmpty) return;
@@ -201,8 +210,7 @@ String? _youtubeClientUserAgent(YoutubeApiClient client) {
   return clientContext is Map ? clientContext['userAgent']?.toString() : null;
 }
 
-Future<({StreamManifest manifest, YoutubeApiClient? client})?>
-_tryGetManifest(
+Future<({StreamManifest manifest, YoutubeApiClient? client})?> _tryGetManifest(
   String songId, {
   required String attempt,
   required Duration timeout,
@@ -219,7 +227,9 @@ _tryGetManifest(
         client: ytClients == null || ytClients.isEmpty ? null : ytClients.first,
       );
     }
-    logger.log('YouTube manifest via $attempt for $songId had no audio streams');
+    logger.log(
+      'YouTube manifest via $attempt for $songId had no audio streams',
+    );
   } catch (error) {
     logger.log('$attempt getManifest failed for $songId: $error');
   }
@@ -233,7 +243,7 @@ _fetchStreamManifest(String songId) async {
   for (final client in youtubeStreamClients()) {
     final name =
         client.payload['context']?['client']?['clientName']?.toString() ??
-            'unknown';
+        'unknown';
     final result = await _tryGetManifest(
       songId,
       attempt: name,
@@ -254,10 +264,7 @@ DateTime? _parseCacheTimestamp(dynamic raw) {
   return null;
 }
 
-Future<bool> _isCachedStreamUrlAlive(
-  String url, {
-  String? userAgent,
-}) async {
+Future<bool> _isCachedStreamUrlAlive(String url, {String? userAgent}) async {
   try {
     final headers = <String, String>{
       if (userAgent != null && userAgent.isNotEmpty) 'User-Agent': userAgent,
@@ -269,13 +276,7 @@ Future<bool> _isCachedStreamUrlAlive(
     if (head.statusCode == 200 || head.statusCode == 206) return true;
     if (head.statusCode != 405) return false;
     final probe = await http
-        .get(
-          uri,
-          headers: {
-            ...headers,
-            'Range': 'bytes=0-1',
-          },
-        )
+        .get(uri, headers: {...headers, 'Range': 'bytes=0-1'})
         .timeout(const Duration(seconds: 4));
     return probe.statusCode == 200 || probe.statusCode == 206;
   } catch (_) {
@@ -347,8 +348,9 @@ Future<List> fetchSongsList(String searchQuery) async {
     }
 
     // Soft fallback only when YTM songs shelf is empty — filter hard.
-    final List<Video> searchResults =
-        await ytClient.search.search('$searchQuery audio');
+    final List<Video> searchResults = await ytClient.search.search(
+      '$searchQuery audio',
+    );
     return searchResults
         .map((video) {
           final layout = returnSongLayout(0, video);
@@ -604,7 +606,9 @@ bool isPlaylistFullyOffline(List songs) {
   if (_offlineSongIdsSet.isEmpty && userOfflineSongs.value.isNotEmpty) {
     _syncOfflineSongIdsSet();
   }
-  return songs.every((s) => _offlineSongIdsSet.contains(s['ytid']?.toString() ?? ''));
+  return songs.every(
+    (s) => _offlineSongIdsSet.contains(s['ytid']?.toString() ?? ''),
+  );
 }
 
 bool _isPlayableAudioFile(String? path) {
@@ -700,14 +704,13 @@ Future<List<String>> getSearchSuggestions(String query) async {
   return suggestions;
 }
 
-
-
 Future<void> getSimilarSong(String songYtId) async {
   try {
     // Prefer YouTube Music /next radio (WEB_REMIX) over watch-page HTML parsing.
     // related_videos_client.dart HTML remains a brittle fallback risk.
-    final fromMusic =
-        await YouTubeMusicSyncService().fetchRadioNextTrack(songYtId);
+    final fromMusic = await YouTubeMusicSyncService().fetchRadioNextTrack(
+      songYtId,
+    );
     if (fromMusic != null) {
       nextRecommendedSong = fromMusic;
       return;
@@ -813,14 +816,19 @@ Future<void> invalidateSongStreamCache(String songId) async {
 }
 
 /// Fetches the best available audio stream for a song.
-Future<AudioOnlyStreamInfo?> fetchBestAudioStream(String? songId) async {
+Future<AudioOnlyStreamInfo?> fetchBestAudioStream(
+  String? songId, {
+  String? quality,
+}) async {
   try {
     if (songId == null || songId.isEmpty) {
       logger.log('fetchBestAudioStream: songId is null or empty');
       return null;
     }
 
-    final cachedSelection = _getSelectedAudioStream(songId);
+    final cachedSelection = quality == null
+        ? _getSelectedAudioStream(songId)
+        : null;
     if (cachedSelection != null &&
         isPlayableYoutubeStreamUrl(cachedSelection.stream.url)) {
       return cachedSelection.stream;
@@ -853,9 +861,12 @@ Future<AudioOnlyStreamInfo?> fetchBestAudioStream(String? songId) async {
 
     final selectedStream = selectAudioOnlyStreamForQuality(
       playable.sortByBitrate(),
+      requestedKbps: int.tryParse(quality ?? ''),
     );
     if (!isPlayableYoutubeStreamUrl(selectedStream.url)) {
-      logger.log('fetchBestAudioStream: selected stream URL invalid for $songId');
+      logger.log(
+        'fetchBestAudioStream: selected stream URL invalid for $songId',
+      );
       return null;
     }
     logger.log(
@@ -929,13 +940,11 @@ Future<String?> fetchSongStreamUrl(
     final forceSource = song['forceSource']?.toString();
     final resolveYoutube = songShouldResolveYoutube(song);
     final pref = preferredSource.value;
-    final forceJiosaavn =
-        forceSource == 'jiosaavn' || forceSource == 'saavn';
+    final forceJiosaavn = forceSource == 'jiosaavn' || forceSource == 'saavn';
     // Saavn search ONLY when the user pinned JioSaavn. `auto` must never wait
     // on a title/artist lookup between tracks — iOS suspends on silence gaps.
-    final allowSaavnSearch = forceJiosaavn ||
-        pref == 'jiosaavn' ||
-        pref == 'saavn';
+    final allowSaavnSearch =
+        forceJiosaavn || pref == 'jiosaavn' || pref == 'saavn';
     final preference = resolveYoutube
         ? 'youtube'
         : (allowSaavnSearch ? 'jiosaavn' : 'youtube');
@@ -969,14 +978,13 @@ Future<String?> fetchSongStreamUrl(
       }
       final sourceKey = _songStreamCacheKey(songId, cachePreference);
       final cacheBox = await Hive.openBox('cache');
-      final metadata =
-          cacheBox.get(_songStreamCacheMetaKey(songId, cachePreference));
+      final metadata = cacheBox.get(
+        _songStreamCacheMetaKey(songId, cachePreference),
+      );
       final cachedUrl = await _getCachedSongUrl(
         sourceKey,
         cacheDuration,
-        userAgent: metadata is Map
-            ? metadata['userAgent']?.toString()
-            : null,
+        userAgent: metadata is Map ? metadata['userAgent']?.toString() : null,
       );
       if (cachedUrl == null) continue;
 
@@ -1032,7 +1040,8 @@ Future<String?> fetchSongStreamUrl(
       await invalidateSongStreamCache(songId);
     }
 
-    final isSaavnTrack = song['source'] == 'saavn' ||
+    final isSaavnTrack =
+        song['source'] == 'saavn' ||
         song['catalogOrigin'] == 'saavn' ||
         (song['encrypted_media_url'] != null &&
             song['encrypted_media_url'].toString().isNotEmpty);
@@ -1047,9 +1056,8 @@ Future<String?> fetchSongStreamUrl(
         final saavnSource = await SourceResolver()
             .resolveAudioSource(song)
             .timeout(
-              // Explicit force or direct Saavn tracks resolve fast; preference-only
-              // path stays sub-second so lock-screen gaps never stall.
-              Duration(milliseconds: isSaavnTrack ? 4000 : (forceJiosaavn ? 8000 : 0)),
+              // Bound source lookup; warmed URLs avoid this work between tracks.
+              Duration(milliseconds: isSaavnTrack ? 4000 : 8000),
               onTimeout: () {
                 logger.log(
                   'JioSaavn search timed out for $songId — '
@@ -1102,14 +1110,25 @@ Future<String?> fetchSongStreamUrl(
 
     // YouTube Music resolution — coverage path for auto / youtube / Saavn miss.
     if (abandon?.call() == true) return null;
-    var resolvedYtSongId = songId;
+    var resolvedYtSongId = song['resolvedYoutubeId']?.toString() ?? songId;
     if (isSaavnTrack && !isValidYoutubeVideoId(resolvedYtSongId)) {
       try {
         final query = '${song['title']} ${song['artist']}'.trim();
         final searchRes = await ytMusicClient.music.searchSongs(query);
-        if (searchRes.isNotEmpty) {
-          resolvedYtSongId = searchRes.first.id.toString();
-          song['ytid'] = resolvedYtSongId;
+        for (final candidate in searchRes) {
+          final track = returnSongLayout(0, candidate);
+          if (TrackMatcher.isExactMatch(
+            titleA: song['title']?.toString() ?? '',
+            artistA: song['artist']?.toString() ?? '',
+            durationA: song['duration'],
+            titleB: track['title']?.toString() ?? '',
+            artistB: track['artist']?.toString() ?? '',
+            durationB: track['duration'],
+          )) {
+            resolvedYtSongId = candidate.id.toString();
+            song['resolvedYoutubeId'] = resolvedYtSongId;
+            break;
+          }
         }
       } catch (e) {
         logger.log('Fallback YouTube search for Saavn track failed: $e');
@@ -1128,7 +1147,7 @@ Future<String?> fetchSongStreamUrl(
       logger.log('fetchSongStreamUrl: invalid stream URL for $songId');
       return null;
     }
-    final selectedClient = _getSelectedAudioStream(songId)?.client;
+    final selectedClient = _getSelectedAudioStream(resolvedYtSongId)?.client;
     final userAgent = selectedClient == null
         ? null
         : _youtubeClientUserAgent(selectedClient);
@@ -1216,13 +1235,70 @@ Future<String?> getSongLyrics(String? artist, String title) async {
   return lyrics.value;
 }
 
+final _offlineRegistry = OfflineSongRegistry(
+  read: () => userOfflineSongs.value,
+  persist: (songs) =>
+      addOrUpdateData<List>('userNoBackup', 'offlineSongs', songs),
+  publish: (songs) {
+    userOfflineSongs.value = songs;
+    _syncOfflineSongIdsSet();
+  },
+);
+
+final Map<String, AsyncOperationQueue> _downloadLocks = {};
+final Map<String, int> _downloadUsers = {};
+
 Future<bool> makeSongOffline(
   dynamic song, {
   String? source,
   String? quality,
+  DownloadCancellation? cancellation,
+}) async {
+  final id = song is Map ? song['ytid']?.toString() : null;
+  if (id == null || id.isEmpty) return false;
+  final token = cancellation ?? DownloadCancellation();
+  return _runOfflineAssetOperation(id, () async {
+    if (token.isCancelled) return false;
+    return _makeSongOffline(
+      song,
+      source: source,
+      quality: quality,
+      cancellation: token,
+    );
+  });
+}
+
+Future<bool> _runOfflineAssetOperation(
+  String id,
+  Future<bool> Function() operation,
+) async {
+  final lock = _downloadLocks.putIfAbsent(id, AsyncOperationQueue.new);
+  _downloadUsers[id] = (_downloadUsers[id] ?? 0) + 1;
+  try {
+    return await lock.run(operation);
+  } finally {
+    final remaining = (_downloadUsers[id] ?? 1) - 1;
+    if (remaining == 0) {
+      _downloadUsers.remove(id);
+      _downloadLocks.remove(id);
+    } else {
+      _downloadUsers[id] = remaining;
+    }
+  }
+}
+
+Future<bool> _makeSongOffline(
+  dynamic song, {
+  String? source,
+  String? quality,
+  required DownloadCancellation cancellation,
 }) async {
   try {
-    final normalizedSource = source == 'jiosaavn' ? 'saavn' : source;
+    final normalizedSource = source == 'jiosaavn'
+        ? 'saavn'
+        : (source == 'best' || source == 'auto')
+        ? null
+        : source;
     final String? ytid = song['ytid'];
 
     if (ytid == null || ytid.isEmpty) {
@@ -1230,7 +1306,9 @@ Future<bool> makeSongOffline(
       return false;
     }
 
-    if (!isValidYoutubeVideoId(ytid)) {
+    if (!isValidYoutubeVideoId(ytid) &&
+        song['source'] != 'saavn' &&
+        song['catalogOrigin'] != 'saavn') {
       logger.log('makeSongOffline: invalid ytid "$ytid"');
       return false;
     }
@@ -1238,7 +1316,18 @@ Future<bool> makeSongOffline(
     if (isSongAlreadyOffline(ytid)) {
       // Tiny/truncated files must not short-circuit a real download.
       if (hasPlayableOfflineFile(ytid)) {
-        return true;
+        final existing = getOfflineSongByYtid(ytid);
+        final actual = existing['downloadSource'];
+        final requested = normalizedSource == 'saavn'
+            ? 'jiosaavn'
+            : normalizedSource;
+        final kbps = int.tryParse(quality ?? '0') ?? 0;
+        if ((requested == null || requested == 'auto' || actual == requested) &&
+            (kbps == 0 ||
+                existing['requestedDownloadQuality'] == quality ||
+                (existing['audioBitrateKbps'] as num? ?? 0) >= kbps)) {
+          return true;
+        }
       }
       logger.log(
         'makeSongOffline: offline Hive entry for $ytid lacks playable file — re-downloading',
@@ -1265,7 +1354,7 @@ Future<bool> makeSongOffline(
 
     int? audioBitrateKbps;
     String? audioCodec;
-    IOSink? fileStream;
+    cancellation.check();
     try {
       Map<String, dynamic>? saavnSource;
       var mappedQuality = quality;
@@ -1292,27 +1381,40 @@ Future<bool> makeSongOffline(
             'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
         final client = http.Client();
         try {
-          final response = await client
-              .send(req)
-              .timeout(const Duration(seconds: 20));
+          final response = await cancellation.race(
+            client.send(req).timeout(const Duration(seconds: 20)),
+          );
           if (response.statusCode < 200 || response.statusCode >= 300) {
             logger.log('Saavn download HTTP ${response.statusCode} for $ytid');
             throw HttpException('Saavn HTTP ${response.statusCode}');
           }
-          fileStream = audioFile.openWrite();
-          await response.stream.pipe(fileStream);
-          fileStream = null;
+          await writeDownloadAtomically(
+            destination: audioFile,
+            bytes: response.stream,
+            cancellation: cancellation,
+            expectedBytes: response.contentLength,
+          );
         } finally {
           client.close();
         }
       } else {
-        // If source explicitly saavn but failed, gracefully fall back to YouTube
+        // An explicit source choice must not silently download another provider.
         if (normalizedSource == 'saavn') {
-          logger.log(
-            'makeSongOffline: saavn source not found for $ytid, falling back to YouTube',
-          );
+          logger.log('Selected JioSaavn download is unavailable for $ytid');
+          return false;
         }
-        final audioManifest = await fetchBestAudioStream(ytid);
+        cancellation.check();
+        var youtubeId = offlineSong['resolvedYoutubeId']?.toString() ?? ytid;
+        if (!isValidYoutubeVideoId(youtubeId)) {
+          offlineSong['forceSource'] = 'youtube';
+          await cancellation.race(fetchSongStreamUrl(offlineSong, false));
+          youtubeId = offlineSong['resolvedYoutubeId']?.toString() ?? '';
+          offlineSong.remove('forceSource');
+          if (!isValidYoutubeVideoId(youtubeId)) return false;
+        }
+        final audioManifest = await cancellation.race(
+          fetchBestAudioStream(youtubeId, quality: quality),
+        );
         if (audioManifest == null) {
           setYoutubeStreamError(_youtubeStreamFailureMessage());
           logger.log('makeSongOffline: audioManifest is null for $ytid');
@@ -1327,14 +1429,17 @@ Future<bool> makeSongOffline(
           offlineSong['duration'] = streamDuration;
         }
 
-        final selectedClient = _getSelectedAudioStream(ytid)?.client;
+        final selectedClient = _getSelectedAudioStream(youtubeId)?.client;
         final stream = ytClient.videos.streamsClient.get(
           audioManifest,
           ytClient: selectedClient,
         );
-        fileStream = audioFile.openWrite();
-        await stream.pipe(fileStream).timeout(const Duration(seconds: 60));
-        fileStream = null;
+        await writeDownloadAtomically(
+          destination: audioFile,
+          bytes: stream,
+          cancellation: cancellation,
+          expectedBytes: audioManifest.size.totalBytes,
+        );
       }
     } catch (e, stackTrace) {
       logger.log(
@@ -1342,12 +1447,6 @@ Future<bool> makeSongOffline(
         error: e,
         stackTrace: stackTrace,
       );
-      try {
-        await fileStream?.close();
-      } catch (_) {}
-      if (await audioFile.exists()) {
-        await audioFile.delete();
-      }
       return false;
     }
 
@@ -1373,56 +1472,34 @@ Future<bool> makeSongOffline(
       return false;
     }
 
-    try {
-      if (offlineSong['highResImage'] != null &&
-          offlineSong['highResImage'].toString().isNotEmpty) {
-        // Fire-and-forget: don't block the download pipeline for a JPEG.
-        unawaited(_downloadAndSaveArtworkFile(
-          offlineSong['highResImage'],
-          artworkPath,
-        ));
-        offlineSong['artworkPath'] = artworkPath;
-      }
-    } catch (e, stackTrace) {
-      logger.log('Error downloading artwork', error: e, stackTrace: stackTrace);
-      offlineSong['artworkPath'] = null;
+    final artworkUrl =
+        offlineSong['catalogImage']?.toString() ??
+        offlineSong['highResImage']?.toString() ??
+        offlineSong['image']?.toString();
+    if (artworkUrl != null && artworkUrl.isNotEmpty) {
+      final artwork = await _downloadAndSaveArtworkFile(
+        artworkUrl,
+        artworkPath,
+      );
+      if (artwork != null) offlineSong['artworkPath'] = artwork.path;
     }
 
     offlineSong['audioPath'] = audioFile.path;
     offlineSong['audioBitrateKbps'] = audioBitrateKbps;
     offlineSong['audioCodec'] = audioCodec;
     offlineSong['downloadSource'] = downloadedSource;
+    offlineSong['requestedDownloadQuality'] = quality;
     offlineSong['dateAdded'] = DateTime.now().millisecondsSinceEpoch;
 
     try {
-      final existingIndex = userOfflineSongs.value.indexWhere(
-        (s) => s['ytid'] == ytid,
-      );
-
-      final updatedOfflineSongs = List.from(userOfflineSongs.value);
-      if (existingIndex != -1) {
-        updatedOfflineSongs[existingIndex] = offlineSong;
-      } else {
-        updatedOfflineSongs.add(offlineSong);
-      }
-      userOfflineSongs.value = updatedOfflineSongs;
-      _syncOfflineSongIdsSet();
-
-      unawaited(
-        addOrUpdateData<List>(
-          'userNoBackup',
-          'offlineSongs',
-          userOfflineSongs.value,
-        ),
-      );
-
-
+      await _offlineRegistry.upsert(offlineSong);
     } catch (e, st) {
       logger.log(
         'Error updating global offline songs list',
         error: e,
         stackTrace: st,
       );
+      return false;
     }
 
     return true;
@@ -1432,7 +1509,13 @@ Future<bool> makeSongOffline(
   }
 }
 
-Future<bool> removeSongFromOffline(dynamic songId) async {
+Future<bool> removeSongFromOffline(dynamic songId) {
+  final id = songId?.toString();
+  if (id == null || id.isEmpty) return Future.value(false);
+  return _runOfflineAssetOperation(id, () => _removeSongFromOffline(id));
+}
+
+Future<bool> _removeSongFromOffline(String songId) async {
   try {
     final audioPath = FilePaths.getAudioPath(songId);
     final audioFile = File(audioPath);
@@ -1456,22 +1539,14 @@ Future<bool> removeSongFromOffline(dynamic songId) async {
     }
 
     try {
-      userOfflineSongs.value = List.from(userOfflineSongs.value)
-        ..removeWhere((song) => song['ytid'] == songId);
-      _syncOfflineSongIdsSet();
-      unawaited(
-        addOrUpdateData<List>(
-          'userNoBackup',
-          'offlineSongs',
-          userOfflineSongs.value,
-        ),
-      );
+      await _offlineRegistry.remove(songId);
     } catch (e, st) {
       logger.log(
         'Error updating offline songs registry after removal',
         error: e,
         stackTrace: st,
       );
+      return false;
     }
 
     return true;
@@ -1485,12 +1560,11 @@ Future<bool> removeSongFromOffline(dynamic songId) async {
   }
 }
 
-
 Future<File?> _downloadAndSaveArtworkFile(String url, String filePath) async {
   try {
     final response = await http
         .get(Uri.parse(url))
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 4));
 
     if (response.statusCode == 200) {
       final file = File(filePath);
@@ -1549,7 +1623,9 @@ Future<void> updateRecentlyPlayed(dynamic songId, {Map? songFallback}) async {
       );
       // Report playback to YouTube Music history (even if streamed via JioSaavn)
       if (YouTubeAuthService().isSignedIn.value && ytReportHistory.value) {
-        unawaited(YouTubeMusicSyncService().reportSongPlayed(songId.toString()));
+        unawaited(
+          YouTubeMusicSyncService().reportSongPlayed(songId.toString()),
+        );
       }
       return;
     }
