@@ -11,7 +11,7 @@ class LyricsTheme {
     required this.isDark,
     required Color accent,
   }) : accent = accent == CupertinoColors.activeBlue
-      ? const Color(0xFFFF2D55)
+      ? MusifiedStyle.appleRed
       : accent;
 
   final bool isDark;
@@ -71,7 +71,7 @@ class LyricsTheme {
       isActive ? FontWeight.w800 : FontWeight.w600;
 
   double letterSpacing({required bool isActive, required LyricsLayout layout}) {
-    if (layout == LyricsLayout.stage && isActive) return -1.0;
+    if (layout == LyricsLayout.stage && isActive) return -1;
     if (isActive) return -0.5;
     return -0.2;
   }

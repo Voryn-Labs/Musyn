@@ -83,7 +83,7 @@ void showAudioSourcePicker(
                           const SizedBox(height: 2),
                           Text(
                             subtitle,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: MusifiedStyle.uiFont,
                               fontSize: 13,
                               color: secondary,
@@ -155,7 +155,7 @@ void showAudioSourcePicker(
                         pendingSource != null
                             ? 'Switching source…'
                             : sourceError ?? 'Audio Source',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: MusifiedStyle.uiFont,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

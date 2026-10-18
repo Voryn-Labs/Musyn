@@ -256,10 +256,19 @@ bool streamUrlMatchesPreferredSource(String url, Map song) {
   if (force == 'jiosaavn' || force == 'saavn') {
     return isUsableJiosaavnPlaybackUrl(url);
   }
+  // No per-song pin. A warm YouTube URL must survive a later JioSaavn cache
+  // hit (and the reverse). Dropping it forces a cold fetch in the silence
+  // between tracks, and iOS suspends lock-screen audio during that gap.
   final preferred = preferredStreamSourceForSong(song);
-  if (preferred == 'youtube') return isUsableYoutubePlaybackUrl(url);
-  if (preferred == 'jiosaavn') return isUsableJiosaavnPlaybackUrl(url);
-  // 'auto' with no resolved/forced source — accept either provider.
+  if (preferred == 'youtube' && preferredSource.value == 'youtube') {
+    return isUsableYoutubePlaybackUrl(url);
+  }
+  if ((preferred == 'jiosaavn') &&
+      (preferredSource.value == 'jiosaavn' ||
+          preferredSource.value == 'saavn') &&
+      song['resolvedSource'] == null) {
+    return isUsableJiosaavnPlaybackUrl(url);
+  }
   return isUsableYoutubePlaybackUrl(url) || isUsableJiosaavnPlaybackUrl(url);
 }
 
@@ -270,7 +279,7 @@ bool streamUrlMatchesPreferredSource(String url, Map song) {
 /// locked. Return true for `auto` and YouTube so we start audio immediately;
 /// Saavn search belongs only when the user pinned JioSaavn, or a prior strict
 /// match is already cached on the song (`resolvedSource` / Hive).
-/// Explicit [forceSource] always wins over catalog metadata.
+/// Explicit `forceSource` always wins over catalog metadata.
 bool songShouldResolveYoutube(Map song) {
   final force = song['forceSource']?.toString();
   if (force == 'youtube') return true;
@@ -340,7 +349,7 @@ AudioOnlyStreamInfo selectAudioOnlyStreamForQuality(
       .toList();
 
   final opusFallback = audioOnly
-      .where((stream) => isOpusFamily(stream))
+      .where(isOpusFamily)
       .toList();
 
   final selectionPool = aacLcSources.isNotEmpty

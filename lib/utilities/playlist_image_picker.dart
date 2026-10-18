@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 
 Future<String?> pickImage() async {
   final file = await FilePicker.pickFile(type: FileType.image);
@@ -110,7 +111,7 @@ Widget buildImagePickerRow(
                 ? CupertinoIcons.checkmark_circle_fill
                 : CupertinoIcons.photo_on_rectangle,
             size: 20,
-            color: const Color(0xFFFF2D55),
+            color: MusifiedStyle.appleRed,
           ),
           const SizedBox(width: 8),
           Text(

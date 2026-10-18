@@ -13,7 +13,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
   final title = song['title']?.toString() ?? 'Unknown Title';
   final artist = song['artist']?.toString() ?? 'Unknown Artist';
 
-  String source = 'YouTube Music';
+  var source = 'YouTube Music';
   if (isOffline) {
     final s = offlineSong['downloadSource']?.toString().toLowerCase();
     source = (s == 'saavn' || s == 'jiosaavn') ? 'JioSaavn 320k' : 'YouTube Music';
@@ -21,21 +21,21 @@ void showSongInfoDialog(BuildContext context, Map song) async {
     source = song['resolvedSource'] == 'jiosaavn' ? 'JioSaavn 320k' : 'YouTube Music';
   }
 
-  String bitrate = 'Dynamic / Adaptive';
+  var bitrate = 'Dynamic / Adaptive';
   if (isOffline) {
     bitrate = offlineSong['bitrate'] != null ? '${offlineSong['bitrate']} kbps' : 'Unknown';
   } else if (song['resolvedBitrate'] != null) {
     bitrate = '${song['resolvedBitrate']} kbps';
   }
 
-  String format = 'AAC / Opus';
+  var format = 'AAC / Opus';
   if (isOffline) {
     format = offlineSong['format']?.toString() ?? 'M4A / AAC';
   } else if (song['resolvedFormat'] != null) {
     format = song['resolvedFormat'].toString();
   }
 
-  String fileSize = 'Streaming';
+  var fileSize = 'Streaming';
   if (isOffline) {
     try {
       final audioPath = offlineSong['audioPath']?.toString();
@@ -50,7 +50,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
     } catch (_) {}
   }
 
-  String dateAdded = 'Unknown';
+  var dateAdded = 'Unknown';
   if (isOffline && offlineSong['dateAdded'] != null) {
     final dt = DateTime.fromMillisecondsSinceEpoch(
       offlineSong['dateAdded'] is int
@@ -89,7 +89,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
           const SizedBox(height: 4),
           Text(
             artist,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: MusifiedStyle.uiFont,
               fontSize: 14,
               color: secondaryColor,
@@ -107,7 +107,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
             ),
             child: Column(
               children: [
-                _infoRow('Audio Source', source, isDark, highlightColor: const Color(0xFFFF2D55)),
+                _infoRow('Audio Source', source, isDark, highlightColor: MusifiedStyle.appleRed),
                 Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),
                 _infoRow('Audio Bitrate', bitrate, isDark),
                 Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),

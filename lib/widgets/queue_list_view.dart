@@ -22,7 +22,6 @@ class QueueWidget extends StatefulWidget {
 class _QueueWidgetState extends State<QueueWidget> {
   List<Map> _queue = [];
   late StreamSubscription<List<Map>> _subscription;
-  bool _isDismissing = false;
   bool _hasScrolledToInitial = false;
   final ScrollController _scrollController = ScrollController();
 
@@ -30,7 +29,7 @@ class _QueueWidgetState extends State<QueueWidget> {
   void initState() {
     super.initState();
     _subscription = audioHandler.queueAsMapStream.listen((queue) {
-      if (mounted && !_isDismissing) {
+      if (mounted) {
         setState(() {
           _queue = List<Map>.from(queue);
         });
@@ -44,7 +43,7 @@ class _QueueWidgetState extends State<QueueWidget> {
   }
 
   void _onPlayingTrackChanged() {
-    if (mounted && !_isDismissing) setState(() {});
+    if (mounted) setState(() {});
   }
 
   void _scrollToCurrentSong() {
@@ -139,12 +138,12 @@ class _QueueWidgetState extends State<QueueWidget> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF2D55).withValues(alpha: 0.15),
+              color: MusifiedStyle.appleRed.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               CupertinoIcons.list_bullet,
-              color: Color(0xFFFF2D55),
+              color: MusifiedStyle.appleRed,
               size: 20,
             ),
           ),
@@ -319,7 +318,7 @@ class _QueueTile extends StatelessWidget {
     final image =
         song['image']?.toString() ?? song['lowResImage']?.toString() ?? '';
     final isLocalFile = image.startsWith('/') || image.startsWith('file://');
-    final activeColor = const Color(0xFFFF2D55);
+    const activeColor = MusifiedStyle.appleRed;
     final titleColor = isCurrentSong
         ? activeColor
         : (isDark ? CupertinoColors.white : CupertinoColors.black);

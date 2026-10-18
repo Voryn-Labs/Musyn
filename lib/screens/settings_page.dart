@@ -173,7 +173,7 @@ class SettingsPage extends StatelessWidget {
                         ),
                         CupertinoSwitch(
                           value: pureBlack,
-                          activeTrackColor: const Color(0xFFFF2D55),
+                          activeTrackColor: MusifiedStyle.appleRed,
                           onChanged: (val) {
                             HapticFeedback.selectionClick();
                             usePureBlackColor.value = val;
@@ -205,7 +205,7 @@ class SettingsPage extends StatelessWidget {
     required VoidCallback onTap,
     required bool isDark,
   }) {
-    const primaryColor = Color(0xFFFF2D55);
+    const primaryColor = MusifiedStyle.appleRed;
     final buttonBg = isSelected
         ? primaryColor
         : musifiedSecondarySurface(isDark);
@@ -486,7 +486,7 @@ class SettingsPage extends StatelessWidget {
       children: [
         _buildSectionTitle('PLAYBACK & AUDIO QUALITY'),
         const SizedBox(height: 8),
-        Container(
+        DecoratedBox(
           decoration: BoxDecoration(
             color: cardBg,
             borderRadius: BorderRadius.circular(16),
@@ -510,7 +510,7 @@ class SettingsPage extends StatelessWidget {
                   }
                   return _buildSettingRow(
                     icon: CupertinoIcons.music_note_2,
-                    iconBg: const Color(0xFFFF2D55),
+                    iconBg: MusifiedStyle.appleRed,
                     title: 'Default Audio Provider',
                     subtitle: 'Auto tries Saavn match, else YouTube audio',
                     trailingText: label,
@@ -653,7 +653,7 @@ class SettingsPage extends StatelessWidget {
       children: [
         _buildSectionTitle('STORAGE & CACHE'),
         const SizedBox(height: 8),
-        Container(
+        DecoratedBox(
           decoration: BoxDecoration(
             color: cardBg,
             borderRadius: BorderRadius.circular(16),
@@ -670,7 +670,7 @@ class SettingsPage extends StatelessWidget {
                 title: 'Clear Audio Cache',
                 subtitle: 'Frees temporary streams & token manifests',
                 onTap: () async {
-                  HapticFeedback.mediumImpact();
+                  unawaited(HapticFeedback.mediumImpact());
                   await clearAllCache();
                   if (context.mounted)
                     showToast(context, 'Audio cache cleared');
@@ -684,7 +684,7 @@ class SettingsPage extends StatelessWidget {
                 title: 'Clear History & Recents',
                 subtitle: 'Resets search keywords and recently played',
                 onTap: () async {
-                  HapticFeedback.mediumImpact();
+                  unawaited(HapticFeedback.mediumImpact());
                   await deleteData('user', 'searchHistory');
                   await deleteData('user', 'recentlyPlayed');
                   userRecentlyPlayed.value = [];
@@ -711,7 +711,7 @@ class SettingsPage extends StatelessWidget {
       children: [
         _buildSectionTitle('ABOUT MUSIFIED'),
         const SizedBox(height: 8),
-        Container(
+        DecoratedBox(
           decoration: BoxDecoration(
             color: cardBg,
             borderRadius: BorderRadius.circular(16),
@@ -728,7 +728,6 @@ class SettingsPage extends StatelessWidget {
                 title: 'Version',
                 subtitle: 'Musified Native iOS Edition',
                 trailingText: 'v$appVersion',
-                onTap: null,
                 isDark: isDark,
               ),
               _buildDivider(isDark),
@@ -892,7 +891,7 @@ class SettingsPage extends StatelessWidget {
           ),
           CupertinoSwitch(
             value: value,
-            activeTrackColor: const Color(0xFFFF2D55),
+            activeTrackColor: MusifiedStyle.appleRed,
             onChanged: onChanged,
           ),
         ],
@@ -916,7 +915,7 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _syncYoutubeClient(BuildContext context) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     final result = await YtdlpClientSyncService.instance.syncFromYtdlp();
     if (result.ok) {
       await invalidateAllSongStreamCaches();

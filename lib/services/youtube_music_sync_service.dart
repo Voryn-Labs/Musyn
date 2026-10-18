@@ -118,7 +118,7 @@ class YouTubeMusicSyncService {
 
     final response = await http
         .post(
-          Uri.parse('$_baseUrl/${endpoint.replaceFirst(RegExp(r"^/+"), "")}'),
+          Uri.parse('$_baseUrl/${endpoint.replaceFirst(RegExp('^/+'), '')}'),
           headers: headers,
           body: jsonEncode(fullBody),
         )

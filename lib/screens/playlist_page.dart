@@ -416,7 +416,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
       child: const Icon(
         CupertinoIcons.share,
         size: 20,
-        color: Color(0xFFFF2D55),
+        color: MusifiedStyle.appleRed,
       ),
     );
   }
@@ -431,7 +431,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
       child: const Icon(
         CupertinoIcons.arrow_2_circlepath,
         size: 20,
-        color: Color(0xFFFF2D55),
+        color: MusifiedStyle.appleRed,
       ),
     );
   }
@@ -524,7 +524,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
       child: const Icon(
         CupertinoIcons.pencil,
         size: 20,
-        color: Color(0xFFFF2D55),
+        color: MusifiedStyle.appleRed,
       ),
     );
   }

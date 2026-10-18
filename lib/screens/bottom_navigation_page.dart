@@ -3,15 +3,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:musified/constants/app_constants.dart';
 import 'package:musified/extensions/l10n.dart';
 import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet;
 import 'package:musified/widgets/mini_player.dart';
 
+/// BitChord-inspired floating glass navigation shell for iOS.
 class BottomNavigationPage extends StatefulWidget {
   const BottomNavigationPage({required this.child, super.key});
 
@@ -49,16 +50,6 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
         builder: (context, _) {
           final isOfflineMode = offlineMode.value;
           final isDark = isAppDarkMode(context);
-          const activeColor = Color(0xFFFF2D55);
-          final inactiveColor = isDark
-              ? const Color(0x80FFFFFF)
-              : const Color(0x80000000);
-          final barBg = isDark
-              ? const Color(0xB3121214)
-              : const Color(0xB3F2F2F7);
-          final border = isDark
-              ? const Color(0x26FFFFFF)
-              : const Color(0x1F000000);
           if (_previousOfflineMode != null &&
               _previousOfflineMode != isOfflineMode) {
             SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -68,11 +59,13 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
           _previousOfflineMode = isOfflineMode;
 
           final items = _getNavigationItems(isOfflineMode);
+          final currentIndex = _getCurrentIndex(items, isOfflineMode);
 
           return CupertinoPageScaffold(
             backgroundColor: musifiedCanvas(isDark),
             child: Stack(
               children: [
+                // Scrollable main content with bottom padding for floating bars
                 Positioned.fill(
                   child: ValueListenableBuilder<bool>(
                     valueListenable: audioHandlerReady,
@@ -85,10 +78,11 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                         builder: (context, snapshot) {
                           final mediaQuery = MediaQuery.of(context);
                           final isMiniPlayerVisible = snapshot.data ?? false;
+                          final safeBottom = mediaQuery.padding.bottom;
+                          // 62 (nav bar) + 12 (spacing) + safeBottom + miniPlayerHeight
                           final bottomPadding = isMiniPlayerVisible
-                              ? mediaQuery.padding.bottom +
-                                    miniPlayerTotalHeight
-                              : mediaQuery.padding.bottom + 54;
+                              ? safeBottom + 74 + MiniPlayer.playerHeight
+                              : safeBottom + 74;
 
                           return MediaQuery(
                             data: mediaQuery.copyWith(
@@ -104,50 +98,30 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                   ),
                 ),
 
-                // Floating MiniPlayer + TabBar
+                // Floating MiniPlayer + Floating Glass Nav Bar
                 Positioned(
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const MiniPlayer(),
-                      ClipRect(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: barBg,
-                              border: Border(
-                                top: BorderSide(color: border, width: 0.5),
-                              ),
-                            ),
-                            child: CupertinoTabBar(
-                              currentIndex: _getCurrentIndex(
-                                items,
-                                isOfflineMode,
-                              ),
-                              onTap: (index) => _onTabTapped(index, items),
-                              activeColor: activeColor,
-                              inactiveColor: inactiveColor,
-                              backgroundColor: const Color(0x00000000),
-                              iconSize: 22,
-                              border: null,
-                              items: items
-                                  .map(
-                                    (item) => BottomNavigationBarItem(
-                                      icon: Icon(item.icon),
-                                      activeIcon: Icon(item.selectedIcon),
-                                      label: item.label,
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
+                  child: SafeArea(
+                    top: false,
+                    left: false,
+                    right: false,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const MiniPlayer(),
+                          _FloatingGlassTabBar(
+                            items: items,
+                            selectedIndex: currentIndex,
+                            onTap: (index) => _onTabTapped(index, items),
+                            isDark: isDark,
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -231,6 +205,112 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
     if (matchedIndex != -1) return matchedIndex;
     if (isOfflineMode && currentShellIndex == 1) return 0;
     return 0;
+  }
+}
+
+class _FloatingGlassTabBar extends StatelessWidget {
+  const _FloatingGlassTabBar({
+    required this.items,
+    required this.selectedIndex,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  final List<_NavigationItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark
+        ? const Color(0xE6141416)
+        : const Color(0xF2FFFFFF);
+    final border = isDark
+        ? const Color(0x33FFFFFF)
+        : const Color(0x1F000000);
+    const activeColor = MusifiedStyle.appleRed;
+    final inactiveColor = isDark
+        ? MusifiedStyle.darkSecondary
+        : CupertinoColors.systemGrey;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          child: Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
+              border: Border.all(color: border, width: 0.5),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: List.generate(items.length, (index) {
+                final item = items[index];
+                final isSelected = index == selectedIndex;
+
+                return Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => onTap(index),
+                    child: Center(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (isDark
+                                  ? const Color(0x22FFFFFF)
+                                  : const Color(0x12000000))
+                              : const Color(0x00000000),
+                          borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isSelected ? item.selectedIcon : item.icon,
+                              size: 22,
+                              color: isSelected ? activeColor : inactiveColor,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.label,
+                              style: TextStyle(
+                                fontFamily: MusifiedStyle.uiFont,
+                                fontSize: 10.5,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isSelected ? activeColor : inactiveColor,
+                                decoration: TextDecoration.none,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

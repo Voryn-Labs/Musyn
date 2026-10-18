@@ -1,6 +1,6 @@
 import 'package:musified/utilities/queue_entry_utils.dart';
 
-/// Mutable queue/history state for [MusifiedAudioHandler].
+/// Mutable queue/history state for `MusifiedAudioHandler`.
 /// Centralizes index bounds checks so queue bugs are easier to trace.
 class AudioQueueState {
   static const int maxHistorySize = 50;

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/playlists_manager.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 
 class PlaylistLikeButton extends StatefulWidget {
   const PlaylistLikeButton({
@@ -72,13 +73,13 @@ class _PlaylistLikeButtonState extends State<PlaylistLikeButton> {
         return CupertinoButton(
           padding: const EdgeInsets.all(10),
           color: isLiked
-              ? const Color(0xFFFF2D55)
+              ? MusifiedStyle.appleRed
               : musifiedSecondarySurface(isDark),
           borderRadius: BorderRadius.circular(22),
           onPressed: _toggleLikeStatus,
           child: Icon(
             isLiked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
-            color: isLiked ? CupertinoColors.white : const Color(0xFFFF2D55),
+            color: isLiked ? CupertinoColors.white : MusifiedStyle.appleRed,
             size: 20,
           ),
         );

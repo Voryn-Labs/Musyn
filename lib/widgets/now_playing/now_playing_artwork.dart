@@ -8,6 +8,7 @@ import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/async_loader.dart';
 import 'package:musified/utilities/flutter_toast.dart';
 import 'package:musified/widgets/flip_card.dart';
@@ -37,7 +38,7 @@ class NowPlayingArtwork extends StatelessWidget {
     final isDesktop = screenWidth > 800;
     final maxByHeight = screenHeight * 0.5;
     final maxPortrait = screenHeight * 0.48;
-    final double imageSize =
+    final imageSize =
         (isDesktop
                 ? (screenWidth * 0.42).clamp(
                     200.0,
@@ -260,10 +261,10 @@ class AudioQualityBadge extends StatelessWidget {
 
       if (source == 'jiosaavn') {
         label = qualityStr.isNotEmpty ? 'JioSaavn $qualityStr' : 'JioSaavn';
-        color = const Color(0xFFFF2D55);
+        color = MusifiedStyle.appleRed;
       } else {
         label = qualityStr.isNotEmpty ? 'YouTube $qualityStr' : 'YouTube';
-        color = const Color(0xFFFF2D55);
+        color = MusifiedStyle.appleRed;
       }
     }
 

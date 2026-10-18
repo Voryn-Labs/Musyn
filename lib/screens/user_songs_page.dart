@@ -12,6 +12,7 @@ import 'package:musified/utilities/flutter_toast.dart';
 import 'package:musified/widgets/mini_player_bottom_space.dart';
 import 'package:musified/widgets/playlist_cube.dart';
 import 'package:musified/widgets/playlist_page/empty_playlist_state.dart';
+import 'package:musified/widgets/playlist_page/playlist_action_buttons.dart';
 import 'package:musified/widgets/playlist_page/playlist_header.dart';
 import 'package:musified/widgets/song_tile.dart';
 
@@ -156,99 +157,47 @@ class _UserSongsPageState extends State<UserSongsPage> {
           showTitle: false,
         ),
         if (songsLength > 0) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: CupertinoButton.filled(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    borderRadius: BorderRadius.circular(12),
-                    onPressed: () {
-                      final songsList = widget.page == 'liked'
-                          ? userLikedSongsList.value
-                          : widget.page == 'offline'
-                          ? userOfflineSongs.value
-                          : userRecentlyPlayed.value;
-                      var sortedList = songsList;
-                      if (isOfflineSongs) {
-                        sortedList = _sortOfflineSongsLocal(
-                          songsList,
-                          _getCurrentOfflineSortType(),
-                        );
-                      }
-                      final playlist = {
-                        'ytid': '',
-                        'title': title,
-                        'source': 'user-created',
-                        'list': sortedList,
-                      };
-                      audioHandler.playPlaylistSong(
-                        playlist: playlist,
-                        songIndex: 0,
-                      );
-                    },
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(CupertinoIcons.play_fill, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Play',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: CupertinoButton(
-                    color: musifiedSecondarySurface(isDark),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    borderRadius: BorderRadius.circular(12),
-                    onPressed: () async {
-                      final songs = widget.page == 'liked'
-                          ? userLikedSongsList.value
-                          : widget.page == 'offline'
-                          ? userOfflineSongs.value
-                          : userRecentlyPlayed.value;
-                      if (songs.isEmpty) return;
-                      final shuffled = List<Map>.from(songs.whereType<Map>())
-                        ..shuffle();
-                      await audioHandler.addPlaylistToQueue(
-                        shuffled,
-                        replace: true,
-                        startIndex: 0,
-                        resetShuffle: false,
-                      );
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          CupertinoIcons.shuffle,
-                          size: 18,
-                          color: isDark
-                              ? CupertinoColors.white
-                              : CupertinoColors.black,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Shuffle',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? CupertinoColors.white
-                                : CupertinoColors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          PlaylistActionButtons(
+            onPlay: () {
+              final songsList = widget.page == 'liked'
+                  ? userLikedSongsList.value
+                  : widget.page == 'offline'
+                  ? userOfflineSongs.value
+                  : userRecentlyPlayed.value;
+              var sortedList = songsList;
+              if (isOfflineSongs) {
+                sortedList = _sortOfflineSongsLocal(
+                  songsList,
+                  _getCurrentOfflineSortType(),
+                );
+              }
+              final playlist = {
+                'ytid': '',
+                'title': title,
+                'source': 'user-created',
+                'list': sortedList,
+              };
+              audioHandler.playPlaylistSong(
+                playlist: playlist,
+                songIndex: 0,
+              );
+            },
+            onShuffle: () async {
+              final songs = widget.page == 'liked'
+                  ? userLikedSongsList.value
+                  : widget.page == 'offline'
+                  ? userOfflineSongs.value
+                  : userRecentlyPlayed.value;
+              if (songs.isEmpty) return;
+              final shuffled = List<Map>.from(songs.whereType<Map>())
+                ..shuffle();
+              await audioHandler.addPlaylistToQueue(
+                shuffled,
+                replace: true,
+                startIndex: 0,
+                resetShuffle: false,
+              );
+            },
           ),
           if (isRecentlyPlayed) ...[
             const SizedBox(height: 8),

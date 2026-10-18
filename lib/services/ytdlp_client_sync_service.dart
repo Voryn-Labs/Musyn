@@ -33,6 +33,20 @@ class VisionOsClientConfig {
     this.isBuiltin = false,
   });
 
+  factory VisionOsClientConfig.fromJson(Map<String, dynamic> json) {
+    return VisionOsClientConfig(
+      clientName: json['clientName']?.toString() ?? '',
+      clientVersion: json['clientVersion']?.toString() ?? '',
+      host: json['host']?.toString() ?? 'www.youtube.com',
+      payload: Map<String, dynamic>.from(json['payload'] as Map? ?? {}),
+      apiUrl: json['apiUrl']?.toString() ?? '',
+      userAgent: json['userAgent']?.toString(),
+      deviceModel: json['deviceModel']?.toString(),
+      osVersion: json['osVersion']?.toString(),
+      isBuiltin: json['isBuiltin'] == true,
+    );
+  }
+
   final String clientName;
   final String clientVersion;
   final String host;
@@ -65,20 +79,6 @@ class VisionOsClientConfig {
     'osVersion': osVersion,
     'isBuiltin': isBuiltin,
   };
-
-  factory VisionOsClientConfig.fromJson(Map<String, dynamic> json) {
-    return VisionOsClientConfig(
-      clientName: json['clientName']?.toString() ?? '',
-      clientVersion: json['clientVersion']?.toString() ?? '',
-      host: json['host']?.toString() ?? 'www.youtube.com',
-      payload: Map<String, dynamic>.from(json['payload'] as Map? ?? {}),
-      apiUrl: json['apiUrl']?.toString() ?? '',
-      userAgent: json['userAgent']?.toString(),
-      deviceModel: json['deviceModel']?.toString(),
-      osVersion: json['osVersion']?.toString(),
-      isBuiltin: json['isBuiltin'] == true,
-    );
-  }
 
   Map<String, Object?> logFields() => {
     'client': displayLabel,
@@ -294,11 +294,6 @@ class YtdlpClientSyncResult {
     this.error,
   });
 
-  final bool ok;
-  final String? label;
-  final String? commit;
-  final String? error;
-
   factory YtdlpClientSyncResult.success({
     required String label,
     String? commit,
@@ -306,6 +301,11 @@ class YtdlpClientSyncResult {
 
   factory YtdlpClientSyncResult.failed(String error) =>
       YtdlpClientSyncResult._(ok: false, error: error);
+
+  final bool ok;
+  final String? label;
+  final String? commit;
+  final String? error;
 }
 
 String _readableError(Object error) {

@@ -167,7 +167,7 @@ class _Chip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: const Color(0xFFFF2D55)),
+          Icon(icon, size: 13, color: MusifiedStyle.appleRed),
           const SizedBox(width: 6),
           Text(
             label,

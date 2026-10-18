@@ -63,7 +63,7 @@ Future<void> showMusifiedPickerSheet(
                     size: 18,
                     color: action.isDestructive
                         ? CupertinoColors.destructiveRed
-                        : const Color(0xFFFF2D55),
+                        : MusifiedStyle.appleRed,
                   ),
                   const SizedBox(width: 8),
                   Flexible(child: Text(action.label)),
@@ -118,7 +118,7 @@ Future<void> showMusifiedPickerSheet(
                     size: 20,
                     color: action.isDestructive
                         ? CupertinoColors.destructiveRed
-                        : const Color(0xFFFF2D55),
+                        : MusifiedStyle.appleRed,
                   ),
                   const SizedBox(width: 12),
                   Expanded(

@@ -61,7 +61,6 @@ class CompactLyricsPanel extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 for (final slot in slots)
                   _CompactLineSlot(
@@ -131,7 +130,6 @@ class _CompactLineSlot extends StatelessWidget {
           duration: const Duration(milliseconds: 320),
           curve: Curves.easeOutCubic,
           scale: isActive ? 1.0 : 0.91,
-          alignment: Alignment.center,
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,

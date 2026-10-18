@@ -393,7 +393,7 @@ class _SearchPageState extends State<SearchPage> {
                         'Clear',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Color(0xFFFF2D55),
+                          color: MusifiedStyle.appleRed,
                         ),
                       ),
                     ),
@@ -405,7 +405,10 @@ class _SearchPageState extends State<SearchPage> {
                   runSpacing: 8,
                   children: history.map<Widget>((query) {
                     return GestureDetector(
-                      onTap: () => _submitSearch(query.toString()),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _submitSearch(query.toString());
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,

@@ -56,7 +56,7 @@ class PlaylistSharingService {
         final ytid = songIds[index]?.toString();
         if (!isValidYoutubeVideoId(ytid)) return null;
         try {
-          final video = await ytClient.videos.get(ytid!);
+          final video = await ytClient.videos.get(ytid);
           return returnSongLayout(index, video);
         } catch (e, stackTrace) {
           logger.log(

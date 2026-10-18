@@ -166,7 +166,7 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
                             child: const Icon(
                               CupertinoIcons.folder_fill,
                               size: 48,
-                              color: Color(0xFFFF2D55),
+                              color: MusifiedStyle.appleRed,
                             ),
                           ),
                           const SizedBox(height: 12),

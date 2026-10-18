@@ -58,7 +58,7 @@ String? resolveMediaArtworkUrl(Map song, {String? ytid, int targetSize = 400}) {
       if (_nonEmptyUrl(song[key]) != null) _nonEmptyUrl(song[key])!,
   ];
 
-  String? chosen = _nonEmptyUrl(song['catalogImage']);
+  var chosen = _nonEmptyUrl(song['catalogImage']);
   for (final url in candidates) {
     if (chosen != null) break;
     if (_isSquareArtworkCdn(url)) {

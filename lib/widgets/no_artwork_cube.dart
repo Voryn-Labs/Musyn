@@ -41,12 +41,12 @@ class NullArtworkWidget extends StatelessWidget {
                 height: badgeSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFFF2D55).withValues(alpha: 0.15),
+                  color: MusifiedStyle.appleRed.withValues(alpha: 0.15),
                 ),
                 child: Icon(
                   icon,
                   size: calculatedIconSize,
-                  color: const Color(0xFFFF2D55),
+                  color: MusifiedStyle.appleRed,
                 ),
               ),
               if (title != null) ...[

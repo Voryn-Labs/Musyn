@@ -33,110 +33,124 @@ class SongTile extends StatelessWidget {
     final artist = song['artist']?.toString() ?? 'Unknown Artist';
 
     final isDark = isAppDarkMode(context);
-    final primaryColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-    final secondaryColor = CupertinoColors.systemGrey;
+    const primaryDark = CupertinoColors.white;
+    const primaryLight = CupertinoColors.black;
+    final primaryColor = isDark ? primaryDark : primaryLight;
+    const secondaryColor = CupertinoColors.systemGrey;
 
     return ValueListenableBuilder<String?>(
       valueListenable: audioHandler.currentPlayingYtid,
       builder: (context, playingYtid, _) {
         final isPlaying = playingYtid == ytid && ytid.isNotEmpty;
 
-        return CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          onPressed: () {
-            HapticFeedback.selectionClick();
-            if (onTap != null) {
-              onTap!();
-            } else {
-              audioHandler.playSingleSong(song);
-            }
+        return GestureDetector(
+          onLongPress: () {
+            HapticFeedback.mediumImpact();
+            showSongActionsSheet(
+              context,
+              song: song,
+              canRemove: canRemove,
+              onRemove: onRemove,
+              isRecent: isRecent,
+            );
           },
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      SongArtworkWidget(
-                        metadata: mapToMediaItem(song),
-                        size: 48,
-                        borderRadius: 8,
-                      ),
-                      if (isPlaying)
-                        Container(
-                          color: const Color(0x66000000),
-                          child: const Center(
-                            child: Icon(
-                              CupertinoIcons.waveform,
-                              color: CupertinoColors.white,
-                              size: 22,
+          child: CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              if (onTap != null) {
+                onTap!();
+              } else {
+                audioHandler.playSingleSong(song);
+              }
+            },
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(MusifiedStyle.radiusSm),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        SongArtworkWidget(
+                          metadata: mapToMediaItem(song),
+                          size: 48,
+                          borderRadius: MusifiedStyle.radiusSm,
+                        ),
+                        if (isPlaying)
+                          const ColoredBox(
+                            color: Color(0x66000000),
+                            child: Center(
+                              child: Icon(
+                                CupertinoIcons.waveform,
+                                color: CupertinoColors.white,
+                                size: 22,
+                              ),
                             ),
                           ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontFamily: MusifiedStyle.uiFont,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                          color: isPlaying
+                              ? MusifiedStyle.appleRed
+                              : primaryColor,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        artist,
+                        style: const TextStyle(
+                          fontFamily: MusifiedStyle.uiFont,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          color: secondaryColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                        color: isPlaying
-                            ? const Color(0xFFFF2D55)
-                            : primaryColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                if (showMore)
+                  CupertinoButton(
+                    padding: const EdgeInsets.all(8),
+                    minimumSize: const Size(36, 36),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      showSongActionsSheet(
+                        context,
+                        song: song,
+                        canRemove: canRemove,
+                        onRemove: onRemove,
+                        isRecent: isRecent,
+                      );
+                    },
+                    child: const Icon(
+                      CupertinoIcons.ellipsis,
+                      size: 20,
+                      color: CupertinoColors.systemGrey,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      artist,
-                      style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: secondaryColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (showMore)
-                CupertinoButton(
-                  padding: const EdgeInsets.all(8),
-                  minimumSize: const Size(36, 36),
-                  onPressed: () {
-                    HapticFeedback.selectionClick();
-                    showSongActionsSheet(
-                      context,
-                      song: song,
-                      canRemove: canRemove,
-                      onRemove: onRemove,
-                      isRecent: isRecent,
-                    );
-                  },
-                  child: const Icon(
-                    CupertinoIcons.ellipsis,
-                    size: 20,
-                    color: CupertinoColors.systemGrey,
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         );
       },

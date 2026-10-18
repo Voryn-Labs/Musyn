@@ -7,7 +7,7 @@ import 'package:musified/services/audio/audio_queue_state.dart';
 ///
 /// Leaf modules only depend on their own data ([AudioQueueState],
 /// [AudioPreloadCache]) or pure utilities. They never import each other.
-/// [MusifiedAudioHandler] orchestrates via this hub only.
+/// `MusifiedAudioHandler` orchestrates via this hub only.
 class AudioHandlerHub {
   AudioHandlerHub({
     this.queueLookahead = defaultQueueLookahead,

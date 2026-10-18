@@ -196,7 +196,7 @@ class JioSaavnService {
       for (final item in raw) {
         if (item is! Map) continue;
         final id = item['id']?.toString() ?? '';
-        var title =
+        final title =
             (item['title']?.toString() ?? item['listname']?.toString() ?? '')
                 .replaceAll('&quot;', '"')
                 .replaceAll('&amp;', '&')
@@ -260,7 +260,7 @@ class JioSaavnService {
       if (raw is! Map) return null;
 
       final id = raw['id']?.toString() ?? cleanId;
-      var title =
+      final title =
           (raw['title']?.toString() ?? raw['listname']?.toString() ?? '')
               .replaceAll('&quot;', '"')
               .replaceAll('&amp;', '&')

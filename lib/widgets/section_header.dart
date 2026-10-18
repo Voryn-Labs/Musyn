@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/widgets/section_title.dart';
 
 class SectionHeader extends StatelessWidget {
@@ -20,7 +21,7 @@ class SectionHeader extends StatelessWidget {
         Expanded(
           child: SectionTitle(
             title,
-            const Color(0xFFFF2D55),
+            MusifiedStyle.appleRed,
             icon: icon,
           ),
         ),

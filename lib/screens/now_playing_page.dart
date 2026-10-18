@@ -1,13 +1,18 @@
+import 'dart:ui';
+
 import 'package:audio_service/audio_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/utilities/mediaitem.dart' show upgradeArtworkUrl;
 import 'package:musified/widgets/flip_card.dart';
 import 'package:musified/widgets/now_playing/bottom_actions_row.dart';
 import 'package:musified/widgets/now_playing/now_playing_artwork.dart';
 import 'package:musified/widgets/now_playing/now_playing_controls.dart';
 import 'package:musified/widgets/queue_list_view.dart';
 
+/// Apple Music & BitChord-inspired Now Playing screen with ambient artwork aura.
 class NowPlayingPage extends StatefulWidget {
   const NowPlayingPage({super.key});
 
@@ -45,39 +50,96 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
             Navigator.pop(context);
           }
         },
-        child: SafeArea(
-          child: StreamBuilder<MediaItem?>(
-            stream: audioHandler.mediaItem,
-            builder: (context, snapshot) {
-              final metadata = snapshot.data;
-              if (metadata == null) {
-                return const Center(child: CupertinoActivityIndicator());
-              }
-              return Column(
-                children: [
-                  _Grabber(isDark: isDark),
-                  Expanded(
-                    child: isLargeScreen
-                        ? _DesktopLayout(
-                            metadata: metadata,
-                            size: size,
-                            adjustedIconSize: baseIconSize,
-                            adjustedMiniIconSize: miniIconSize,
-                            lyricsController: _lyricsController,
-                          )
-                        : _MobileLayout(
-                            metadata: metadata,
-                            size: size,
-                            adjustedIconSize: baseIconSize,
-                            adjustedMiniIconSize: miniIconSize,
-                            isLargeScreen: isLargeScreen,
-                            lyricsController: _lyricsController,
-                          ),
+        child: StreamBuilder<MediaItem?>(
+          stream: audioHandler.mediaItem,
+          builder: (context, snapshot) {
+            final metadata = snapshot.data;
+            if (metadata == null) {
+              return const Center(child: CupertinoActivityIndicator());
+            }
+
+            final ytid = metadata.extras?['ytid']?.toString() ?? metadata.id;
+            final rawImage =
+                metadata.artUri?.toString() ??
+                metadata.extras?['lowResImage']?.toString() ??
+                metadata.extras?['image']?.toString() ??
+                'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
+            final ambientUrl = upgradeArtworkUrl(rawImage, targetSize: 300);
+
+            return Stack(
+              children: [
+                // 1. Ambient blurred artwork backdrop (Apple Music style)
+                Positioned.fill(
+                  child: OverflowBox(
+                    maxWidth: size.width * 1.5,
+                    maxHeight: size.height * 1.5,
+                    child: Opacity(
+                      opacity: isDark ? 0.35 : 0.22,
+                      child: ImageFiltered(
+                        imageFilter: ImageFilter.blur(sigmaX: 55, sigmaY: 55),
+                        child: CachedNetworkImage(
+                          imageUrl: ambientUrl,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+
+                // 2. Translucent gradient scrim to ensure 100% legibility
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isDark
+                            ? [
+                                const Color(0x66000000),
+                                const Color(0x99000000),
+                                const Color(0xF2000000),
+                              ]
+                            : [
+                                const Color(0x55FFFFFF),
+                                const Color(0x88FFFFFF),
+                                const Color(0xF5FFFFFF),
+                              ],
+                        stops: const [0.0, 0.45, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 3. Foreground content
+                SafeArea(
+                  child: Column(
+                    children: [
+                      _Grabber(isDark: isDark),
+                      Expanded(
+                        child: isLargeScreen
+                            ? _DesktopLayout(
+                                metadata: metadata,
+                                size: size,
+                                adjustedIconSize: baseIconSize,
+                                adjustedMiniIconSize: miniIconSize,
+                                lyricsController: _lyricsController,
+                              )
+                            : _MobileLayout(
+                                metadata: metadata,
+                                size: size,
+                                adjustedIconSize: baseIconSize,
+                                adjustedMiniIconSize: miniIconSize,
+                                isLargeScreen: isLargeScreen,
+                                lyricsController: _lyricsController,
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -94,10 +156,10 @@ class _Grabber extends StatelessWidget {
       padding: const EdgeInsets.only(top: 6, bottom: 8),
       child: Center(
         child: Container(
-          width: 36,
+          width: 38,
           height: 5,
           decoration: BoxDecoration(
-            color: isDark ? const Color(0x66FFFFFF) : const Color(0x33000000),
+            color: isDark ? const Color(0x55FFFFFF) : const Color(0x33000000),
             borderRadius: BorderRadius.circular(2.5),
           ),
         ),
@@ -196,7 +258,7 @@ class _MobileLayout extends StatelessWidget {
     final isLive = metadata.extras?['isLive'] ?? false;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
       child: Column(
         children: [
           Expanded(

@@ -4,7 +4,7 @@ import 'package:musified/services/logger_service.dart';
 import 'package:musified/utilities/app_utils.dart';
 
 /// Stream URL preloading. Only talks to [AudioPreloadCache] + network helpers.
-/// Queue position/items are passed in by [AudioHandlerHub] — no queue imports.
+/// Queue position/items are passed in by `AudioHandlerHub` — no queue imports.
 class AudioPreloadService {
   AudioPreloadService({
     required this.cache,

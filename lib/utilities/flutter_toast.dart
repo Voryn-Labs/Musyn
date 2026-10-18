@@ -62,7 +62,7 @@ void showToast(
                     Icon(
                       icon ?? CupertinoIcons.checkmark_circle_fill,
                       size: 18,
-                      color: const Color(0xFFFF2D55),
+                      color: MusifiedStyle.appleRed,
                     ),
                     const SizedBox(width: 10),
                     Flexible(
@@ -140,7 +140,7 @@ void showToastWithButton(
                 Icon(
                   icon ?? CupertinoIcons.info_circle_fill,
                   size: 18,
-                  color: const Color(0xFFFF2D55),
+                  color: MusifiedStyle.appleRed,
                 ),
                 const SizedBox(width: 10),
                 Flexible(
@@ -166,7 +166,7 @@ void showToastWithButton(
                     buttonName,
                     style: const TextStyle(
                       fontFamily: MusifiedStyle.uiFont,
-                      color: Color(0xFFFF2D55),
+                      color: MusifiedStyle.appleRed,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),

@@ -12,6 +12,7 @@ import 'package:musified/services/navigation_paths.dart';
 import 'package:musified/services/playlists_manager.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/async_loader.dart';
 import 'package:musified/utilities/flutter_toast.dart';
@@ -329,7 +330,7 @@ class _ArtistPageState extends State<ArtistPage> {
               child: const Icon(
                 CupertinoIcons.arrow_2_circlepath,
                 size: 20,
-                color: Color(0xFFFF2D55),
+                color: MusifiedStyle.appleRed,
               ),
             ),
           ],

@@ -156,7 +156,7 @@ class AudioCompletionCoordinator {
     clearSleepTimerExpired();
   }
 
-  /// Gate for [_playFromQueue]: skip when already loading this index (non-completion).
+  /// Gate for `_playFromQueue`: skip when already loading this index (non-completion).
   bool shouldSkipPlayFromQueueAlreadyLoading(
     int loadingIndex,
     int index, {

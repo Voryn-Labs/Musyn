@@ -1,15 +1,19 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/settings_manager.dart';
+import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/flutter_toast.dart';
+import 'package:musified/utilities/mediaitem.dart';
 import 'package:musified/utilities/playlist_dialogs.dart';
 import 'package:musified/utilities/song_info_dialog.dart';
 
-/// Shows a pure iOS Cupertino action sheet for a song's contextual actions.
+/// Shows an Apple Music-style Cupertino action sheet with track preview.
 void showSongActionsSheet(
   BuildContext context, {
   required Map song,
@@ -23,27 +27,73 @@ void showSongActionsSheet(
   final isLiked = isSongAlreadyLiked(ytid);
   final isOffline = isSongAlreadyOffline(ytid);
 
+  final rawImage =
+      song['image']?.toString() ??
+      song['lowResImage']?.toString() ??
+      'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
+  final imageUrl = upgradeArtworkUrl(rawImage, targetSize: 100);
+
+  final isDark = isAppDarkMode(context);
+
   showCupertinoModalPopup<void>(
     context: context,
     builder: (ctx) => CupertinoActionSheet(
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.2,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      title: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(MusifiedStyle.radiusSm),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => ColoredBox(
+                  color: musifiedSecondarySurface(isDark),
+                  child: const Icon(
+                    CupertinoIcons.music_note,
+                    size: 20,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: MusifiedStyle.uiFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (artist.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    artist,
+                    style: TextStyle(
+                      fontFamily: MusifiedStyle.uiFont,
+                      fontSize: 13,
+                      color: isDark ? MusifiedStyle.darkSecondary : CupertinoColors.systemGrey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
-      message: artist.isNotEmpty
-          ? Text(
-              artist,
-              style: const TextStyle(fontSize: 13),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            )
-          : null,
       actions: [
         CupertinoActionSheetAction(
           onPressed: () {
@@ -101,7 +151,7 @@ void showSongActionsSheet(
                   size: 20,
                   color: isLiked
                       ? CupertinoColors.systemRed
-                      : const Color(0xFFFF2D55),
+                      : MusifiedStyle.appleRed,
                 ),
                 const SizedBox(width: 10),
                 Text(isLiked ? 'Remove from Favorites' : 'Favorite'),

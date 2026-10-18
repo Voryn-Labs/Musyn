@@ -35,9 +35,10 @@ Future<void> main(List<String> args) async {
   final videoIds = args.isEmpty ? _defaultVideoIds : args;
 
   for (final videoId in videoIds) {
-    stdout.writeln('\n${'=' * 78}');
-    stdout.writeln('VIDEO $videoId');
-    stdout.writeln('=' * 78);
+    stdout
+      ..writeln('\n${'=' * 78}')
+      ..writeln('VIDEO $videoId')
+      ..writeln('=' * 78);
 
     final catalogSeconds = await _catalogDuration(videoId);
     stdout.writeln('catalog duration: ${catalogSeconds ?? "unknown"}s\n');

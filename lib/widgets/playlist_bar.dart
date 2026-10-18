@@ -219,7 +219,7 @@ class PlaylistBar extends StatelessWidget {
                                 child: Icon(
                                   CupertinoIcons.pin_fill,
                                   size: 13,
-                                  color: Color(0xFFFF2D55),
+                                  color: MusifiedStyle.appleRed,
                                 ),
                               );
                             },
@@ -299,7 +299,7 @@ class PlaylistBar extends StatelessWidget {
         shape: isArtist ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: isArtist ? null : BorderRadius.circular(10),
       ),
-      child: Icon(cubeIcon, size: 24, color: const Color(0xFFFF2D55)),
+      child: Icon(cubeIcon, size: 24, color: MusifiedStyle.appleRed),
     );
   }
 
@@ -314,7 +314,7 @@ class PlaylistBar extends StatelessWidget {
       child: const Icon(
         CupertinoIcons.folder_fill,
         size: 24,
-        color: Color(0xFFFF2D55),
+        color: MusifiedStyle.appleRed,
       ),
     );
   }

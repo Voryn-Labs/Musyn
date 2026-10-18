@@ -583,7 +583,7 @@ class _HomePageState extends State<HomePage> {
                 const Icon(
                   CupertinoIcons.music_note_2,
                   size: 56,
-                  color: Color(0xFFFF2D55),
+                  color: MusifiedStyle.appleRed,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -634,7 +634,7 @@ class _HomeSongCard extends StatelessWidget {
     final imageUrl =
         song['highResImage'] ?? song['image'] ?? song['lowResImage'] ?? '';
     final primaryColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-    final secondaryColor = CupertinoColors.systemGrey;
+    const secondaryColor = CupertinoColors.systemGrey;
 
     return GestureDetector(
       onTap: onTap,
@@ -657,7 +657,7 @@ class _HomeSongCard extends StatelessWidget {
                             fit: BoxFit.cover,
                             memCacheWidth: 280,
                             memCacheHeight: 280,
-                            errorWidget: (_, __, ___) => Container(
+                            errorWidget: (_, __, ___) => ColoredBox(
                               color: musifiedSecondarySurface(isDark),
                               child: const Icon(
                                 CupertinoIcons.music_note,
@@ -666,7 +666,7 @@ class _HomeSongCard extends StatelessWidget {
                               ),
                             ),
                           )
-                        : Container(
+                        : ColoredBox(
                             color: musifiedSecondarySurface(isDark),
                             child: const Icon(
                               CupertinoIcons.music_note,
@@ -712,7 +712,7 @@ class _HomeSongCard extends StatelessWidget {
               artist,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: MusifiedStyle.uiFont,
                 fontSize: 12,
                 color: secondaryColor,

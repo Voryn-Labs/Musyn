@@ -29,7 +29,7 @@ class PlaylistActionButtons extends StatelessWidget {
             child: CupertinoButton(
               padding: const EdgeInsets.symmetric(vertical: 14),
               borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
-              color: const Color(0xFFFF2D55),
+              color: MusifiedStyle.appleRed,
               onPressed: isLoading ? null : onPlay,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

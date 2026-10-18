@@ -118,7 +118,7 @@ class _ArtistArtwork extends StatelessWidget {
       child: const Icon(
         CupertinoIcons.person_fill,
         size: 26,
-        color: Color(0xFFFF2D55),
+        color: MusifiedStyle.appleRed,
       ),
     );
   }

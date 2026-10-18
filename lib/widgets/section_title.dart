@@ -18,7 +18,7 @@ class SectionTitle extends StatelessWidget {
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 18, color: const Color(0xFFFF2D55)),
+            Icon(icon, size: 18, color: primaryColor),
             const SizedBox(width: 8),
           ],
           Expanded(

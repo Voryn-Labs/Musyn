@@ -22,7 +22,7 @@ class SortChips<T extends Enum> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final activeBg = const Color(0xFFFF2D55);
+    const activeBg = MusifiedStyle.appleRed;
     final inactiveBg = musifiedSecondarySurface(isDark);
 
     return SingleChildScrollView(

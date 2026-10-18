@@ -200,7 +200,7 @@ void main() async {
     final canvas = usePureBlackColor.value
         ? MusifiedStyle.oledBlack
         : MusifiedStyle.elevated;
-    return Container(
+    return ColoredBox(
       color: canvas,
       child: SafeArea(
         child: SingleChildScrollView(
@@ -337,6 +337,7 @@ Future<void> initialisation() async {
   } catch (e, stackTrace) {
     logger.log('AudioService init error', error: e, stackTrace: stackTrace);
     try {
+      // ignore: deprecated_member_use
       await AudioService.stop();
     } catch (_) {}
     try {

@@ -34,8 +34,6 @@ class MusifiedAudioHandler extends PlaybackController {
     audioPlayer = player ?? AudioPlayer(handleInterruptions: false);
     _playback = AudioPlaybackCoordinator(
       audioPlayer: audioPlayer,
-      offlineTransitionTimeout: _offlineTransitionTimeout,
-      streamTransitionTimeout: _streamTransitionTimeout,
     );
     _setupEventSubscriptions();
     _updatePlaybackState();
@@ -99,8 +97,6 @@ class MusifiedAudioHandler extends PlaybackController {
   // Resolve only the next item, and never compete with the foreground load.
   // Multiple manifest requests were saturating the connection and making a
   // user-initiated tap wait behind two background YouTube requests.
-  static const Duration _offlineTransitionTimeout = Duration(seconds: 6);
-  static const Duration _streamTransitionTimeout = Duration(seconds: 12);
   static const Duration _debounceInterval = Duration(milliseconds: 80);
   static const Duration _positionDataThreshold = Duration(milliseconds: 250);
   static const Duration _playbackStateHeartbeat = Duration(seconds: 1);
@@ -509,7 +505,7 @@ class MusifiedAudioHandler extends PlaybackController {
           playNextSongAutomatically.value,
       stopPlayback: stop,
       invalidateStreamCache: invalidateSongStreamCache,
-      removePreloadedUrl: (ytid) => _hub.preloadCache.streamUrls.remove(ytid),
+      removePreloadedUrl: _hub.preloadCache.streamUrls.remove,
       retryCurrentSong: playSong,
       tryAlternateSource: _tryAlternateSourceOnce,
       skipToNext: skipToNext,
@@ -589,7 +585,7 @@ class MusifiedAudioHandler extends PlaybackController {
         sleepTimerNotifier.value = null;
       },
       onCompleteTrack: () => _completion.completeSong(_songCompletionContext()),
-      logPlayer: (message) => _logPlayer(message),
+      logPlayer: _logPlayer,
     );
   }
 
@@ -1547,7 +1543,6 @@ class MusifiedAudioHandler extends PlaybackController {
           // player idle mid-queue.
           _completion.handlePlaybackError(
             _playbackErrorContext(),
-            advance: true,
           );
           _showPlaybackStreamError();
         }
@@ -1571,7 +1566,7 @@ class MusifiedAudioHandler extends PlaybackController {
           }
         }
       }
-      _completion.handlePlaybackError(_playbackErrorContext(), advance: true);
+      _completion.handlePlaybackError(_playbackErrorContext());
       _showPlaybackStreamError();
     } finally {
       // Always clear if this is still the latest transition. A rapid skip sets

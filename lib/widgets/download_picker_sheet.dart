@@ -89,7 +89,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     final title = widget.song['title']?.toString() ?? 'Track';
     final artist = widget.song['artist']?.toString() ?? '';
     final isDark = isAppDarkMode(context);
-    const primaryColor = Color(0xFFFF2D55);
+    const primaryColor = MusifiedStyle.appleRed;
     final cardBg = musifiedSecondarySurface(isDark);
     final textColor = isDark ? CupertinoColors.white : CupertinoColors.black;
     const secondaryTextColor = CupertinoColors.systemGrey;
@@ -410,7 +410,7 @@ Future<void> showDownloadPicker(
 
   return showCupertinoModalPopup<void>(
     context: context,
-    builder: (ctx) => Container(
+    builder: (ctx) => DecoratedBox(
       decoration: BoxDecoration(
         color: isDark
             ? musifiedElevatedSurface(isDark)

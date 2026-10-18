@@ -78,7 +78,11 @@ class _LibraryPageState extends State<LibraryPage> {
                 trailing: CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: () => showCreatePlaylistDialog(context),
-                  child: const Icon(CupertinoIcons.plus, size: 22),
+                  child: const Icon(
+                    CupertinoIcons.plus,
+                    size: 22,
+                    color: MusifiedStyle.appleRed,
+                  ),
                 ),
                 border: Border(
                   bottom: BorderSide(
@@ -180,7 +184,11 @@ class _LibraryPageState extends State<LibraryPage> {
                 icon: CupertinoIcons.play_rectangle,
                 actionButton: CupertinoButton(
                   padding: EdgeInsets.zero,
-                  child: const Icon(CupertinoIcons.refresh, size: 20),
+                  child: const Icon(
+                    CupertinoIcons.refresh,
+                    size: 20,
+                    color: MusifiedStyle.appleRed,
+                  ),
                   onPressed: () {
                     unawaited(YouTubeMusicSyncService().fullSync());
                     showToast(context, 'Syncing with YouTube Music...');
@@ -239,7 +247,7 @@ class _LibraryPageState extends State<LibraryPage> {
                                             imageUrl: image,
                                             fit: BoxFit.cover,
                                             errorWidget: (_, __, ___) =>
-                                                Container(
+                                                ColoredBox(
                                                   color:
                                                       musifiedSecondarySurface(
                                                         isDark,
@@ -251,7 +259,7 @@ class _LibraryPageState extends State<LibraryPage> {
                                                   ),
                                                 ),
                                           )
-                                        : Container(
+                                        : ColoredBox(
                                             color: musifiedSecondarySurface(
                                               isDark,
                                             ),

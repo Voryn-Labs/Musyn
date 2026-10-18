@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/flutter_toast.dart';
 import 'package:musified/utilities/playlist_dialogs.dart';
 
@@ -37,7 +38,7 @@ class _PlaylistAddToPlaylistButtonState
       child: const Icon(
         CupertinoIcons.plus,
         size: 20,
-        color: Color(0xFFFF2D55),
+        color: MusifiedStyle.appleRed,
       ),
     );
   }

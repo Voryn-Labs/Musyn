@@ -9,6 +9,7 @@ import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/navigation_paths.dart';
 import 'package:musified/services/settings_manager.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/mediaitem.dart';
 import 'package:musified/widgets/now_playing/marquee_text_widget.dart';
@@ -330,7 +331,7 @@ class PlayerControlButtons extends StatelessWidget {
           child: Icon(
             CupertinoIcons.shuffle,
             color: value
-                ? const Color(0xFFFF2D55)
+                ? MusifiedStyle.appleRed
                 : CupertinoDynamicColor.resolve(
                     CupertinoColors.tertiaryLabel,
                     context,
@@ -374,7 +375,7 @@ class PlayerControlButtons extends StatelessWidget {
           child: Icon(
             isRepeatOne ? CupertinoIcons.repeat_1 : CupertinoIcons.repeat,
             color: isEnabled
-                ? const Color(0xFFFF2D55)
+                ? MusifiedStyle.appleRed
                 : CupertinoDynamicColor.resolve(
                     CupertinoColors.tertiaryLabel,
                     context,
@@ -429,7 +430,7 @@ class _PlaybackControlsRow extends StatelessWidget {
               SizedBox(width: buttonSpacing),
               PlaybackIconButton(
                 iconColor: CupertinoColors.white,
-                backgroundColor: const Color(0xFFFF2D55),
+                backgroundColor: MusifiedStyle.appleRed,
                 iconSize: controlIconSize,
                 padding: playPadding,
               ),

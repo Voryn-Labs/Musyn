@@ -63,7 +63,6 @@ class SongArtworkWidget extends StatelessWidget {
             memCacheHeight: cacheDimension,
             fadeInDuration: const Duration(milliseconds: 300),
             fit: BoxFit.cover,
-            alignment: Alignment.center,
             placeholder: (_, __) => const Spinner(),
             errorWidget: (_, __, ___) =>
                 NullArtworkWidget(iconSize: errorWidgetIconSize, size: size),
@@ -84,7 +83,6 @@ class SongArtworkWidget extends StatelessWidget {
                       '',
                 ),
                 fit: BoxFit.cover,
-                alignment: Alignment.center,
                 cacheWidth: cacheDimension,
                 cacheHeight: cacheDimension,
                 errorBuilder: (_, __, ___) => networkArtwork,

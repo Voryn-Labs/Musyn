@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:musified/models/position_data.dart';
 import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/formatter.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -92,7 +93,7 @@ class _PositionSliderState extends State<PositionSlider> {
               height: 24,
               child: CupertinoSlider(
                 value: currentValue.clamp(0.0, maxDuration),
-                activeColor: const Color(0xFFFF2D55),
+                activeColor: MusifiedStyle.appleRed,
                 thumbColor: isDark
                     ? CupertinoColors.white
                     : CupertinoColors.black,

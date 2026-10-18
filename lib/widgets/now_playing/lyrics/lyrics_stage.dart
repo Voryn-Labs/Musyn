@@ -154,7 +154,6 @@ class _StageLine extends StatelessWidget {
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeOutCubic,
           scale: isCurrent ? 1.0 : 0.92,
-          alignment: Alignment.center,
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 340),
             curve: Curves.easeOutCubic,

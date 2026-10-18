@@ -88,7 +88,7 @@ Color musifiedSheetCard(bool isDark) => isDark
 
 CupertinoThemeData buildCupertinoTheme({
   required Brightness brightness,
-  Color primaryColor = const Color(0xFFFF2D55),
+  Color primaryColor = MusifiedStyle.appleRed,
 }) {
   final isDark = brightness == Brightness.dark;
   final useOled = isDark && usePureBlackColor.value;

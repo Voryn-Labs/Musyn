@@ -4,7 +4,7 @@ import 'package:musified/extensions/l10n.dart';
 import 'package:musified/services/device_log_upload.dart';
 
 /// App-wide log sink (settings → copy logs). Defined here so services can log
-/// without importing [main.dart].
+/// without importing `main.dart`.
 final logger = Logger();
 
 class Logger extends ChangeNotifier {

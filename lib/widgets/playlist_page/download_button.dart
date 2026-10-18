@@ -3,6 +3,7 @@ import 'package:musified/services/common_services.dart';
 import 'package:musified/services/playlist_download_service.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/theme/app_themes.dart';
+import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/flutter_toast.dart';
 import 'package:musified/utilities/offline_playlist_dialogs.dart';
 
@@ -59,7 +60,7 @@ class _PlaylistDownloadButtonState extends State<PlaylistDownloadButton> {
           if (_isOffline) {
             return CupertinoButton(
               padding: const EdgeInsets.all(10),
-              color: const Color(0xFFFF2D55),
+              color: MusifiedStyle.appleRed,
               borderRadius: BorderRadius.circular(22),
               onPressed: () =>
                   showRemoveOfflinePlaylistDialog(context, playlistId),
@@ -98,7 +99,7 @@ class _PlaylistDownloadButtonState extends State<PlaylistDownloadButton> {
                 child: const Icon(
                   CupertinoIcons.arrow_down_to_line,
                   size: 20,
-                  color: Color(0xFFFF2D55),
+                  color: MusifiedStyle.appleRed,
                 ),
               );
             },
