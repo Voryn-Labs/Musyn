@@ -309,6 +309,14 @@ class AudioCompletionCoordinator {
     await ctx.skipToNext();
     if (ctx.currentQueueIndex() != indexBefore) return;
     if (ctx.audioIsPlaying() || ctx.hasAnotherTrack()) {
+      // If audio is not playing but there should be another track,
+      // the recommended song may not have been inserted yet. Wait briefly
+      // and try skipToNext one more time.
+      if (!ctx.audioIsPlaying()) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        await ctx.skipToNext();
+        if (ctx.audioIsPlaying()) return;
+      }
       logger.log(
         'Next track did not take over — leaving the session up',
         data: {

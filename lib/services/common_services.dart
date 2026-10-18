@@ -697,8 +697,7 @@ Future<void> getSimilarSong(String songYtId) async {
 
     if (relatedSongs.isNotEmpty) {
       final layout = returnSongLayout(0, relatedSongs[0]);
-      layout['catalogOrigin'] = 'youtube';
-      layout['source'] = 'youtube';
+      layout['source'] = 'youtube-recommended';
       nextRecommendedSong = layout;
     } else {
       logger.log('No related songs found for $songYtId');

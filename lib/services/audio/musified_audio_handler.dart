@@ -68,6 +68,7 @@ class MusifiedAudioHandler extends PlaybackController {
   bool _playbackWanted = false;
   bool _userPaused = false;
   bool _recoveringStall = false;
+  bool _backgroundFetchInProgress = false;
   Timer? _stallWatch;
   Duration _stallPosition = Duration.zero;
   DateTime _stallMark = DateTime.now();
@@ -545,8 +546,12 @@ class MusifiedAudioHandler extends PlaybackController {
     }
     if (_isStaleTransition(transitionId)) return false;
     final ok = await playSong(song, transitionId: transitionId);
-    if (!ok) {
-      song.remove('forceSource');
+    // Always remove the temporary forceSource pin. On success, record the
+    // resolved provider so the scrubber knows what actually played; on failure,
+    // clear the pin so the next attempt isn't locked to YouTube either.
+    song.remove('forceSource');
+    if (ok) {
+      song['resolvedSource'] = 'youtube';
     }
     return ok;
   }
@@ -898,6 +903,7 @@ class MusifiedAudioHandler extends PlaybackController {
   Future<void> _backgroundAddSongsToQueue() async {
     // Fire and forget - this runs as a background task without blocking playback
     if (offlineMode.value) return;
+    if (_backgroundFetchInProgress) return;
     // Fill the queue while audio is still playing. Waiting until the last
     // song ends means a 6s related-song fetch in silence, which iOS kills.
     // Start fetching when 3 or fewer songs remain so the preloader can warm
@@ -907,6 +913,7 @@ class MusifiedAudioHandler extends PlaybackController {
       return;
     }
 
+    _backgroundFetchInProgress = true;
     // Use microtask to avoid blocking the current operation
     unawaited(
       Future.microtask(() async {
@@ -940,6 +947,8 @@ class MusifiedAudioHandler extends PlaybackController {
             error: e,
             stackTrace: stackTrace,
           );
+        } finally {
+          _backgroundFetchInProgress = false;
         }
       }),
     );
@@ -1457,6 +1466,13 @@ class MusifiedAudioHandler extends PlaybackController {
     final currentTransitionId = _songTransitionCounter;
     _hub.queue.markLoading(index, _hub.queue.songAt(index));
     _currentLoadingTransitionId = currentTransitionId;
+    // Keep the audio session alive during the load — prevents iOS from
+    // suspending us when rapidly skipping on the lock screen.
+    unawaited(
+      AudioSession.instance
+          .then((s) => s.setActive(true))
+          .catchError((_) {}),
+    );
 
     final wasPlayingBeforeLoad = audioPlayer.playing;
     final previousQueueIndex = _hub.queue.currentIndex;
@@ -1628,9 +1644,30 @@ class MusifiedAudioHandler extends PlaybackController {
 
     final warmed = song['_preloadedStreamUrl']?.toString();
     final isAutoMode = preferred == 'auto' && song['forceSource'] == null;
+
+    // In auto mode, ensure the preloaded URL matches resolvedSource.
+    // A mismatch means the preloaded URL was fetched for a different source
+    // than what resolvedSource claims — clear the stale resolved state.
+    if (isAutoMode &&
+        resolved != null &&
+        resolved != 'offline' &&
+        warmed != null &&
+        warmed.isNotEmpty) {
+      final warmedIsYoutube = isUsableYoutubePlaybackUrl(warmed);
+      final warmedIsSaavn = isUsableJiosaavnPlaybackUrl(warmed);
+      if ((resolved == 'youtube' && !warmedIsYoutube) ||
+          (resolved == 'jiosaavn' && !warmedIsSaavn)) {
+        song
+          ..remove('resolvedSource')
+          ..remove('resolvedBitrate')
+          ..remove('resolvedFormat')
+          ..remove('resolvedUserAgent')
+          ..remove('resolvedItag');
+      }
+    }
+
     if (warmed != null &&
         warmed.isNotEmpty &&
-        !isAutoMode &&
         !streamUrlMatchesPreferredSource(warmed, song)) {
       song.remove('_preloadedStreamUrl');
     }
@@ -1640,7 +1677,6 @@ class MusifiedAudioHandler extends PlaybackController {
       final cached = _hub.preloadCache.streamUrls[ytid];
       if (cached != null &&
           cached.isNotEmpty &&
-          !isAutoMode &&
           !streamUrlMatchesPreferredSource(cached, song)) {
         _hub.preloadCache.drop(ytid);
       }
@@ -1881,7 +1917,16 @@ class MusifiedAudioHandler extends PlaybackController {
   /// has stopped and the user did not pause, start the next song immediately.
   Future<void> _recoverLockScreenStall() async {
     if (!_playbackWanted || _userPaused || _recoveringStall) return;
-    if (_currentLoadingTransitionId >= 0) return;
+    // A song is currently loading — keep the audio session alive so iOS
+    // doesn't suspend us during the silence between tracks. This matches
+    // how Apple Music and Spotify never return the session to idle.
+    if (_currentLoadingTransitionId >= 0) {
+      try {
+        final session = await AudioSession.instance;
+        await session.setActive(true);
+      } catch (_) {}
+      return;
+    }
     // Only respect eventPending if it was set recently. A stale eventPending
     // (stuck >8s) must not block stall recovery — that is the deadlock itself.
     if (_completion.isEventPendingFresh) return;

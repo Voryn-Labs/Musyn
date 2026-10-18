@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musified/services/audio/audio_runtime.dart';
@@ -77,7 +79,7 @@ void showSongActionsSheet(
           CupertinoActionSheetAction(
             onPressed: () async {
               Navigator.pop(ctx);
-              HapticFeedback.mediumImpact();
+              unawaited(HapticFeedback.mediumImpact());
               final nextLiked = !isLiked;
               await updateSongLikeStatus(ytid, nextLiked, songData: song);
               if (context.mounted) {

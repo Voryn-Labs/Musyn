@@ -100,7 +100,12 @@ class AudioPreloadService {
     if (ticket == null) return;
     String? preloadUrl;
     var mayPublish = false;
-    final request = Future<String?>.sync(() => _fetchUrl(nextSong)).then(
+    // Clone the song so _fetchUrl (→ fetchSongStreamUrl) doesn't mutate the
+    // queue's live song map with resolved* fields while a different track plays.
+    final songCopy = Map<String, dynamic>.from(
+      nextSong.map((k, v) => MapEntry(k.toString(), v)),
+    );
+    final request = Future<String?>.sync(() => _fetchUrl(songCopy)).then(
       (url) {
         mayPublish = cache.finish(ytid, ticket);
         return url;
