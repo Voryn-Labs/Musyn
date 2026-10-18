@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/main.dart' show logger, audioHandler;
+import 'package:musified/services/audio/audio_runtime.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/theme/app_themes.dart';
-import 'package:musified/widgets/now_playing/full_page_lyrics_modal.dart';
 import 'package:musified/widgets/now_playing/lyrics/compact_lyrics_panel.dart';
 import 'package:musified/widgets/now_playing/lyrics/lrc_parser.dart';
 import 'package:musified/widgets/now_playing/lyrics/lyrics_stage.dart';
@@ -15,6 +15,7 @@ import 'package:musified/widgets/now_playing/lyrics/plain_lyrics_reader.dart';
 class SyncedLyricsView extends StatefulWidget {
   const SyncedLyricsView({
     super.key,
+    this.onExpand,
     required this.metadata,
     required this.lyrics,
     required this.isActive,
@@ -27,6 +28,8 @@ class SyncedLyricsView extends StatefulWidget {
   final bool isActive;
   final bool isFullScreen;
   final bool isCompact;
+
+  final VoidCallback? onExpand;
 
   @override
   State<SyncedLyricsView> createState() => _SyncedLyricsViewState();
@@ -93,8 +96,9 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
   void _startListening() {
     _positionSub?.cancel();
     _syncToPosition(audioHandler.audioPlayer.position);
-    _positionSub =
-        audioHandler.audioPlayer.positionStream.listen(_syncToPosition);
+    _positionSub = audioHandler.audioPlayer.positionStream.listen(
+      _syncToPosition,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _scrollToCurrentLine(instant: true);
     });
@@ -125,7 +129,8 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     if (lyrics == null || _currentIndex < 0) return 0;
     final songDuration = widget.metadata.duration ?? Duration.zero;
     final start = lyrics[_currentIndex].time;
-    final end = lineEndTime(lyrics, _currentIndex, songDuration) ??
+    final end =
+        lineEndTime(lyrics, _currentIndex, songDuration) ??
         start + const Duration(seconds: 8);
     final span = end - start;
     if (span.inMilliseconds <= 0) return 0;
@@ -159,8 +164,9 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     if (widget.isCompact) return;
     if (_currentIndex < 0 || _currentIndex >= _lineKeys.length) return;
 
-    final duration =
-        instant ? Duration.zero : const Duration(milliseconds: 420);
+    final duration = instant
+        ? Duration.zero
+        : const Duration(milliseconds: 420);
     final ctx = _lineKeys[_currentIndex].currentContext;
     if (ctx != null) {
       Scrollable.ensureVisible(
@@ -215,7 +221,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
   }
 
   void _openFullScreen() {
-    showFullPageLyrics(context, widget.metadata);
+    widget.onExpand?.call();
   }
 
   @override
@@ -237,9 +243,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
       return PlainLyricsReader(
         text: widget.lyrics,
         theme: theme,
-        layout: widget.isCompact
-            ? LyricsLayout.compact
-            : LyricsLayout.stage,
+        layout: widget.isCompact ? LyricsLayout.compact : LyricsLayout.stage,
         onExpand: widget.isCompact ? _openFullScreen : null,
       );
     }

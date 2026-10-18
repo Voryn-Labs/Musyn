@@ -1,13 +1,14 @@
 import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musified/constants/app_constants.dart';
 import 'package:musified/services/common_services.dart';
+import 'package:musified/services/navigation_paths.dart';
 import 'package:musified/services/playlist_download_service.dart';
 import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/router_service.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/services/youtube_auth_service.dart';
 import 'package:musified/services/youtube_music_sync_service.dart';
@@ -39,7 +40,9 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final navBarColor = isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
+    final navBarColor = isDark
+        ? const Color(0xB3121214)
+        : const Color(0xB3FFFFFF);
 
     return CupertinoPageScaffold(
       backgroundColor: musifiedCanvas(isDark),
@@ -58,7 +61,9 @@ class _LibraryPageState extends State<LibraryPage> {
         ]),
         builder: (context, _) {
           return CustomScrollView(
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
             slivers: [
               CupertinoSliverNavigationBar(
                 largeTitle: const Text(
@@ -77,7 +82,9 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
                 border: Border(
                   bottom: BorderSide(
-                    color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
+                    color: isDark
+                        ? const Color(0x26FFFFFF)
+                        : const Color(0x1F000000),
                     width: 0.5,
                   ),
                 ),
@@ -89,7 +96,8 @@ class _LibraryPageState extends State<LibraryPage> {
                     children: [
                       const SizedBox(height: 12),
                       ..._buildTopLibrarySections(isDark),
-                      if (!offlineMode.value) ..._buildYouTubePlaylistsSections(isDark),
+                      if (!offlineMode.value)
+                        ..._buildYouTubePlaylistsSections(isDark),
                       ..._buildCustomPlaylistsSections(isDark),
                       const MiniPlayerBottomSpace(),
                     ],
@@ -119,7 +127,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 return PlaylistBar(
                   'Downloaded Songs',
                   subtitle: '${offline.length} tracks',
-                  onPressed: () => NavigationManager.router.go('/library/userSongs/offline'),
+                  onPressed: () => context.go('/library/userSongs/offline'),
                   cubeIcon: CupertinoIcons.arrow_down_circle_fill,
                   borderRadius: commonCustomBarRadiusFirst,
                   showBuildActions: false,
@@ -132,7 +140,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 return PlaylistBar(
                   'Favorite Tracks',
                   subtitle: '${liked.length} tracks',
-                  onPressed: () => NavigationManager.router.go('/library/userSongs/liked'),
+                  onPressed: () => context.go('/library/userSongs/liked'),
                   cubeIcon: CupertinoIcons.heart_fill,
                   showBuildActions: false,
                 );
@@ -144,7 +152,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 return PlaylistBar(
                   'Recently Played',
                   subtitle: '${recents.length} tracks',
-                  onPressed: () => NavigationManager.router.go('/library/userSongs/recents'),
+                  onPressed: () => context.go('/library/userSongs/recents'),
                   cubeIcon: CupertinoIcons.clock_fill,
                   borderRadius: commonCustomBarRadiusLast,
                   showBuildActions: false,
@@ -206,7 +214,7 @@ class _LibraryPageState extends State<LibraryPage> {
                             HapticFeedback.selectionClick();
                             if (id != null) {
                               context.push(
-                                '/home/playlist/$id',
+                                NavigationPaths.playlistPath(context, id),
                                 extra: {
                                   'title': title,
                                   'image': image,
@@ -230,14 +238,27 @@ class _LibraryPageState extends State<LibraryPage> {
                                         ? CachedNetworkImage(
                                             imageUrl: image,
                                             fit: BoxFit.cover,
-                                            errorWidget: (_, __, ___) => Container(
-                                              color: musifiedSecondarySurface(isDark),
-                                              child: const Icon(CupertinoIcons.music_albums, color: CupertinoColors.systemGrey),
-                                            ),
+                                            errorWidget: (_, __, ___) =>
+                                                Container(
+                                                  color:
+                                                      musifiedSecondarySurface(
+                                                        isDark,
+                                                      ),
+                                                  child: const Icon(
+                                                    CupertinoIcons.music_albums,
+                                                    color: CupertinoColors
+                                                        .systemGrey,
+                                                  ),
+                                                ),
                                           )
                                         : Container(
-                                            color: musifiedSecondarySurface(isDark),
-                                            child: const Icon(CupertinoIcons.music_albums, color: CupertinoColors.systemGrey),
+                                            color: musifiedSecondarySurface(
+                                              isDark,
+                                            ),
+                                            child: const Icon(
+                                              CupertinoIcons.music_albums,
+                                              color: CupertinoColors.systemGrey,
+                                            ),
                                           ),
                                   ),
                                 ),
@@ -250,7 +271,9 @@ class _LibraryPageState extends State<LibraryPage> {
                                     fontFamily: MusifiedStyle.uiFont,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                                    color: isDark
+                                        ? CupertinoColors.white
+                                        : CupertinoColors.black,
                                   ),
                                 ),
                               ],
@@ -280,10 +303,10 @@ class _LibraryPageState extends State<LibraryPage> {
         icon: CupertinoIcons.folder_fill,
       ),
       const SizedBox(height: 8),
-      ...custom.map((p) => PlaylistBar(
-        p['title']?.toString() ?? 'Playlist',
-        playlistData: p,
-      )),
+      ...custom.map(
+        (p) =>
+            PlaylistBar(p['title']?.toString() ?? 'Playlist', playlistData: p),
+      ),
     ];
   }
 }

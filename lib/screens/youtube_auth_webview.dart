@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/main.dart' show logger;
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/youtube_auth_service.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -47,9 +47,11 @@ class _YouTubeAuthWebViewState extends State<YouTubeAuthWebView> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(
-        'https://accounts.google.com/ServiceLogin?service=youtube&continue=https://music.youtube.com/',
-      ));
+      ..loadRequest(
+        Uri.parse(
+          'https://accounts.google.com/ServiceLogin?service=youtube&continue=https://music.youtube.com/',
+        ),
+      );
   }
 
   bool _isCompleting = false;
@@ -70,11 +72,16 @@ class _YouTubeAuthWebViewState extends State<YouTubeAuthWebView> {
 
       final cookiesMap = <String, String>{};
 
-      for (final cookie in [...googleCookies, ...youtubeCookies, ...musicCookies]) {
+      for (final cookie in [
+        ...googleCookies,
+        ...youtubeCookies,
+        ...musicCookies,
+      ]) {
         cookiesMap[cookie.name] = cookie.value;
       }
 
-      final hasRequired = cookiesMap.containsKey('SAPISID') ||
+      final hasRequired =
+          cookiesMap.containsKey('SAPISID') ||
           cookiesMap.containsKey('__Secure-3PAPISID');
       if (hasRequired) {
         _isCompleting = true;
@@ -104,9 +111,7 @@ class _YouTubeAuthWebViewState extends State<YouTubeAuthWebView> {
           children: [
             WebViewWidget(controller: _controller),
             if (_isLoading)
-              const Center(
-                child: CupertinoActivityIndicator(radius: 14),
-              ),
+              const Center(child: CupertinoActivityIndicator(radius: 14)),
           ],
         ),
       ),

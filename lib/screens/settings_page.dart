@@ -1,10 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:musified/main.dart';
 import 'package:musified/constants/version.dart';
 import 'package:musified/screens/youtube_auth_webview.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/data_manager.dart';
 import 'package:musified/services/settings_manager.dart';
@@ -25,8 +26,9 @@ class SettingsPage extends StatelessWidget {
       valueListenable: usePureBlackColor,
       builder: (context, _, __) {
         final isDark = isAppDarkMode(context);
-        final navBarColor =
-            isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
+        final navBarColor = isDark
+            ? const Color(0xB3121214)
+            : const Color(0xB3FFFFFF);
         final scaffoldBg = musifiedCanvas(isDark);
 
         return CupertinoPageScaffold(
@@ -57,8 +59,10 @@ class SettingsPage extends StatelessWidget {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -141,10 +145,7 @@ class SettingsPage extends StatelessWidget {
               ),
               if (isDark) ...[
                 const SizedBox(height: 12),
-                Container(
-                  height: 0.5,
-                  color: const Color(0x26FFFFFF),
-                ),
+                Container(height: 0.5, color: const Color(0x26FFFFFF)),
                 const SizedBox(height: 10),
                 ValueListenableBuilder<bool>(
                   valueListenable: usePureBlackColor,
@@ -176,7 +177,13 @@ class SettingsPage extends StatelessWidget {
                           onChanged: (val) {
                             HapticFeedback.selectionClick();
                             usePureBlackColor.value = val;
-                            unawaited(addOrUpdateData('settings', 'usePureBlackColor', val));
+                            unawaited(
+                              addOrUpdateData(
+                                'settings',
+                                'usePureBlackColor',
+                                val,
+                              ),
+                            );
                           },
                         ),
                       ],
@@ -265,7 +272,9 @@ class SettingsPage extends StatelessWidget {
                 color: cardBg,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0A000000),
+                  color: isDark
+                      ? const Color(0x1FFFFFFF)
+                      : const Color(0x0A000000),
                   width: 0.8,
                 ),
               ),
@@ -329,7 +338,9 @@ class SettingsPage extends StatelessWidget {
             HapticFeedback.selectionClick();
             Navigator.push(
               context,
-              CupertinoPageRoute(builder: (context) => const YouTubeAuthWebView()),
+              CupertinoPageRoute(
+                builder: (context) => const YouTubeAuthWebView(),
+              ),
             );
           },
           child: const Text(
@@ -515,15 +526,17 @@ class SettingsPage extends StatelessWidget {
                         next = 'auto';
                       }
                       preferredSource.value = next;
-                      unawaited(addOrUpdateData('settings', 'preferredSource', next));
+                      unawaited(
+                        addOrUpdateData('settings', 'preferredSource', next),
+                      );
                       if (isAudioHandlerInitialized) {
                         audioHandler.clearPinnedSources();
                       }
                       final toastLabel = next == 'youtube'
                           ? 'YouTube Music'
                           : next == 'auto'
-                              ? 'Auto (Saavn match → YouTube)'
-                              : 'JioSaavn 320k Lossless';
+                          ? 'Auto (Saavn match → YouTube)'
+                          : 'JioSaavn 320k Lossless';
                       showToast(context, 'Default provider: $toastLabel');
                     },
                     isDark: isDark,
@@ -568,7 +581,9 @@ class SettingsPage extends StatelessWidget {
                     onChanged: (val) {
                       HapticFeedback.selectionClick();
                       jiosaavnEnabled.value = val;
-                      unawaited(addOrUpdateData('settings', 'jiosaavnEnabled', val));
+                      unawaited(
+                        addOrUpdateData('settings', 'jiosaavnEnabled', val),
+                      );
                     },
                     isDark: isDark,
                   );
@@ -587,7 +602,13 @@ class SettingsPage extends StatelessWidget {
                     onChanged: (val) {
                       HapticFeedback.selectionClick();
                       playNextSongAutomatically.value = val;
-                      unawaited(addOrUpdateData('settings', 'playNextSongAutomatically', val));
+                      unawaited(
+                        addOrUpdateData(
+                          'settings',
+                          'playNextSongAutomatically',
+                          val,
+                        ),
+                      );
                     },
                     isDark: isDark,
                   );
@@ -606,7 +627,9 @@ class SettingsPage extends StatelessWidget {
                     onChanged: (val) {
                       HapticFeedback.selectionClick();
                       offlineMode.value = val;
-                      unawaited(addOrUpdateData('settings', 'offlineMode', val));
+                      unawaited(
+                        addOrUpdateData('settings', 'offlineMode', val),
+                      );
                     },
                     isDark: isDark,
                   );
@@ -649,7 +672,8 @@ class SettingsPage extends StatelessWidget {
                 onTap: () async {
                   HapticFeedback.mediumImpact();
                   await clearAllCache();
-                  if (context.mounted) showToast(context, 'Audio cache cleared');
+                  if (context.mounted)
+                    showToast(context, 'Audio cache cleared');
                 },
                 isDark: isDark,
               ),
@@ -664,7 +688,8 @@ class SettingsPage extends StatelessWidget {
                   await deleteData('user', 'searchHistory');
                   await deleteData('user', 'recentlyPlayed');
                   userRecentlyPlayed.value = [];
-                  if (context.mounted) showToast(context, 'Search & recent history cleared');
+                  if (context.mounted)
+                    showToast(context, 'Search & recent history cleared');
                 },
                 isDark: isDark,
               ),

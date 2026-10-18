@@ -5,14 +5,14 @@ import 'package:flutter/widgets.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:musified/constants/clients.dart';
-import 'package:musified/main.dart' show logger;
 import 'package:musified/services/artist_service.dart' show ytMusicClient;
 import 'package:musified/services/data_manager.dart';
 import 'package:musified/services/download_transfer.dart';
 import 'package:musified/services/io_service.dart';
+import 'package:musified/services/library_state.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/lyrics_manager.dart';
 import 'package:musified/services/offline_song_registry.dart';
-import 'package:musified/services/playlists_manager.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/services/source_resolver.dart';
 import 'package:musified/services/youtube_auth_service.dart';
@@ -25,48 +25,14 @@ import 'package:musified/utilities/formatter.dart';
 import 'package:musified/utilities/track_matcher.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
-T _safeUserGet<T>(String key, T defaultValue) {
-  try {
-    if (!Hive.isBoxOpen('user')) return defaultValue;
-    final v = Hive.box('user').get(key, defaultValue: defaultValue);
-    if (v is T) return v;
-    return defaultValue;
-  } catch (_) {
-    return defaultValue;
-  }
-}
-
-T _safeUserNoBackupGet<T>(String key, T defaultValue) {
-  try {
-    if (!Hive.isBoxOpen('userNoBackup')) return defaultValue;
-    final v = Hive.box('userNoBackup').get(key, defaultValue: defaultValue);
-    if (v is T) return v;
-    return defaultValue;
-  } catch (_) {
-    return defaultValue;
-  }
-}
-
-ValueNotifier<List> userLikedSongsList = ValueNotifier<List>(
-  _safeUserGet<List>('likedSongs', []),
-);
-
-ValueNotifier<List> userRecentlyPlayed = ValueNotifier<List>(
-  _safeUserGet<List>('recentlyPlayedSongs', []),
-);
-
-final trendingSongs = ValueNotifier<List>([]);
-final trendingError = ValueNotifier<String?>(null);
-
-ValueNotifier<List> userOfflineSongs = ValueNotifier<List>(
-  _safeUserNoBackupGet<List>('offlineSongs', []),
-);
+export 'package:musified/services/library_state.dart';
 
 final Set<String> _likedSongIdsSet = {
   ...userLikedSongsList.value
       .map((s) => s['ytid']?.toString() ?? '')
       .where((id) => id.isNotEmpty),
 };
+List? _offlineSongIdsSnapshot;
 final Set<String> _offlineSongIdsSet = {
   ...userOfflineSongs.value
       .map((s) => s['ytid']?.toString() ?? '')
@@ -84,6 +50,7 @@ void _syncLikedSongIdsSet() {
 }
 
 void _syncOfflineSongIdsSet() {
+  _offlineSongIdsSnapshot = userOfflineSongs.value;
   _offlineSongIdsSet
     ..clear()
     ..addAll(
@@ -595,7 +562,7 @@ bool isPlaylistAlreadyLiked(playlistIdToCheck) {
 bool isSongAlreadyOffline(songIdToCheck) {
   final songId = songIdToCheck?.toString();
   if (songId == null || songId.isEmpty) return false;
-  if (_offlineSongIdsSet.isEmpty && userOfflineSongs.value.isNotEmpty) {
+  if (!identical(_offlineSongIdsSnapshot, userOfflineSongs.value)) {
     _syncOfflineSongIdsSet();
   }
   return _offlineSongIdsSet.contains(songId);
@@ -603,7 +570,7 @@ bool isSongAlreadyOffline(songIdToCheck) {
 
 bool isPlaylistFullyOffline(List songs) {
   if (songs.isEmpty) return false;
-  if (_offlineSongIdsSet.isEmpty && userOfflineSongs.value.isNotEmpty) {
+  if (!identical(_offlineSongIdsSnapshot, userOfflineSongs.value)) {
     _syncOfflineSongIdsSet();
   }
   return songs.every(
@@ -623,7 +590,10 @@ bool _isPlayableAudioFile(String? path) {
   }
 }
 
-Map<String, dynamic> getOfflineSongByYtid(String ytid) {
+Map<String, dynamic> getOfflineSongByYtid(
+  String ytid, {
+  bool verifyFiles = true,
+}) {
   try {
     if (ytid.isEmpty) return <String, dynamic>{};
 
@@ -642,6 +612,12 @@ Map<String, dynamic> getOfflineSongByYtid(String ytid) {
     // stored path. This keeps offline playback working across app updates.
     // A Hive miss still counts as playable if the file is on disk.
     final currentAudioPath = FilePaths.getAudioPath(ytid);
+    if (!verifyFiles) {
+      if (result['audioPath'] != null) result['audioPath'] = currentAudioPath;
+      if (result['artworkPath'] != null)
+        result['artworkPath'] = FilePaths.getArtworkPath(ytid);
+      return result;
+    }
     if (_isPlayableAudioFile(currentAudioPath)) {
       result
         ..['audioPath'] = currentAudioPath

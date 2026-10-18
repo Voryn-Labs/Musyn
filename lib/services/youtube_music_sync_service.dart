@@ -5,9 +5,9 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/main.dart' show logger;
-import 'package:musified/services/common_services.dart';
 import 'package:musified/services/data_manager.dart';
+import 'package:musified/services/library_state.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/services/youtube_auth_service.dart';
 import 'package:musified/utilities/youtube_playlist_parser.dart';
@@ -118,7 +118,7 @@ class YouTubeMusicSyncService {
 
     final response = await http
         .post(
-          Uri.parse('$_baseUrl$endpoint'),
+          Uri.parse('$_baseUrl/${endpoint.replaceFirst(RegExp(r"^/+"), "")}'),
           headers: headers,
           body: jsonEncode(fullBody),
         )
@@ -557,19 +557,35 @@ class YouTubeMusicSyncService {
   }
 
   Future<bool> addVideoToPlaylist(String playlistId, String videoId) async {
-    if (!_isValidYouTubeVideoId(videoId)) return false;
+    return await addVideosToPlaylist(playlistId, [videoId]) == 1;
+  }
+
+  Future<int> addVideosToPlaylist(
+    String playlistId,
+    List<String> videoIds,
+  ) async {
+    if (videoIds.isEmpty || videoIds.any((id) => !_isValidYouTubeVideoId(id)))
+      return 0;
     final cleanId = _normalizePlaylistIdForMutation(playlistId);
+    if (cleanId.isEmpty) return 0;
+    var added = 0;
     try {
-      await _authenticatedPost('browse/edit_playlist', {
-        'playlistId': cleanId,
-        'actions': [
-          {'action': 'ACTION_ADD_VIDEO', 'addedVideoId': videoId},
-        ],
-      });
-      return true;
+      final unique = videoIds.toSet().toList();
+      for (var start = 0; start < unique.length; start += 50) {
+        final end = (start + 50).clamp(0, unique.length);
+        await _authenticatedPost('/browse/edit_playlist', {
+          'playlistId': cleanId,
+          'actions': [
+            for (final videoId in unique.sublist(start, end))
+              {'action': 'ACTION_ADD_VIDEO', 'addedVideoId': videoId},
+          ],
+        });
+        added += end - start;
+      }
+      return added;
     } catch (e) {
       logger.log('Error adding video to YT Music playlist: $e');
-      return false;
+      return added;
     }
   }
 
@@ -582,7 +598,7 @@ class YouTubeMusicSyncService {
         if (videoId != null && _isValidYouTubeVideoId(videoId))
           'videoIds': [videoId],
       };
-      final response = await _authenticatedPost('playlist/create', body);
+      final response = await _authenticatedPost('/playlist/create', body);
       final id = response['playlistId']?.toString();
       if (id == null || id.isEmpty) return null;
       return id;

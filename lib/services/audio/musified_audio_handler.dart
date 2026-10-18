@@ -7,7 +7,6 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/main.dart';
 import 'package:musified/models/full_player_state.dart';
 import 'package:musified/models/position_data.dart';
 import 'package:musified/services/audio/audio_browse_catalog.dart';
@@ -18,8 +17,9 @@ import 'package:musified/services/audio/audio_playback_install.dart';
 import 'package:musified/services/audio/audio_queue_controller.dart';
 import 'package:musified/services/audio/audio_queue_state.dart';
 import 'package:musified/services/audio/latest_queue_navigator.dart';
+import 'package:musified/services/audio/playback_controller.dart';
 import 'package:musified/services/common_services.dart';
-
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/flutter_toast.dart';
@@ -27,11 +27,11 @@ import 'package:musified/utilities/map_utils.dart';
 import 'package:musified/utilities/mediaitem.dart';
 import 'package:rxdart/rxdart.dart';
 
-class MusifiedAudioHandler extends BaseAudioHandler {
-  MusifiedAudioHandler() {
+class MusifiedAudioHandler extends PlaybackController {
+  MusifiedAudioHandler({AudioPlayer? player}) {
     // This handler owns interruption intent. A second automatic listener in
     // just_audio can resume after a call even when the user pressed Pause.
-    audioPlayer = AudioPlayer(handleInterruptions: false);
+    audioPlayer = player ?? AudioPlayer(handleInterruptions: false);
     _playback = AudioPlaybackCoordinator(
       audioPlayer: audioPlayer,
       offlineTransitionTimeout: _offlineTransitionTimeout,
@@ -42,6 +42,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     _initialize();
   }
 
+  @override
   late final AudioPlayer audioPlayer;
 
   Timer? _sleepTimer;
@@ -72,9 +73,11 @@ class MusifiedAudioHandler extends BaseAudioHandler {
   DateTime _stallMark = DateTime.now();
 
   /// Shared playing indicator for list tiles (avoids per-row mediaItem streams).
+  @override
   final ValueNotifier<String?> currentPlayingYtid = ValueNotifier<String?>(
     null,
   );
+  @override
   final ValueNotifier<int> queueItemCount = ValueNotifier<int>(0);
   String? _lastPublishedMediaSignature;
   int? _eagerPreparedForNextIndex;
@@ -145,6 +148,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
           })
           .asBroadcastStream();
 
+  @override
   Stream<PositionData> get positionDataStream => _positionDataStream;
 
   late final Stream<PlaybackState> _playbackStateStream = playbackState
@@ -166,6 +170,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
   Stream<PlaybackState> get playbackStateStream => _playbackStateStream;
 
   /// Single cached combine so mini-player rebuilds do not recreate subscriptions.
+  @override
   late final Stream<FullPlayerState> fullPlayerStateStream =
       Rx.combineLatest4(
             playbackStateStream,
@@ -331,26 +336,6 @@ class MusifiedAudioHandler extends BaseAudioHandler {
             ),
       )
       ..add(
-        audioPlayer.currentIndexStream.distinct().listen(
-          (index) {
-            if (!_playback.gaplessSourceActive || index == null || index <= 0)
-              return;
-            if (_currentLoadingTransitionId >= 0 ||
-                _playback.sourceSwitchInFlight)
-              return;
-            final newQueueIndex = _playback.gaplessBaseQueueIndex + index;
-            if (newQueueIndex != _hub.queue.currentIndex &&
-                newQueueIndex >= 0 &&
-                newQueueIndex < _hub.queue.items.length) {
-              _syncQueueIndexFromGaplessAdvance(newQueueIndex);
-            }
-          },
-          onError: (error, stackTrace) {
-            _logStreamError('Current index stream error', error, stackTrace);
-          },
-        ),
-      )
-      ..add(
         Rx.combineLatest2(
               audioPlayer.currentIndexStream.distinct(),
               audioPlayer.sequenceStateStream.distinct(),
@@ -373,6 +358,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> dispose() async {
+    _navigator.cancel();
     _stallWatch?.cancel();
     _stallWatch = null;
     for (final sub in _subscriptions) {
@@ -480,30 +466,6 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     currentPlayingYtid.value = null;
   }
 
-  Future<String?> _resolveNextStreamUrl(Map nextSong) async {
-    return _hub.preload.resolveNextStreamUrl(
-      nextSong,
-      offlineModeEnabled: offlineMode.value,
-      loadInProgress: _currentLoadingTransitionId >= 0,
-    );
-  }
-
-  GaplessInstallContext _gaplessContext() {
-    final nextIndex = _hub.queue.currentIndex + 1;
-    return GaplessInstallContext(
-      offlineModeEnabled: offlineMode.value,
-      repeatOne: repeatNotifier.value == AudioServiceRepeatMode.one,
-      currentIndex: _hub.queue.currentIndex,
-      queueLength: _hub.queue.items.length,
-      nextSong: nextIndex < _hub.queue.items.length
-          ? _hub.queue.items[nextIndex]
-          : null,
-      currentSongTitle: currentSong?['title']?.toString(),
-      hasPlayableOfflineFile: hasPlayableOfflineFile,
-      resolveNextStreamUrl: _resolveNextStreamUrl,
-    );
-  }
-
   Future<bool> _installPlayback({
     required Map song,
     required AudioSource audioSource,
@@ -519,7 +481,6 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       audioSource: audioSource,
       songUrl: songUrl,
       isOffline: isOffline,
-      gaplessCtx: _gaplessContext(),
       isStale: _isStaleTransition,
       logPlayer: _logPlayer,
       offlineModeEnabled: () => offlineMode.value,
@@ -614,15 +575,8 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     return ProcessingCompletedContext(
       loadInProgress: _currentLoadingTransitionId >= 0,
       sourceSwitchInFlight: _playback.sourceSwitchInFlight,
-      gaplessSourceActive: _playback.gaplessSourceActive,
-      gaplessBaseQueueIndex: _playback.gaplessBaseQueueIndex,
-      playerIndex: audioPlayer.currentIndex ?? 0,
-      sequenceLength: audioPlayer.sequence.length,
-      queueLength: _hub.queue.items.length,
       sleepTimerEndOfSong: sleepTimerEndOfSong,
       sleepTimerExpired: sleepTimerExpired,
-      syncGaplessAdvance: _syncQueueIndexFromGaplessAdvance,
-      clearGaplessActive: () => _playback.gaplessSourceActive = false,
       onSleepTimerEndOfSong: () {
         sleepTimerExpired = true;
         sleepTimerEndOfSong = false;
@@ -639,7 +593,6 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       position: position,
       sleepTimerExpired: sleepTimerExpired,
       lastInstalledWasClipped: _playback.lastInstalledWasClipped,
-      gaplessSourceActive: _playback.gaplessSourceActive,
       loadInProgress: _currentLoadingTransitionId >= 0,
       sourceSwitchInFlight: _playback.sourceSwitchInFlight,
       playerPlaying: audioPlayer.playing,
@@ -652,21 +605,6 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       triggerCompleted: () =>
           _handleProcessingStateChange(ProcessingState.completed),
       prepareNextTrack: _eagerlyPrepareNextTrack,
-    );
-  }
-
-  void _syncQueueIndexFromGaplessAdvance(int newIndex) {
-    if (newIndex < 0 || newIndex >= _hub.queue.items.length) return;
-    _hub.queue.currentIndex = newIndex;
-    _playback.gaplessSourceActive = false;
-    _publishMediaItem(
-      _getMediaItemForQueue(_hub.queue.items[newIndex]),
-      force: true,
-    );
-    _updatePlaybackState();
-    _preloadUpcomingSongs();
-    logger.log(
-      'Gapless advance → queue index $newIndex (${_hub.queue.items[newIndex]['title']})',
     );
   }
 
@@ -1020,14 +958,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
 
   void _addToHistory(Map song) {
     try {
-      _hub.queue.history.insert(0, cloneMap(song));
-
-      if (_hub.queue.history.length > AudioQueueState.maxHistorySize) {
-        _hub.queue.history.removeRange(
-          AudioQueueState.maxHistorySize,
-          _hub.queue.history.length,
-        );
-      }
+      _hub.queue.addToHistory(cloneMap(song));
     } catch (e, stackTrace) {
       logger.log('Error adding to history', error: e, stackTrace: stackTrace);
     }
@@ -1035,6 +966,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
 
   // --- Queue (via hub) ---
 
+  @override
   Future<void> addToQueue(Map song, {bool playNext = false}) async {
     try {
       if (!AudioQueueController.isValidSong(song)) {
@@ -1057,6 +989,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
 
   /// Play a song tapped outside the queue (search, lists). Replaces the queue
   /// with this track or jumps to it if already queued so skip/next stay aligned.
+  @override
   Future<void> playSingleSong(Map song) async {
     _navigator.cancel();
     final selection = ++_selectionRevision;
@@ -1161,6 +1094,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     });
   }
 
+  @override
   Future<void> addPlaylistToQueue(
     List<Map> songs, {
     bool replace = false,
@@ -1199,7 +1133,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
               song['resolvedSource'] == 'youtube') {
             song['catalogOrigin'] = 'youtube';
           }
-          _hub.queue.items.add(_hub.queue.entryIds.createSong(song));
+          _hub.queueOps.append(song);
 
           if (replace && startIndex == i) {
             targetQueueIndex = _hub.queue.items.length - 1;
@@ -1237,37 +1171,46 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  String? _pendingNavigationEntryId() {
+    final target =
+        _navCursor ??
+        (_currentLoadingTransitionId >= 0 ? _hub.queue.loadingIndex : null);
+    if (target == null || !_hub.queue.containsIndex(target)) return null;
+    return _hub.queue.entryIds.ensureId(_hub.queue.items[target]);
+  }
+
+  Future<void> _resumePendingNavigation(String? entryId) async {
+    if (entryId == null) return;
+    final index = _hub.queue.items.indexWhere(
+      (song) => song['queueEntryId'] == entryId,
+    );
+    if (index >= 0) await _requestQueueIndex(index);
+  }
+
+  @override
   Future<void> removeFromQueue(int index) async {
     try {
-      final removedQueueEntryId = _hub.queueOps.removeAt(index);
-      if (removedQueueEntryId == null) return;
-
-      if (shuffleNotifier.value && _hub.queue.originalItems.isNotEmpty) {
-        _hub.queue.originalItems.removeWhere(
-          (s) => _hub.queue.entryIds.ensureId(s) == removedQueueEntryId,
-        );
-      }
-
-      if (index == _hub.queue.loadingIndex) {
-        _currentLoadingTransitionId = -1;
-      }
-
+      if (!_hub.queue.containsIndex(index)) return;
+      final pendingId = _pendingNavigationEntryId();
       final wasCurrent = index == _hub.queue.currentIndex;
+      _navigator.cancel();
+      final removedQueueEntryId = _hub.queueOps.removeAt(index);
+      _hub.queue.originalItems.removeWhere(
+        (song) => _hub.queue.entryIds.ensureId(song) == removedQueueEntryId,
+      );
       _hub.queueOps.adjustIndicesAfterRemove(index);
-
-      if (wasCurrent) {
-        if (_hub.queue.items.isEmpty) {
-          await stop();
-        } else {
-          if (_hub.queue.currentIndex >= _hub.queue.items.length) {
-            _hub.queue.currentIndex = _hub.queue.items.length - 1;
-          }
-          await _playFromQueue(_hub.queue.currentIndex);
-        }
+      if (_hub.queue.items.isEmpty) {
+        await stop();
+      } else if (wasCurrent) {
+        _hub.queue.currentIndex = index.clamp(0, _hub.queue.items.length - 1);
       }
-
       _hydrateQueueEntryIds();
       _updateQueueMediaItems();
+      if (pendingId != null && pendingId != removedQueueEntryId) {
+        await _resumePendingNavigation(pendingId);
+      } else if (wasCurrent && _hub.queue.items.isNotEmpty) {
+        await _requestQueueIndex(_hub.queue.currentIndex);
+      }
     } catch (e, stackTrace) {
       logger.log('Error removing from queue', error: e, stackTrace: stackTrace);
     }
@@ -1280,33 +1223,30 @@ class MusifiedAudioHandler extends BaseAudioHandler {
 
   Future<void> reorderQueue(int oldIndex, int newIndex) async {
     try {
+      final pendingId = _pendingNavigationEntryId();
       if (!_hub.queueOps.reorder(oldIndex, newIndex)) return;
+      if (pendingId != null) _navigator.cancel();
       _updateQueueMediaItems();
+      await _resumePendingNavigation(pendingId);
     } catch (e, stackTrace) {
       logger.log('Error reordering queue', error: e, stackTrace: stackTrace);
     }
   }
 
-  Future<void> reorderQueueById(String queueEntryId, int targetIndex) async {
-    try {
-      if (!_hub.queueOps.reorderById(queueEntryId, targetIndex)) return;
-      _updateQueueMediaItems();
-    } catch (e, stackTrace) {
-      logger.log(
-        'Error reordering queue by id',
-        error: e,
-        stackTrace: stackTrace,
-      );
-    }
-  }
-
+  @override
   void clearQueue() {
     try {
-      final currentClone =
-          _hub.queue.currentIndex >= 0 &&
-              _hub.queue.currentIndex < _hub.queue.items.length
-          ? cloneMap(_hub.queue.items[_hub.queue.currentIndex])
+      final audibleId = mediaItem.valueOrNull?.id;
+      final audibleIndex = _hub.queue.items.indexWhere(
+        (song) => song['queueEntryId'] == audibleId,
+      );
+      final keepIndex = audibleIndex >= 0
+          ? audibleIndex
+          : _hub.queue.currentIndex;
+      final currentClone = _hub.queue.containsIndex(keepIndex)
+          ? cloneMap(_hub.queue.items[keepIndex])
           : null;
+      _navigator.cancel();
 
       _hub.queueOps.clearKeepingCurrent(currentClone: currentClone);
       _currentLoadingTransitionId = -1;
@@ -1487,8 +1427,6 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       logger.log('Invalid queue index: $index');
       return false;
     }
-
-    _playback.gaplessSourceActive = false;
 
     // If already loading any song, skip the request
     // UNLESS we're in the middle of handling a completion event (allow one load attempt)
@@ -1709,7 +1647,9 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  @override
   Stream<List<Map>> get queueAsMapStream => _queueMapStream.stream;
+  @override
   int get currentQueueIndex => _hub.queue.currentIndex;
   Map? get currentSong =>
       _hub.queue.currentIndex >= 0 &&
@@ -1717,10 +1657,12 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       ? _hub.queue.items[_hub.queue.currentIndex]
       : null;
 
+  @override
   bool get hasNext =>
       _hub.queue.currentIndex < _hub.queue.items.length - 1 ||
       repeatNotifier.value == AudioServiceRepeatMode.all;
 
+  @override
   bool get hasPrevious =>
       _hub.queue.currentIndex > 0 || _hub.queue.history.isNotEmpty;
 
@@ -2055,6 +1997,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
 
   /// iOS suspends AVPlayer / deactivates the session when the app is
   /// backgrounded. UI can still show playing=true with a drifting position.
+  @override
   Future<void> resyncAfterForeground() async {
     _logPlayer(
       'App resumed — restoring audio session',
@@ -2169,6 +2112,8 @@ class MusifiedAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> pause() async {
+    _stallWatch?.cancel();
+    _stallWatch = null;
     try {
       _userPaused = true;
       _playbackWanted = false;
@@ -2301,6 +2246,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
   }
 
   /// Clears per-track source overrides so global preferredSource applies again.
+  @override
   void clearPinnedSources() {
     for (final song in _hub.queue.items) {
       song.remove('forceSource');
@@ -2323,9 +2269,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       _currentLoadingTransitionId = effectiveTransitionId;
       _hub.queue.markLoading(
         _hub.queue.items.indexWhere(
-          (candidate) =>
-              candidate['queueEntryId'] == song['queueEntryId'] ||
-              candidate['ytid']?.toString() == song['ytid']?.toString(),
+          (candidate) => AudioQueueController.matchesEntry(candidate, song),
         ),
         song,
       );
@@ -2399,9 +2343,8 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       // the source/quality metadata follows the track between services.
       final queueSong = _hub.queue.items.cast<Map?>().firstWhere(
         (candidate) =>
-            candidate?['queueEntryId'] == song['queueEntryId'] ||
-            (song['queueEntryId'] == null &&
-                candidate?['ytid']?.toString() == songData['ytid']?.toString()),
+            candidate != null &&
+            AudioQueueController.matchesEntry(candidate, song),
         orElse: () => null,
       );
       songData['isOffline'] = playback.isOffline;
@@ -2482,6 +2425,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
   /// request when the track isn't on the requested provider), or null on
   /// failure. The chosen source is persisted onto the queue entry so pausing,
   /// resuming, or re-selecting the track keeps the user's choice.
+  @override
   Future<String?> switchSource(String source) async {
     if (source != 'youtube' && source != 'jiosaavn' && source != 'offline') {
       return null;
@@ -2558,9 +2502,8 @@ class MusifiedAudioHandler extends BaseAudioHandler {
 
       final queueSong = _hub.queue.items.cast<Map?>().firstWhere(
         (candidate) =>
-            candidate?['queueEntryId'] == song['queueEntryId'] ||
-            (song['queueEntryId'] == null &&
-                candidate?['ytid']?.toString() == ytid),
+            candidate != null &&
+            AudioQueueController.matchesEntry(candidate, song),
         orElse: () => null,
       );
 
@@ -2600,10 +2543,12 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  @override
   Future<void> playNext(Map song) async {
     await addToQueue(song, playNext: true);
   }
 
+  @override
   Future<void> playPlaylistSong({
     Map<dynamic, dynamic>? playlist,
     required int songIndex,
@@ -2621,6 +2566,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  @override
   Future<void> skipToSong(int newIndex) async {
     try {
       if (newIndex < 0 || newIndex >= _hub.queue.items.length) {
@@ -2682,7 +2628,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       if (base > 0) {
         await _requestQueueIndex(base - 1);
       } else if (_hub.queue.history.isNotEmpty && _navCursor == null) {
-        final lastSong = cloneMap(_hub.queue.history.removeLast());
+        final lastSong = cloneMap(_hub.queue.history.removeAt(0));
         _hub.queue.items.insert(0, lastSong);
         _hub.queue.currentIndex = 0;
         _updateQueueMediaItems();
@@ -2699,6 +2645,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  @override
   Future<void> playAgain() async {
     try {
       await seek(Duration.zero);
@@ -2720,79 +2667,6 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
-  Map<Map, String> _buildIdMap(List<Map> songs) {
-    return {for (final song in songs) song: _hub.queue.entryIds.ensureId(song)};
-  }
-
-  void _enableShuffle(
-    List<Map> unplayedManualSongs,
-    Set<String> manualSongIds,
-  ) {
-    _hub.queue.originalItems
-      ..clear()
-      ..addAll(cloneMaps(_hub.queue.items));
-
-    final currentSong = _hub.queue.items[_hub.queue.currentIndex];
-    final currentQueueEntryId = _hub.queue.entryIds.ensureId(currentSong);
-
-    final queueIdMap = _buildIdMap(_hub.queue.items);
-    _hub.queue.items
-      ..removeWhere((song) => manualSongIds.contains(queueIdMap[song]))
-      ..shuffle();
-
-    final newCurrentIndex = _hub.queue.items.indexWhere(
-      (song) => _hub.queue.entryIds.ensureId(song) == currentQueueEntryId,
-    );
-
-    if (newCurrentIndex != -1 && newCurrentIndex != 0) {
-      _hub.queue.items
-        ..removeAt(newCurrentIndex)
-        ..insert(0, currentSong);
-    }
-
-    _hub.queue.items.insertAll(
-      _hub.queue.items.isNotEmpty ? 1 : 0,
-      unplayedManualSongs,
-    );
-
-    _hub.queue.currentIndex = 0;
-    _updateQueueMediaItems();
-  }
-
-  void _disableShuffle(
-    List<Map> unplayedManualSongs,
-    Set<String> manualSongIds,
-  ) {
-    if (_hub.queue.originalItems.isEmpty) return;
-
-    final currentSong = _hub.queue.items[_hub.queue.currentIndex];
-    final currentQueueEntryId = _hub.queue.entryIds.ensureId(currentSong);
-
-    final restoredQueue = cloneMaps(_hub.queue.originalItems);
-    final restoredQueueIdMap = _buildIdMap(restoredQueue);
-    restoredQueue.removeWhere(
-      (song) => manualSongIds.contains(restoredQueueIdMap[song]),
-    );
-
-    _hub.queue.items
-      ..clear()
-      ..addAll(restoredQueue);
-
-    _hub.queue.currentIndex = _hub.queue.items.indexWhere(
-      (song) => _hub.queue.entryIds.ensureId(song) == currentQueueEntryId,
-    );
-
-    if (_hub.queue.currentIndex == -1) {
-      _hub.queue.currentIndex = 0;
-    }
-
-    final insertIndex = _hub.queue.currentIndex + 1;
-    _hub.queue.items.insertAll(insertIndex, unplayedManualSongs);
-
-    _hub.queue.originalItems.clear();
-    _updateQueueMediaItems();
-  }
-
   @override
   Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
     try {
@@ -2804,6 +2678,8 @@ class MusifiedAudioHandler extends BaseAudioHandler {
       await audioPlayer.setShuffleModeEnabled(shuffleEnabled);
 
       if (_hub.queue.items.isEmpty) return;
+      final pendingId = _pendingNavigationEntryId();
+      if (pendingId != null) _navigator.cancel();
 
       if (shuffleEnabled && !wasShuffled) {
         _hydrateQueueEntryIds();
@@ -2811,15 +2687,18 @@ class MusifiedAudioHandler extends BaseAudioHandler {
         final manualSongIds = unplayedManualSongs
             .map(_hub.queue.entryIds.ensureId)
             .toSet();
-        _enableShuffle(unplayedManualSongs, manualSongIds);
+        _hub.queueOps.enableShuffle(unplayedManualSongs, manualSongIds);
+        _updateQueueMediaItems();
       } else if (!shuffleEnabled && wasShuffled) {
         _hydrateQueueEntryIds();
         final unplayedManualSongs = _getUnplayedManualSongs();
         final manualSongIds = unplayedManualSongs
             .map(_hub.queue.entryIds.ensureId)
             .toSet();
-        _disableShuffle(unplayedManualSongs, manualSongIds);
+        _hub.queueOps.disableShuffle(unplayedManualSongs, manualSongIds);
+        _updateQueueMediaItems();
       }
+      await _resumePendingNavigation(pendingId);
     } catch (e, stackTrace) {
       logger.log(
         'Error setting shuffle mode',
@@ -2843,6 +2722,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  @override
   Future<void> setSleepTimer(Duration duration) async {
     try {
       _sleepTimer?.cancel();
@@ -2859,6 +2739,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  @override
   void cancelSleepTimer() {
     try {
       _sleepTimer?.cancel();
@@ -2875,6 +2756,7 @@ class MusifiedAudioHandler extends BaseAudioHandler {
     }
   }
 
+  @override
   Future<void> setSleepTimerEndOfSong() async {
     try {
       _sleepTimer?.cancel();

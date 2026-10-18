@@ -1,6 +1,5 @@
-import 'package:musified/utilities/map_utils.dart';
-
 import 'package:musified/services/audio/audio_queue_state.dart';
+import 'package:musified/utilities/map_utils.dart';
 
 /// Pure queue list mutations — no playback, no streams.
 /// Handler owns [AudioQueueState] and calls these for predictable queue edits.
@@ -12,6 +11,80 @@ class AudioQueueController {
   static bool isValidSong(Map song) {
     final ytid = song['ytid']?.toString();
     return ytid != null && ytid.isNotEmpty;
+  }
+
+  static bool matchesEntry(Map candidate, Map requested) {
+    final entryId = requested['queueEntryId'];
+    if (entryId != null) return candidate['queueEntryId'] == entryId;
+    final ytid = requested['ytid']?.toString();
+    return ytid != null &&
+        ytid.isNotEmpty &&
+        candidate['ytid']?.toString() == ytid;
+  }
+
+  void append(Map song) {
+    final entry = state.entryIds.createSong(song);
+    state.items.add(entry);
+    if (state.originalItems.isNotEmpty) {
+      state.originalItems.add(cloneMap(entry));
+    }
+  }
+
+  /// Preserve every queue occurrence, including tracks added while shuffled.
+  void enableShuffle(List<Map> manualSongs, Set<String> manualIds) {
+    if (state.items.isEmpty) return;
+    state.entryIds.ensureIds(state.items);
+    state.originalItems
+      ..clear()
+      ..addAll(cloneMaps(state.items));
+    final current = state.currentSong ?? state.items.first;
+    final currentId = state.entryIds.ensureId(current);
+    state.items
+      ..removeWhere((song) => manualIds.contains(song['queueEntryId']))
+      ..shuffle();
+    final index = state.items.indexWhere(
+      (song) => song['queueEntryId'] == currentId,
+    );
+    if (index > 0) {
+      state.items
+        ..removeAt(index)
+        ..insert(0, current);
+    }
+    state.items.insertAll(state.items.isEmpty ? 0 : 1, manualSongs);
+    state.currentIndex = state.items.indexWhere(
+      (song) => song['queueEntryId'] == currentId,
+    );
+    if (state.currentIndex < 0) state.currentIndex = 0;
+  }
+
+  void disableShuffle(List<Map> manualSongs, Set<String> manualIds) {
+    if (state.items.isEmpty || state.originalItems.isEmpty) return;
+    state.entryIds.ensureIds(state.items);
+    final current = state.currentSong ?? state.items.first;
+    final currentId = state.entryIds.ensureId(current);
+    final restored = cloneMaps(state.originalItems);
+    final originalIds = restored.map(state.entryIds.ensureId).toSet();
+    for (final song in state.items) {
+      if (originalIds.add(state.entryIds.ensureId(song)))
+        restored.add(cloneMap(song));
+    }
+    restored.removeWhere((song) => manualIds.contains(song['queueEntryId']));
+    state.items
+      ..clear()
+      ..addAll(restored);
+    state.currentIndex = state.items.indexWhere(
+      (song) => song['queueEntryId'] == currentId,
+    );
+    if (state.currentIndex < 0) state.currentIndex = 0;
+    state.items.insertAll(
+      (state.currentIndex + 1).clamp(0, state.items.length),
+      manualSongs,
+    );
+    state.currentIndex = state.items.indexWhere(
+      (song) => song['queueEntryId'] == currentId,
+    );
+    if (state.currentIndex < 0) state.currentIndex = 0;
+    state.originalItems.clear();
   }
 
   int insertIndexForAdd({required bool playNext}) {
@@ -83,9 +156,11 @@ class AudioQueueController {
 
     if (oldIndex == state.currentIndex) {
       state.currentIndex = newIndex;
-    } else if (oldIndex < state.currentIndex && newIndex >= state.currentIndex) {
+    } else if (oldIndex < state.currentIndex &&
+        newIndex >= state.currentIndex) {
       shiftCurrent(-1);
-    } else if (oldIndex > state.currentIndex && newIndex <= state.currentIndex) {
+    } else if (oldIndex > state.currentIndex &&
+        newIndex <= state.currentIndex) {
       shiftCurrent(1);
     }
 
@@ -135,27 +210,6 @@ class AudioQueueController {
     }
     state.items.insert(insertIndex, song);
     adjustIndicesAfterReorder(oldIndex, insertIndex);
-    return true;
-  }
-
-  bool reorderById(String queueEntryId, int targetIndex) {
-    state.entryIds.ensureIds(state.items);
-
-    final oldIndex = state.items.indexWhere(
-      (s) => state.entryIds.ensureId(s) == queueEntryId,
-    );
-    if (oldIndex == -1) return false;
-
-    if (targetIndex < 0) targetIndex = 0;
-    if (targetIndex > state.items.length) targetIndex = state.items.length;
-
-    final song = state.items.removeAt(oldIndex);
-    var newIndex = targetIndex;
-    if (oldIndex < newIndex) newIndex--;
-    if (newIndex < 0) newIndex = 0;
-    if (newIndex > state.items.length) newIndex = state.items.length;
-    state.items.insert(newIndex, song);
-    adjustIndicesAfterReorder(oldIndex, newIndex);
     return true;
   }
 }

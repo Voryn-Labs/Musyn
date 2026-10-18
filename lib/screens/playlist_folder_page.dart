@@ -79,7 +79,11 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(CupertinoIcons.trash, size: 20, color: CupertinoColors.destructiveRed),
+                Icon(
+                  CupertinoIcons.trash,
+                  size: 20,
+                  color: CupertinoColors.destructiveRed,
+                ),
                 SizedBox(width: 8),
                 Text('Delete Folder'),
               ],
@@ -98,18 +102,24 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final navBarColor = isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
+    final navBarColor = isDark
+        ? const Color(0xB3121214)
+        : const Color(0xB3FFFFFF);
 
     return ValueListenableBuilder<List>(
       valueListenable: userPlaylistFolders,
       builder: (context, _, __) {
         final isOffline = offlineMode.value;
         final playlists = isOffline
-            ? getPlaylistsInFolder(widget.folderId).where(PlaylistUtils.isPlaylistOffline).toList()
+            ? getPlaylistsInFolder(
+                widget.folderId,
+              ).where(PlaylistUtils.isPlaylistOffline).toList()
             : getPlaylistsInFolder(widget.folderId);
 
         return CupertinoPageScaffold(
-          backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
+          backgroundColor: isDark
+              ? const Color(0xFF000000)
+              : const Color(0xFFFFFFFF),
           navigationBar: CupertinoNavigationBar(
             middle: Text(
               _folderName,
@@ -126,7 +136,9 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
             ),
             border: Border(
               bottom: BorderSide(
-                color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
+                color: isDark
+                    ? const Color(0x26FFFFFF)
+                    : const Color(0x1F000000),
                 width: 0.5,
               ),
             ),
@@ -134,7 +146,9 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
           child: SafeArea(
             bottom: false,
             child: CustomScrollView(
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
@@ -186,22 +200,24 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
                   SliverPadding(
                     padding: commonListViewBottomPadding,
                     sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final playlist = playlists[index];
-                          final borderRadius = getItemBorderRadius(index, playlists.length);
-                          return PlaylistBar(
-                            key: ValueKey('folder_playlist_${playlist['ytid']}_$index'),
-                            playlist['title'],
-                            playlistId: playlist['ytid'],
-                            playlistArtwork: playlist['image'],
-                            playlistData: playlist,
-                            onDelete: () => _showRemovePlaylistDialog(playlist),
-                            borderRadius: borderRadius,
-                          );
-                        },
-                        childCount: playlists.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final playlist = playlists[index];
+                        final borderRadius = getItemBorderRadius(
+                          index,
+                          playlists.length,
+                        );
+                        return PlaylistBar(
+                          key: ValueKey(
+                            'folder_playlist_${playlist['ytid']}_$index',
+                          ),
+                          playlist['title'],
+                          playlistId: playlist['ytid'],
+                          playlistArtwork: playlist['image'],
+                          playlistData: playlist,
+                          onDelete: () => _showRemovePlaylistDialog(playlist),
+                          borderRadius: borderRadius,
+                        );
+                      }, childCount: playlists.length),
                     ),
                   ),
                 const SliverMiniPlayerBottomSpace(),
@@ -257,11 +273,11 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
     );
   }
 
-  void _showRenameFolderDialog() {
+  Future<void> _showRenameFolderDialog() async {
     var newName = _folderName;
     final controller = TextEditingController(text: newName);
 
-    showCupertinoDialog<void>(
+    await showCupertinoDialog<void>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Rename Folder'),
@@ -283,7 +299,11 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
             isDefaultAction: true,
             onPressed: () {
               Navigator.pop(ctx);
-              final result = renamePlaylistFolder(widget.folderId, newName, context);
+              final result = renamePlaylistFolder(
+                widget.folderId,
+                newName,
+                context,
+              );
               showToast(context, result);
               if (newName.trim().isNotEmpty) {
                 setState(() => _folderName = newName.trim());
@@ -294,6 +314,7 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
         ],
       ),
     );
+    controller.dispose();
   }
 
   void _showDeleteFolderDialog() {

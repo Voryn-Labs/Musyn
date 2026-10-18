@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musified/constants/app_constants.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
-import 'package:musified/services/router_service.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/theme/app_themes.dart';
-import 'package:musified/utilities/flutter_bottom_sheet.dart' show closeCurrentBottomSheet;
+import 'package:musified/utilities/flutter_bottom_sheet.dart'
+    show closeCurrentBottomSheet;
 import 'package:musified/widgets/mini_player.dart';
 
 class BottomNavigationPage extends StatefulWidget {
@@ -50,10 +50,17 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
           final isOfflineMode = offlineMode.value;
           final isDark = isAppDarkMode(context);
           const activeColor = Color(0xFFFF2D55);
-          final inactiveColor = isDark ? const Color(0x80FFFFFF) : const Color(0x80000000);
-          final barBg = isDark ? const Color(0xB3121214) : const Color(0xB3F2F2F7);
-          final border = isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000);
-          if (_previousOfflineMode != null && _previousOfflineMode != isOfflineMode) {
+          final inactiveColor = isDark
+              ? const Color(0x80FFFFFF)
+              : const Color(0x80000000);
+          final barBg = isDark
+              ? const Color(0xB3121214)
+              : const Color(0xB3F2F2F7);
+          final border = isDark
+              ? const Color(0x26FFFFFF)
+              : const Color(0x1F000000);
+          if (_previousOfflineMode != null &&
+              _previousOfflineMode != isOfflineMode) {
             SchedulerBinding.instance.addPostFrameCallback((_) {
               _handleOfflineModeChange(isOfflineMode);
             });
@@ -72,17 +79,22 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                     builder: (context, handlerReady, _) {
                       return StreamBuilder<bool>(
                         initialData: false,
-                        stream: handlerReady ? _miniPlayerVisibilityStream() : null,
+                        stream: handlerReady
+                            ? _miniPlayerVisibilityStream()
+                            : null,
                         builder: (context, snapshot) {
                           final mediaQuery = MediaQuery.of(context);
                           final isMiniPlayerVisible = snapshot.data ?? false;
                           final bottomPadding = isMiniPlayerVisible
-                              ? mediaQuery.padding.bottom + miniPlayerTotalHeight
+                              ? mediaQuery.padding.bottom +
+                                    miniPlayerTotalHeight
                               : mediaQuery.padding.bottom + 54;
 
                           return MediaQuery(
                             data: mediaQuery.copyWith(
-                              padding: mediaQuery.padding.copyWith(bottom: bottomPadding),
+                              padding: mediaQuery.padding.copyWith(
+                                bottom: bottomPadding,
+                              ),
                             ),
                             child: widget.child,
                           );
@@ -107,10 +119,15 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                           child: Container(
                             decoration: BoxDecoration(
                               color: barBg,
-                              border: Border(top: BorderSide(color: border, width: 0.5)),
+                              border: Border(
+                                top: BorderSide(color: border, width: 0.5),
+                              ),
                             ),
                             child: CupertinoTabBar(
-                              currentIndex: _getCurrentIndex(items, isOfflineMode),
+                              currentIndex: _getCurrentIndex(
+                                items,
+                                isOfflineMode,
+                              ),
                               onTap: (index) => _onTabTapped(index, items),
                               activeColor: activeColor,
                               inactiveColor: inactiveColor,
@@ -182,7 +199,7 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
 
   void _handleOfflineModeChange(bool isOfflineMode) {
     if (!mounted) return;
-    NavigationManager.refreshRouter();
+    GoRouter.of(context).refresh();
     final currentRoute = GoRouterState.of(context).matchedLocation;
     if (isOfflineMode && currentRoute.startsWith('/search')) {
       widget.child.goBranch(0);
@@ -208,7 +225,9 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   int _getCurrentIndex(List<_NavigationItem> items, bool isOfflineMode) {
     final currentShellIndex = widget.child.currentIndex;
     if (items.isEmpty) return 0;
-    final matchedIndex = items.indexWhere((item) => item.shellIndex == currentShellIndex);
+    final matchedIndex = items.indexWhere(
+      (item) => item.shellIndex == currentShellIndex,
+    );
     if (matchedIndex != -1) return matchedIndex;
     if (isOfflineMode && currentShellIndex == 1) return 0;
     return 0;

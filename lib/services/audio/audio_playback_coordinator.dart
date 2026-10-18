@@ -3,41 +3,18 @@ import 'dart:io';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/main.dart';
 import 'package:musified/services/audio/audio_playback_install.dart';
 import 'package:musified/services/audio/playback_source.dart';
 import 'package:musified/services/common_services.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/async_operation_queue.dart';
 
 typedef PlaybackLogFn =
     void Function(String message, {Map<String, Object?>? extra});
 
-/// Gapless install inputs — handler builds from hub queue state.
-class GaplessInstallContext {
-  const GaplessInstallContext({
-    required this.offlineModeEnabled,
-    required this.repeatOne,
-    required this.currentIndex,
-    required this.queueLength,
-    required this.nextSong,
-    required this.currentSongTitle,
-    required this.hasPlayableOfflineFile,
-    required this.resolveNextStreamUrl,
-  });
-
-  final bool offlineModeEnabled;
-  final bool repeatOne;
-  final int currentIndex;
-  final int queueLength;
-  final Map? nextSong;
-  final String? currentSongTitle;
-  final bool Function(String ytid) hasPlayableOfflineFile;
-  final Future<String?> Function(Map song) resolveNextStreamUrl;
-}
-
 /// Resolves URLs, builds sources, and installs them in [audioPlayer].
-/// No queue/preload imports — handler passes cache maps and gapless context.
+/// No queue imports — the handler passes source metadata and callbacks.
 class AudioPlaybackCoordinator {
   AudioPlaybackCoordinator({
     required this.audioPlayer,
@@ -54,16 +31,12 @@ class AudioPlaybackCoordinator {
   bool lastInstalledWasOffline = false;
   bool lastInstalledWasClipped = false;
   int? installedSourceTransitionId;
-  bool gaplessSourceActive = false;
-  int gaplessBaseQueueIndex = 0;
   String? lastError;
 
   void resetInstallState() {
     lastInstalledWasOffline = false;
     lastInstalledWasClipped = false;
     installedSourceTransitionId = null;
-    gaplessSourceActive = false;
-    gaplessBaseQueueIndex = 0;
     lastError = null;
   }
 
@@ -77,7 +50,6 @@ class AudioPlaybackCoordinator {
   /// session alive) until `setAudioSources([newSource])` atomically replaces
   /// it. No overlap, no gap, no session death.
   Future<void> detachCurrentStream() async {
-    gaplessSourceActive = false;
     installedSourceTransitionId = null;
     if (audioPlayer.audioSource == null) return;
     try {
@@ -367,23 +339,11 @@ class AudioPlaybackCoordinator {
     return PlaybackSource(songUrl: songUrl, isOffline: false);
   }
 
-  Future<AudioSource> maybeAppendGaplessNext(
-    AudioSource current,
-    bool isOffline,
-    GaplessInstallContext ctx,
-  ) async {
-    // Gapless concat is disabled: mixed offline/youtube queues and doubled
-    // AVPlayer durations caused wrong track ends and -1004 load failures.
-    gaplessSourceActive = false;
-    return current;
-  }
-
   Future<bool> setAudioSourceAndPlay({
     required Map song,
     required AudioSource audioSource,
     required String songUrl,
     required bool isOffline,
-    required GaplessInstallContext gaplessCtx,
     required bool Function(int?) isStale,
     required PlaybackLogFn logPlayer,
     required bool Function() offlineModeEnabled,
@@ -404,7 +364,6 @@ class AudioPlaybackCoordinator {
         audioSource: audioSource,
         songUrl: songUrl,
         isOffline: isOffline,
-        gaplessCtx: gaplessCtx,
         isStale: isStale,
         logPlayer: logPlayer,
         offlineModeEnabled: offlineModeEnabled,
@@ -427,7 +386,6 @@ class AudioPlaybackCoordinator {
     required AudioSource audioSource,
     required String songUrl,
     required bool isOffline,
-    required GaplessInstallContext gaplessCtx,
     required bool Function(int?) isStale,
     required PlaybackLogFn logPlayer,
     required bool Function() offlineModeEnabled,
@@ -466,9 +424,7 @@ class AudioPlaybackCoordinator {
       // loaded onto a live AVPlayer item returns -1004). Do it only after the
       // next URL is already resolved, then keep the session active across the
       // swap. Natural completion must NOT call stop().
-      if (!gaplessSourceActive &&
-          !atNaturalEnd &&
-          audioPlayer.audioSource != null) {
+      if (!atNaturalEnd && audioPlayer.audioSource != null) {
         await detachCurrentStream();
         if (isStale(transitionId)) return false;
         try {
@@ -479,11 +435,7 @@ class AudioPlaybackCoordinator {
         }
       }
 
-      final installSource = await maybeAppendGaplessNext(
-        audioSource,
-        isOffline,
-        gaplessCtx,
-      );
+      final installSource = audioSource;
 
       final needsHardReset = isOffline || lastInstalledWasOffline;
 
@@ -496,7 +448,6 @@ class AudioPlaybackCoordinator {
           'host': urlHost,
           'clip': audioSource is ClippingAudioSource,
           'hardReset': needsHardReset,
-          'gapless': gaplessSourceActive,
           'preload': true,
         },
       );
@@ -607,7 +558,6 @@ class AudioPlaybackCoordinator {
 
         return attemptOfflineFallback(
           song: song,
-          gaplessCtx: gaplessCtx,
           isStale: isStale,
           logPlayer: logPlayer,
           offlineModeEnabled: offlineModeEnabled,
@@ -651,7 +601,6 @@ class AudioPlaybackCoordinator {
                 audioSource: refreshedSource,
                 songUrl: refreshedUrl,
                 isOffline: false,
-                gaplessCtx: gaplessCtx,
                 isStale: isStale,
                 logPlayer: logPlayer,
                 offlineModeEnabled: offlineModeEnabled,
@@ -688,7 +637,6 @@ class AudioPlaybackCoordinator {
   }
 
   Future<void> _recoverPlayerAfterLoadFailure() async {
-    gaplessSourceActive = false;
     installedSourceTransitionId = null;
     lastInstalledWasOffline = false;
     lastInstalledWasClipped = false;
@@ -703,7 +651,6 @@ class AudioPlaybackCoordinator {
 
   Future<bool> attemptOfflineFallback({
     required Map song,
-    required GaplessInstallContext gaplessCtx,
     required bool Function(int?) isStale,
     required PlaybackLogFn logPlayer,
     required bool Function() offlineModeEnabled,
@@ -735,7 +682,6 @@ class AudioPlaybackCoordinator {
           audioSource: onlineSource,
           songUrl: onlineUrl,
           isOffline: false,
-          gaplessCtx: gaplessCtx,
           isStale: isStale,
           logPlayer: logPlayer,
           offlineModeEnabled: offlineModeEnabled,

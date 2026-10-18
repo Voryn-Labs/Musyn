@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';
 import 'package:musified/widgets/confirmation_dialog.dart';
@@ -49,7 +49,7 @@ class _QueueWidgetState extends State<QueueWidget> {
 
   void _scrollToCurrentSong() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
+      if (!mounted || !_scrollController.hasClients) return;
       final currentIndex = audioHandler.currentQueueIndex;
       if (currentIndex <= 0) return;
       const estimatedItemHeight = 60.0;
@@ -180,7 +180,13 @@ class _QueueWidgetState extends State<QueueWidget> {
             CupertinoButton(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               onPressed: () => _confirmClearQueue(context),
-              child: const Text('Clear', style: TextStyle(color: CupertinoColors.destructiveRed, fontSize: 14)),
+              child: const Text(
+                'Clear',
+                style: TextStyle(
+                  color: CupertinoColors.destructiveRed,
+                  fontSize: 14,
+                ),
+              ),
             ),
         ],
       ),
@@ -310,7 +316,8 @@ class _QueueTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = song['title']?.toString() ?? 'Track';
     final artist = song['artist']?.toString() ?? 'Artist';
-    final image = song['image']?.toString() ?? song['lowResImage']?.toString() ?? '';
+    final image =
+        song['image']?.toString() ?? song['lowResImage']?.toString() ?? '';
     final isLocalFile = image.startsWith('/') || image.startsWith('file://');
     final activeColor = const Color(0xFFFF2D55);
     final titleColor = isCurrentSong
@@ -341,17 +348,19 @@ class _QueueTile extends StatelessWidget {
                       ? Image.file(
                           File(image.replaceFirst('file://', '')),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const NullArtworkWidget(iconSize: 18, size: 44),
+                          errorBuilder: (_, __, ___) =>
+                              const NullArtworkWidget(iconSize: 18, size: 44),
                         )
                       : image.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: image,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 88,
-                              memCacheHeight: 88,
-                              errorWidget: (_, __, ___) => const NullArtworkWidget(iconSize: 18, size: 44),
-                            )
-                          : const NullArtworkWidget(iconSize: 18, size: 44),
+                      ? CachedNetworkImage(
+                          imageUrl: image,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 88,
+                          memCacheHeight: 88,
+                          errorWidget: (_, __, ___) =>
+                              const NullArtworkWidget(iconSize: 18, size: 44),
+                        )
+                      : const NullArtworkWidget(iconSize: 18, size: 44),
                 ),
               ),
               const SizedBox(width: 12),
@@ -365,7 +374,9 @@ class _QueueTile extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: MusifiedStyle.uiFont,
                         fontSize: 14,
-                        fontWeight: isCurrentSong ? FontWeight.w700 : FontWeight.w600,
+                        fontWeight: isCurrentSong
+                            ? FontWeight.w700
+                            : FontWeight.w600,
                         color: titleColor,
                         decoration: TextDecoration.none,
                       ),
@@ -390,7 +401,11 @@ class _QueueTile extends StatelessWidget {
               CupertinoButton(
                 padding: const EdgeInsets.all(8),
                 onPressed: onRemove,
-                child: const Icon(CupertinoIcons.xmark, size: 16, color: CupertinoColors.systemGrey),
+                child: const Icon(
+                  CupertinoIcons.xmark,
+                  size: 16,
+                  color: CupertinoColors.systemGrey,
+                ),
               ),
             ],
           ),

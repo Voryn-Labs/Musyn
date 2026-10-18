@@ -48,11 +48,26 @@ class SongArtworkWidget extends StatelessWidget {
     final rawArtUri = metadata.artUri?.toString();
     final isValidUri =
         rawArtUri != null && rawArtUri.isNotEmpty && rawArtUri != 'null';
-    final fallbackUrl = 'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
     final imageUrl = upgradeArtworkUrl(
-      resolvedUrl ?? (isValidUri ? rawArtUri : fallbackUrl),
+      resolvedUrl ?? (isValidUri ? rawArtUri : ''),
       targetSize: cacheDimension,
     );
+    final networkArtwork = imageUrl.isEmpty || imageUrl.startsWith('file:')
+        ? NullArtworkWidget(iconSize: errorWidgetIconSize, size: size)
+        : CachedNetworkImage(
+            key: ValueKey('${metadata.id}:$imageUrl'),
+            width: size,
+            height: size,
+            imageUrl: imageUrl,
+            memCacheWidth: cacheDimension,
+            memCacheHeight: cacheDimension,
+            fadeInDuration: const Duration(milliseconds: 300),
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            placeholder: (_, __) => const Spinner(),
+            errorWidget: (_, __, ___) =>
+                NullArtworkWidget(iconSize: errorWidgetIconSize, size: size),
+          );
 
     return metadata.artUri?.scheme == 'file'
         ? SizedBox(
@@ -72,6 +87,7 @@ class SongArtworkWidget extends StatelessWidget {
                 alignment: Alignment.center,
                 cacheWidth: cacheDimension,
                 cacheHeight: cacheDimension,
+                errorBuilder: (_, __, ___) => networkArtwork,
               ),
             ),
           )
@@ -80,22 +96,7 @@ class SongArtworkWidget extends StatelessWidget {
             height: size,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(borderRadius),
-              child: CachedNetworkImage(
-                key: ValueKey('${metadata.id}:$imageUrl'),
-                width: size,
-                height: size,
-                imageUrl: imageUrl,
-                memCacheWidth: cacheDimension,
-                memCacheHeight: cacheDimension,
-                fadeInDuration: const Duration(milliseconds: 300),
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-                placeholder: (_, __) => const Spinner(),
-                errorWidget: (_, __, ___) => NullArtworkWidget(
-                  iconSize: errorWidgetIconSize,
-                  size: size,
-                ),
-              ),
+              child: networkArtwork,
             ),
           );
   }

@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/main.dart' show logger;
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/flutter_toast.dart';
@@ -10,7 +10,9 @@ class LogsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final navBarColor = isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
+    final navBarColor = isDark
+        ? const Color(0xB3121214)
+        : const Color(0xB3FFFFFF);
     final textStyle = TextStyle(
       fontFamily: 'Menlo',
       fontSize: 12,
@@ -19,7 +21,9 @@ class LogsPage extends StatelessWidget {
     );
 
     return CupertinoPageScaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
+      backgroundColor: isDark
+          ? const Color(0xFF000000)
+          : const Color(0xFFFFFFFF),
       navigationBar: CupertinoNavigationBar(
         middle: const Text(
           'Diagnostic Logs',
@@ -49,7 +53,11 @@ class LogsPage extends StatelessWidget {
             CupertinoButton(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               onPressed: logger.clearLogs,
-              child: const Icon(CupertinoIcons.trash, size: 20, color: CupertinoColors.destructiveRed),
+              child: const Icon(
+                CupertinoIcons.trash,
+                size: 20,
+                color: CupertinoColors.destructiveRed,
+              ),
             ),
           ],
         ),
@@ -71,7 +79,8 @@ class LogsPage extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               physics: const BouncingScrollPhysics(),
               itemCount: lines.length,
-              itemBuilder: (context, index) => Text(lines[index], style: textStyle),
+              itemBuilder: (context, index) =>
+                  Text(lines[index], style: textStyle),
             );
           },
         ),

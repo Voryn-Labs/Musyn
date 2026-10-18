@@ -4,9 +4,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musified/constants/app_constants.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
+import 'package:musified/models/playlist_sort_type.dart';
 import 'package:musified/services/artist_service.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/data_manager.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/playlist_download_service.dart';
 import 'package:musified/services/playlist_sharing.dart';
 import 'package:musified/services/playlists_manager.dart';
@@ -28,8 +30,6 @@ import 'package:musified/widgets/playlist_page/playlist_action_buttons.dart';
 import 'package:musified/widgets/playlist_page/playlist_header.dart';
 import 'package:musified/widgets/song_tile.dart';
 import 'package:musified/widgets/sort_chips.dart';
-
-enum PlaylistSortType { default_, title, artist, dateAdded }
 
 class PlaylistPage extends StatefulWidget {
   const PlaylistPage({
@@ -155,7 +155,9 @@ class _PlaylistPageState extends State<PlaylistPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final navBarColor = isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
+    final navBarColor = isDark
+        ? const Color(0xB3121214)
+        : const Color(0xB3FFFFFF);
 
     return CupertinoPageScaffold(
       backgroundColor: musifiedCanvas(isDark),
@@ -182,72 +184,74 @@ class _PlaylistPageState extends State<PlaylistPage> {
         child: _isInitializingPlaylist
             ? const Center(child: CupertinoActivityIndicator(radius: 14))
             : _playlist != null
-                ? CustomScrollView(
-                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                    slivers: [
-                      SliverToBoxAdapter(child: _buildHeaderSection()),
-                      if ((_playlist['list'] as List? ?? const []).isNotEmpty) ...[
-                        ValueListenableBuilder<String>(
-                          valueListenable: _searchQueryNotifier,
-                          builder: (context, searchQuery, _) {
-                            final sourceList = _getSourceList(searchQuery);
-                            return SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  final isRemovable = _playlist['source'] == 'user-created';
-                                  return _buildSongListItem(
-                                    sourceList[index] as Map,
-                                    index,
-                                    isRemovable,
-                                    sourceList,
-                                  );
-                                },
-                                childCount: sourceList.length,
-                              ),
+            ? CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                slivers: [
+                  SliverToBoxAdapter(child: _buildHeaderSection()),
+                  if ((_playlist['list'] as List? ?? const []).isNotEmpty) ...[
+                    ValueListenableBuilder<String>(
+                      valueListenable: _searchQueryNotifier,
+                      builder: (context, searchQuery, _) {
+                        final sourceList = _getSourceList(searchQuery);
+                        return SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final isRemovable =
+                                _playlist['source'] == 'user-created';
+                            return _buildSongListItem(
+                              sourceList[index] as Map,
+                              index,
+                              isRemovable,
+                              sourceList,
                             );
-                          },
-                        ),
-                      ] else if (_isArtistCatalogFailed)
-                        EmptyPlaylistState(message: context.l10n.error)
-                      else
-                        EmptyPlaylistState(
-                          message: context.l10n.noSongsInPlaylist,
-                        ),
-                      const SliverMiniPlayerBottomSpace(),
-                    ],
-                  )
-                : Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            CupertinoIcons.list_bullet,
-                            size: 56,
-                            color: CupertinoColors.systemGrey,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            context.l10n.error,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: MusifiedStyle.uiFont,
-                              color: CupertinoColors.systemGrey,
-                              fontSize: 15,
-                              decoration: TextDecoration.none,
-                            ),
-                          ),
-                        ],
-                      ),
+                          }, childCount: sourceList.length),
+                        );
+                      },
                     ),
+                  ] else if (_isArtistCatalogFailed)
+                    EmptyPlaylistState(message: context.l10n.error)
+                  else
+                    EmptyPlaylistState(message: context.l10n.noSongsInPlaylist),
+                  const SliverMiniPlayerBottomSpace(),
+                ],
+              )
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        CupertinoIcons.list_bullet,
+                        size: 56,
+                        color: CupertinoColors.systemGrey,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        context.l10n.error,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: MusifiedStyle.uiFont,
+                          color: CupertinoColors.systemGrey,
+                          fontSize: 15,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+              ),
       ),
     );
   }
 
   String get _playlistTitle {
-    final rawTitle = _playlist?['title']?.toString() ??
+    final rawTitle =
+        _playlist?['title']?.toString() ??
         widget.playlistData?['title']?.toString() ??
         '';
     return widget.isArtist ? normalizeArtistDisplayTitle(rawTitle) : rawTitle;
@@ -308,10 +312,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
         ),
         if (songsLength > 0)
           PlaylistActionButtons(
-            onPlay: () => audioHandler.playPlaylistSong(
-              playlist: playlist,
-              songIndex: 0,
-            ),
+            onPlay: () =>
+                audioHandler.playPlaylistSong(playlist: playlist, songIndex: 0),
             onShuffle: () async {
               final songs = playlist['list'] as List? ?? [];
               if (songs.isEmpty) return;
@@ -411,7 +413,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
           }
         }
       },
-      child: const Icon(CupertinoIcons.share, size: 20, color: Color(0xFFFF2D55)),
+      child: const Icon(
+        CupertinoIcons.share,
+        size: 20,
+        color: Color(0xFFFF2D55),
+      ),
     );
   }
 
@@ -422,7 +428,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
       color: musifiedSecondarySurface(isDark),
       borderRadius: BorderRadius.circular(22),
       onPressed: _handleSyncPlaylist,
-      child: const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: Color(0xFFFF2D55)),
+      child: const Icon(
+        CupertinoIcons.arrow_2_circlepath,
+        size: 20,
+        color: Color(0xFFFF2D55),
+      ),
     );
   }
 
@@ -511,7 +521,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
           showToast(context, 'Playlist updated');
         }
       },
-      child: const Icon(CupertinoIcons.pencil, size: 20, color: Color(0xFFFF2D55)),
+      child: const Icon(
+        CupertinoIcons.pencil,
+        size: 20,
+        color: Color(0xFFFF2D55),
+      ),
     );
   }
 

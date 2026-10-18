@@ -1,8 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:musified/screens/playlist_page.dart';
-import 'package:musified/screens/user_songs_page.dart';
+import 'package:musified/models/playlist_sort_type.dart';
 import 'package:musified/utilities/language_utils.dart';
 
 T _safeBoxGet<T>(String key, T defaultValue) {
@@ -141,7 +140,7 @@ void reloadSettingsFromStorage() {
 
   playNextSongAutomatically.value = settings.get(
     'playNextSongAutomatically',
-    defaultValue: false,
+    defaultValue: true,
   );
   useSystemColor.value = settings.get('useSystemColor', defaultValue: true);
   usePureBlackColor.value = settings.get(
@@ -161,7 +160,7 @@ void reloadSettingsFromStorage() {
   );
   showAudioQualityBadge.value = settings.get(
     'showAudioQualityBadge',
-    defaultValue: false,
+    defaultValue: true,
   );
   final restoredThemeIndex =
       settings.get('themeIndex') ?? settings.get('themeMode') ?? 0;
@@ -211,6 +210,9 @@ void reloadSettingsFromStorage() {
   downloadQuality.value = settings.get('downloadQuality', defaultValue: '320');
 
   ytAutoSyncLikes.value = settings.get('ytAutoSyncLikes', defaultValue: true);
-  ytAutoSyncPlaylists.value = settings.get('ytAutoSyncPlaylists', defaultValue: true);
+  ytAutoSyncPlaylists.value = settings.get(
+    'ytAutoSyncPlaylists',
+    defaultValue: true,
+  );
   ytReportHistory.value = settings.get('ytReportHistory', defaultValue: true);
 }

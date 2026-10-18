@@ -1,8 +1,7 @@
-import 'package:musified/main.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/utilities/app_utils.dart';
-
 import 'package:musified/services/audio/audio_preload_cache.dart';
+import 'package:musified/services/common_services.dart';
+import 'package:musified/services/logger_service.dart';
+import 'package:musified/utilities/app_utils.dart';
 
 /// Stream URL preloading. Only talks to [AudioPreloadCache] + network helpers.
 /// Queue position/items are passed in by [AudioHandlerHub] — no queue imports.
@@ -12,24 +11,31 @@ class AudioPreloadService {
     this.lookahead = 1,
     this.maxConcurrent = 1,
     this.fetchTimeout = const Duration(seconds: 8),
+    this.fetchUrl,
   });
 
   final AudioPreloadCache cache;
   final int lookahead;
   final int maxConcurrent;
   final Duration fetchTimeout;
+  final Future<String?> Function(Map song)? fetchUrl;
+
+  Future<String?> _fetchUrl(Map song) => fetchUrl != null
+      ? fetchUrl!(song)
+      : fetchSongStreamUrl(song, song['isLive'] ?? false);
 
   void cleanupStaleForYtids(Set<String> activeQueueYtids) {
-    for (final ytid in cache.preloadedYtIds
-        .where((id) => !activeQueueYtids.contains(id))
-        .toList()) {
+    for (final ytid
+        in cache.preloadedYtIds
+            .where((id) => !activeQueueYtids.contains(id))
+            .toList()) {
       cache.drop(ytid);
     }
-    for (final ytid in cache.preloadingYtIds
-        .where((id) => !activeQueueYtids.contains(id))
-        .toList()) {
-      cache.preloadingYtIds.remove(ytid);
-      if (cache.activeCount > 0) cache.activeCount--;
+    for (final ytid
+        in cache.preloadingYtIds
+            .where((id) => !activeQueueYtids.contains(id))
+            .toList()) {
+      cache.drop(ytid);
     }
   }
 
@@ -88,38 +94,44 @@ class AudioPreloadService {
     required bool Function() isLoadInProgress,
   }) async {
     final ytid = nextSong['ytid']?.toString();
-    if (ytid == null || isLoadInProgress()) return;
+    if (ytid == null || offlineModeEnabled || isLoadInProgress()) return;
 
-    cache.preloadingYtIds.add(ytid);
-    cache.activeCount++;
+    final ticket = cache.begin(ytid, maxConcurrent: maxConcurrent);
+    if (ticket == null) return;
     String? preloadUrl;
+    var mayPublish = false;
+    final request = Future<String?>.sync(() => _fetchUrl(nextSong)).then(
+      (url) {
+        mayPublish = cache.finish(ytid, ticket);
+        return url;
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        cache.finish(ytid, ticket);
+        Error.throwWithStackTrace(error, stackTrace);
+      },
+    );
 
     try {
-      if (offlineModeEnabled) {
-        logger.log('Offline mode enabled; skipping preload for $ytid');
-      } else {
-        preloadUrl = await fetchSongStreamUrl(
-          nextSong,
-          nextSong['isLive'] ?? false,
-        ).timeout(
-          fetchTimeout,
-          onTimeout: () {
-            logger.log('Preload timeout for song $ytid');
-            return null;
-          },
-        );
-        if (isLoadInProgress()) {
-          logger.log('Preload aborted after fetch for $ytid');
-          preloadUrl = null;
-          return;
-        }
+      preloadUrl = await request.timeout(
+        fetchTimeout,
+        onTimeout: () {
+          logger.log('Preload timeout for song $ytid');
+          return null;
+        },
+      );
+      if (isLoadInProgress()) {
+        logger.log('Preload aborted after fetch for $ytid');
+        preloadUrl = null;
+        return;
       }
     } catch (e, stackTrace) {
-      logger.log('Error preloading song $ytid', error: e, stackTrace: stackTrace);
+      logger.log(
+        'Error preloading song $ytid',
+        error: e,
+        stackTrace: stackTrace,
+      );
     } finally {
-      cache.preloadingYtIds.remove(ytid);
-      if (cache.activeCount > 0) cache.activeCount--;
-      if (preloadUrl != null && preloadUrl.isNotEmpty) {
+      if (mayPublish && preloadUrl != null && preloadUrl.isNotEmpty) {
         final usableYoutube = isUsableYoutubePlaybackUrl(preloadUrl);
         final usableSaavn = isUsableJiosaavnPlaybackUrl(preloadUrl);
         if (usableYoutube || usableSaavn) {
@@ -133,9 +145,9 @@ class AudioPreloadService {
               'host': Uri.tryParse(preloadUrl)?.host ?? '-',
               'dur': usableYoutube
                   ? youtubeStreamDurationSeconds(
-                      Uri.parse(preloadUrl),
-                    )?.toString() ??
-                      '-'
+                          Uri.parse(preloadUrl),
+                        )?.toString() ??
+                        '-'
                   : '-',
             },
           );
@@ -143,69 +155,6 @@ class AudioPreloadService {
           logger.log('Preload URL unusable for $ytid (expired or invalid)');
         }
       }
-    }
-  }
-
-  Future<String?> resolveNextStreamUrl(
-    Map nextSong, {
-    required bool offlineModeEnabled,
-    required bool loadInProgress,
-  }) async {
-    final ytid = nextSong['ytid']?.toString();
-    if (ytid == null || ytid.isEmpty) return null;
-
-    final warmed = nextSong['_preloadedStreamUrl']?.toString();
-    if (warmed != null &&
-        warmed.isNotEmpty &&
-        streamUrlMatchesPreferredSource(warmed, nextSong)) {
-      return warmed;
-    }
-    if (warmed != null && warmed.isNotEmpty) {
-      nextSong.remove('_preloadedStreamUrl');
-    }
-
-    final cached = cache.streamUrls[ytid];
-    if (cached != null &&
-        cached.isNotEmpty &&
-        streamUrlMatchesPreferredSource(cached, nextSong)) {
-      return cached;
-    }
-    if (cached != null && cached.isNotEmpty) {
-      cache.drop(ytid);
-    }
-
-    if (offlineModeEnabled || loadInProgress) return null;
-
-    try {
-      final url = await fetchSongStreamUrl(
-        nextSong,
-        nextSong['isLive'] ?? false,
-      ).timeout(
-        fetchTimeout,
-        onTimeout: () {
-          logger.log('Gapless next URL fetch timed out for $ytid');
-          return null;
-        },
-      );
-      if (url != null &&
-          url.isNotEmpty &&
-          (isUsableYoutubePlaybackUrl(url) ||
-              isUsableJiosaavnPlaybackUrl(url))) {
-        cache.streamUrls[ytid] = url;
-        nextSong['_preloadedStreamUrl'] = url;
-        return url;
-      }
-      if (url != null && url.isNotEmpty) {
-        logger.log('Fetched next URL unusable for $ytid (expired or invalid)');
-      }
-      return null;
-    } catch (e, st) {
-      logger.log(
-        'Gapless next URL fetch failed for $ytid',
-        error: e,
-        stackTrace: st,
-      );
-      return null;
     }
   }
 }

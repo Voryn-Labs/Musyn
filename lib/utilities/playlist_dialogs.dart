@@ -20,15 +20,17 @@ void showCreatePlaylistDialog(
     context: context,
     builder: (ctx) {
       final isDark = isAppDarkMode(ctx);
-      final sheetColor =
-          isDark ? MusifiedStyle.elevated : MusifiedStyle.lightElevated;
-      final hairline =
-          isDark ? MusifiedStyle.hairline : MusifiedStyle.lightHairline;
+      final sheetColor = isDark
+          ? MusifiedStyle.elevated
+          : MusifiedStyle.lightElevated;
+      final hairline = isDark
+          ? MusifiedStyle.hairline
+          : MusifiedStyle.lightHairline;
       final primary = CupertinoTheme.of(ctx).primaryColor;
-      final labelColor =
-          isDark ? CupertinoColors.white : CupertinoColors.black;
-      final fieldFill =
-          isDark ? MusifiedStyle.surface : MusifiedStyle.lightSurfaceHigh;
+      final labelColor = isDark ? CupertinoColors.white : CupertinoColors.black;
+      final fieldFill = isDark
+          ? MusifiedStyle.surface
+          : MusifiedStyle.lightSurfaceHigh;
       final placeholderColor = isDark
           ? MusifiedStyle.tertiaryLabel
           : MusifiedStyle.lightTertiaryLabel;
@@ -240,8 +242,14 @@ void showCreatePlaylistDialog(
 
 void showAddToPlaylistDialog(
   BuildContext context, {
-  required dynamic song,
+  dynamic song,
+  List<Map>? songs,
 }) {
+  final entries = songs ?? (song is Map ? [song] : <Map>[]);
+  if (entries.isEmpty) {
+    showToast(context, 'No tracks to add');
+    return;
+  }
   final ytSync = YouTubeMusicSyncService();
   final ytAuth = YouTubeAuthService();
 
@@ -264,7 +272,7 @@ void showAddToPlaylistDialog(
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.pop(ctx);
-              showCreatePlaylistDialog(context, songToAdd: song);
+              showCreatePlaylistDialog(context, songsToAdd: entries);
             },
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -284,7 +292,7 @@ void showAddToPlaylistDialog(
                 Navigator.pop(ctx);
                 showCreateYouTubeMusicPlaylistDialog(
                   context,
-                  songToAdd: song is Map ? song : null,
+                  songsToAdd: entries,
                 );
               },
               child: const Row(
@@ -307,8 +315,12 @@ void showAddToPlaylistDialog(
               CupertinoActionSheetAction(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  if (song is Map && id.isNotEmpty) {
-                    final result = addSongInCustomPlaylist(context, id, song);
+                  if (id.isNotEmpty) {
+                    final result = addSongsInCustomPlaylist(
+                      context,
+                      id,
+                      entries,
+                    );
                     showToast(context, result);
                   }
                 },
@@ -327,11 +339,10 @@ void showAddToPlaylistDialog(
               CupertinoActionSheetAction(
                 onPressed: () async {
                   Navigator.pop(ctx);
-                  if (song is! Map) return;
-                  final result = await addSongToYouTubeMusicPlaylist(
+                  final result = await addSongsToYouTubeMusicPlaylist(
                     context,
                     id,
-                    song,
+                    entries,
                   );
                   if (context.mounted) {
                     showToast(context, result);
@@ -344,7 +355,11 @@ void showAddToPlaylistDialog(
         }
 
         return CupertinoActionSheet(
-          title: const Text('Add Track to Playlist'),
+          title: Text(
+            entries.length == 1
+                ? 'Add Track to Playlist'
+                : 'Add ${entries.length} Tracks to Playlist',
+          ),
           message: hasTargets
               ? null
               : const Text('Create a playlist to save this track'),
@@ -363,6 +378,7 @@ void showAddToPlaylistDialog(
 void showCreateYouTubeMusicPlaylistDialog(
   BuildContext context, {
   Map? songToAdd,
+  List<Map>? songsToAdd,
 }) {
   final nameController = TextEditingController();
   showCupertinoDialog<void>(
@@ -392,6 +408,7 @@ void showCreateYouTubeMusicPlaylistDialog(
               name,
               songToAdd,
               context,
+              songsToAdd: songsToAdd,
             );
             if (context.mounted) {
               showToast(context, result);

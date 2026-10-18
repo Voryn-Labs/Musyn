@@ -1,8 +1,9 @@
 import 'dart:ui' as ui;
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/main.dart';
 import 'package:musified/models/position_data.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/utilities/formatter.dart';
 import 'package:rxdart/rxdart.dart';
@@ -24,11 +25,12 @@ class _PositionSliderState extends State<PositionSlider> {
     Duration.zero,
   );
 
-  late final Stream<(MediaItem?, PositionData)> _sliderStream = Rx.combineLatest2(
-    audioHandler.mediaItem.distinct((a, b) => a?.id == b?.id),
-    audioHandler.positionDataStream,
-    (MediaItem? item, PositionData pos) => (item, pos),
-  );
+  late final Stream<(MediaItem?, PositionData)> _sliderStream =
+      Rx.combineLatest2(
+        audioHandler.mediaItem.distinct((a, b) => a?.id == b?.id),
+        audioHandler.positionDataStream,
+        (MediaItem? item, PositionData pos) => (item, pos),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -59,11 +61,12 @@ class _PositionSliderState extends State<PositionSlider> {
         final processingState =
             audioHandler.playbackState.valueOrNull?.processingState;
         final metadataDuration = mediaItem?.duration;
-        final displayDuration = (metadataDuration != null && metadataDuration > Duration.zero)
+        final displayDuration =
+            (metadataDuration != null && metadataDuration > Duration.zero)
             ? metadataDuration
             : (_positionData.duration > Duration.zero
-                ? _positionData.duration
-                : Duration.zero);
+                  ? _positionData.duration
+                  : Duration.zero);
         final displayPositionData = PositionData(
           processingState == AudioProcessingState.loading
               ? Duration.zero
@@ -90,7 +93,9 @@ class _PositionSliderState extends State<PositionSlider> {
               child: CupertinoSlider(
                 value: currentValue.clamp(0.0, maxDuration),
                 activeColor: const Color(0xFFFF2D55),
-                thumbColor: isDark ? CupertinoColors.white : CupertinoColors.black,
+                thumbColor: isDark
+                    ? CupertinoColors.white
+                    : CupertinoColors.black,
                 onChanged: (value) {
                   setState(() {
                     _isDragging = true;

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/logger_service.dart';
 
 /// Inputs for [AudioCompletionCoordinator.handleNearEndSkip].
 class NearEndSkipContext {
@@ -10,7 +10,6 @@ class NearEndSkipContext {
     required this.position,
     required this.sleepTimerExpired,
     required this.lastInstalledWasClipped,
-    required this.gaplessSourceActive,
     required this.loadInProgress,
     required this.sourceSwitchInFlight,
     required this.playerPlaying,
@@ -27,7 +26,6 @@ class NearEndSkipContext {
   final Duration position;
   final bool sleepTimerExpired;
   final bool lastInstalledWasClipped;
-  final bool gaplessSourceActive;
   final bool loadInProgress;
   final bool sourceSwitchInFlight;
   final bool playerPlaying;
@@ -36,26 +34,19 @@ class NearEndSkipContext {
   final Map? currentSong;
   final MediaItem? currentMediaItem;
   final Duration Function(Map song, MediaItem? item, Duration playerDuration)
-      canonicalDuration;
+  canonicalDuration;
   final Duration? Function(Map<String, dynamic>? extras) catalogFromExtras;
   final void Function() triggerCompleted;
   final void Function() prepareNextTrack;
 }
 
-/// Inputs for track-finished processing (gapless advance, sleep timer, queue).
+/// Inputs for track-finished processing (sleep timer and queue).
 class ProcessingCompletedContext {
   const ProcessingCompletedContext({
     required this.loadInProgress,
     required this.sourceSwitchInFlight,
-    required this.gaplessSourceActive,
-    required this.gaplessBaseQueueIndex,
-    required this.playerIndex,
-    required this.sequenceLength,
-    required this.queueLength,
     required this.sleepTimerEndOfSong,
     required this.sleepTimerExpired,
-    required this.syncGaplessAdvance,
-    required this.clearGaplessActive,
     required this.onSleepTimerEndOfSong,
     required this.onCompleteTrack,
     required this.logPlayer,
@@ -63,15 +54,8 @@ class ProcessingCompletedContext {
 
   final bool loadInProgress;
   final bool sourceSwitchInFlight;
-  final bool gaplessSourceActive;
-  final int gaplessBaseQueueIndex;
-  final int playerIndex;
-  final int sequenceLength;
-  final int queueLength;
   final bool sleepTimerEndOfSong;
   final bool sleepTimerExpired;
-  final void Function(int queueIndex) syncGaplessAdvance;
-  final void Function() clearGaplessActive;
   final void Function() onSleepTimerEndOfSong;
   final Future<void> Function() onCompleteTrack;
   final void Function(String message) logPlayer;
@@ -123,6 +107,7 @@ class PlaybackErrorContext {
   final Future<void> Function(String ytid) invalidateStreamCache;
   final void Function(String ytid) removePreloadedUrl;
   final Future<bool> Function(Map song) retryCurrentSong;
+
   /// Try the other provider (Saavn ↔ YouTube) once for the same song.
   final Future<bool> Function(Map song) tryAlternateSource;
   final Future<void> Function() skipToNext;
@@ -151,7 +136,8 @@ class AudioCompletionCoordinator {
   bool get isEventPendingFresh {
     if (!eventPending) return false;
     if (_eventPendingSince == null) return true;
-    return DateTime.now().difference(_eventPendingSince!) < _eventPendingTimeout;
+    return DateTime.now().difference(_eventPendingSince!) <
+        _eventPendingTimeout;
   }
 
   void reset() {
@@ -162,7 +148,9 @@ class AudioCompletionCoordinator {
     _eventPendingSince = null;
   }
 
-  void onProcessingStateReady({required void Function() clearSleepTimerExpired}) {
+  void onProcessingStateReady({
+    required void Function() clearSleepTimerExpired,
+  }) {
     eventPending = false;
     handlerLoadStarted = false;
     clearSleepTimerExpired();
@@ -200,19 +188,6 @@ class AudioCompletionCoordinator {
       return;
     }
 
-    if (ctx.gaplessSourceActive) {
-      if (ctx.playerIndex < ctx.sequenceLength - 1) {
-        final nextQueueIndex =
-            ctx.gaplessBaseQueueIndex + ctx.playerIndex + 1;
-        if (nextQueueIndex < ctx.queueLength) {
-          ctx.syncGaplessAdvance(nextQueueIndex);
-        }
-        eventPending = false;
-        return;
-      }
-      ctx.clearGaplessActive();
-    }
-
     ctx.logPlayer('processingState=completed');
     if (ctx.sleepTimerEndOfSong) {
       ctx.onSleepTimerEndOfSong();
@@ -245,7 +220,6 @@ class AudioCompletionCoordinator {
 
   void handleNearEndSkip(NearEndSkipContext ctx) {
     if (eventPending || ctx.sleepTimerExpired) return;
-    if (ctx.gaplessSourceActive) return;
     if (ctx.loadInProgress || ctx.sourceSwitchInFlight) return;
     if (!ctx.playerPlaying) return;
     if (ctx.processingState == ProcessingState.completed) return;
@@ -259,8 +233,7 @@ class AudioCompletionCoordinator {
       duration = ctx.canonicalDuration(song, ctx.currentMediaItem, duration);
     } else {
       final catalog = ctx.catalogFromExtras(ctx.currentMediaItem?.extras);
-      if (catalog != null &&
-          duration > catalog + const Duration(seconds: 5)) {
+      if (catalog != null && duration > catalog + const Duration(seconds: 5)) {
         duration = catalog;
       }
     }
@@ -309,6 +282,12 @@ class AudioCompletionCoordinator {
       if (!sleepTimerExpired && eventPending) {
         await onComplete();
       }
+    } catch (error, stackTrace) {
+      logger.log(
+        'Track completion failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
     } finally {
       if (eventPending) {
         eventPending = false;
@@ -344,10 +323,7 @@ class AudioCompletionCoordinator {
     await ctx.stopPlayback();
   }
 
-  void handlePlaybackError(
-    PlaybackErrorContext ctx, {
-    bool advance = true,
-  }) {
+  void handlePlaybackError(PlaybackErrorContext ctx, {bool advance = true}) {
     final now = DateTime.now();
     if (_lastPlaybackErrorAt != null &&
         now.difference(_lastPlaybackErrorAt!) > _errorWindow) {
@@ -367,14 +343,33 @@ class AudioCompletionCoordinator {
       );
       consecutiveErrors = 0;
       if (ctx.canRetryPlayback()) {
-        unawaited(ctx.skipToNext());
+        unawaited(
+          ctx.skipToNext().catchError((Object error, StackTrace stackTrace) {
+            logger.log(
+              'Error advancing queue',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }),
+        );
       }
       ctx.setLastError(null);
       return;
     }
 
     if (advance && ctx.canRetryPlayback()) {
-      unawaited(retryOrAdvanceAfterError(ctx));
+      unawaited(
+        retryOrAdvanceAfterError(ctx).catchError((
+          Object error,
+          StackTrace stackTrace,
+        ) {
+          logger.log(
+            'Playback recovery failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }),
+      );
     } else if (advance) {
       // No further queue items / radio — clear error; do not freeze mid-session.
       ctx.setLastError(null);

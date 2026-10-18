@@ -5,9 +5,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
-import 'package:musified/services/router_service.dart';
+import 'package:musified/services/navigation_paths.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/mediaitem.dart';
@@ -195,7 +195,7 @@ class NowPlayingControls extends StatelessWidget {
     if (lookup.isEmpty) return;
 
     final router = GoRouter.of(context);
-    final artistPath = NavigationManager.artistPath(context, lookup);
+    final artistPath = NavigationPaths.artistPath(context, lookup);
     final artistData = {
       'ytid': info.artistId.isNotEmpty ? info.artistId : lookup,
       if (info.artist.isNotEmpty) 'title': info.artist,
@@ -266,9 +266,7 @@ class PlayerControlButtons extends StatelessWidget {
 
         const controlIconSize = 32.0;
         const miniControlSize = 22.0;
-        const playPadding = EdgeInsets.all(
-          (64.0 - 32.0) / 2,
-        );
+        const playPadding = EdgeInsets.all((64.0 - 32.0) / 2);
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           child: Row(
@@ -317,7 +315,10 @@ class PlayerControlButtons extends StatelessWidget {
       builder: (_, value, __) {
         return CupertinoButton(
           padding: buttonPadding,
-          minimumSize: Size(buttonConstraints.minWidth, buttonConstraints.minHeight),
+          minimumSize: Size(
+            buttonConstraints.minWidth,
+            buttonConstraints.minHeight,
+          ),
           onPressed: () {
             HapticFeedback.selectionClick();
             audioHandler.setShuffleMode(
@@ -355,7 +356,10 @@ class PlayerControlButtons extends StatelessWidget {
 
         return CupertinoButton(
           padding: buttonPadding,
-          minimumSize: Size(buttonConstraints.minWidth, buttonConstraints.minHeight),
+          minimumSize: Size(
+            buttonConstraints.minWidth,
+            buttonConstraints.minHeight,
+          ),
           onPressed: () {
             HapticFeedback.selectionClick();
             final newMode = switch (repeatMode) {
@@ -368,9 +372,7 @@ class PlayerControlButtons extends StatelessWidget {
             audioHandler.setRepeatMode(newMode);
           },
           child: Icon(
-            isRepeatOne
-                ? CupertinoIcons.repeat_1
-                : CupertinoIcons.repeat,
+            isRepeatOne ? CupertinoIcons.repeat_1 : CupertinoIcons.repeat,
             color: isEnabled
                 ? const Color(0xFFFF2D55)
                 : CupertinoDynamicColor.resolve(
@@ -408,47 +410,47 @@ class _PlaybackControlsRow extends StatelessWidget {
       valueListenable: repeatNotifier,
       builder: (_, repeatMode, __) {
         return FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _PlaybackControlButton(
-                    icon: CupertinoIcons.backward_fill,
-                    isEnabled:
-                        audioHandler.hasPrevious ||
-                        repeatMode != AudioServiceRepeatMode.none,
-                    tooltip: context.l10n.skipToPrevious,
-                    onPressed: () => audioHandler.skipToPrevious(),
-                    buttonConstraints: buttonConstraints,
-                    buttonPadding: buttonPadding,
-                    controlIconSize: controlIconSize,
-                    minButtonSize: minButtonSize,
-                  ),
-                  SizedBox(width: buttonSpacing),
-                  PlaybackIconButton(
-                    iconColor: CupertinoColors.white,
-                    backgroundColor: const Color(0xFFFF2D55),
-                    iconSize: controlIconSize,
-                    padding: playPadding,
-                  ),
-                  SizedBox(width: buttonSpacing),
-                  _PlaybackControlButton(
-                    icon: CupertinoIcons.forward_fill,
-                    isEnabled:
-                        audioHandler.hasNext ||
-                        repeatMode == AudioServiceRepeatMode.one,
-                    tooltip: context.l10n.skipToNext,
-                    onPressed: () => repeatMode == AudioServiceRepeatMode.one
-                        ? audioHandler.playAgain()
-                        : audioHandler.skipToNext(),
-                    buttonConstraints: buttonConstraints,
-                    buttonPadding: buttonPadding,
-                    controlIconSize: controlIconSize,
-                    minButtonSize: minButtonSize,
-                  ),
-                ],
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _PlaybackControlButton(
+                icon: CupertinoIcons.backward_fill,
+                isEnabled:
+                    audioHandler.hasPrevious ||
+                    repeatMode != AudioServiceRepeatMode.none,
+                tooltip: context.l10n.skipToPrevious,
+                onPressed: () => audioHandler.skipToPrevious(),
+                buttonConstraints: buttonConstraints,
+                buttonPadding: buttonPadding,
+                controlIconSize: controlIconSize,
+                minButtonSize: minButtonSize,
               ),
-            );
+              SizedBox(width: buttonSpacing),
+              PlaybackIconButton(
+                iconColor: CupertinoColors.white,
+                backgroundColor: const Color(0xFFFF2D55),
+                iconSize: controlIconSize,
+                padding: playPadding,
+              ),
+              SizedBox(width: buttonSpacing),
+              _PlaybackControlButton(
+                icon: CupertinoIcons.forward_fill,
+                isEnabled:
+                    audioHandler.hasNext ||
+                    repeatMode == AudioServiceRepeatMode.one,
+                tooltip: context.l10n.skipToNext,
+                onPressed: () => repeatMode == AudioServiceRepeatMode.one
+                    ? audioHandler.playAgain()
+                    : audioHandler.skipToNext(),
+                buttonConstraints: buttonConstraints,
+                buttonPadding: buttonPadding,
+                controlIconSize: controlIconSize,
+                minButtonSize: minButtonSize,
+              ),
+            ],
+          ),
+        );
       },
     );
   }

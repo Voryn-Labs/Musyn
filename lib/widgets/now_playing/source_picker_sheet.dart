@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';

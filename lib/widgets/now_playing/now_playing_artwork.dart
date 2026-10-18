@@ -4,13 +4,14 @@ import 'dart:math' show max, min;
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/utilities/async_loader.dart';
 import 'package:musified/utilities/flutter_toast.dart';
 import 'package:musified/widgets/flip_card.dart';
+import 'package:musified/widgets/now_playing/full_page_lyrics_modal.dart';
 import 'package:musified/widgets/now_playing/lyrics/lyrics_empty_state.dart';
 import 'package:musified/widgets/now_playing/lyrics/lyrics_theme.dart';
 import 'package:musified/widgets/now_playing/synced_lyrics_view.dart';
@@ -36,22 +37,23 @@ class NowPlayingArtwork extends StatelessWidget {
     final isDesktop = screenWidth > 800;
     final maxByHeight = screenHeight * 0.5;
     final maxPortrait = screenHeight * 0.48;
-    final double imageSize = (isDesktop
-        ? (screenWidth * 0.42).clamp(
-            200.0,
-            maxByHeight < 200.0 ? 200.0 : maxByHeight,
-          )
-        : isLandscape
-        ? screenHeight * 0.52
-        : screenWidth < 360
-        ? screenWidth * 0.9
-        : screenWidth < 600
-        ? screenWidth * 0.92
-        : (screenWidth * 0.72).clamp(
-            maxPortrait < 200.0 ? 200.0 : min(320.0, maxPortrait),
-            maxPortrait < 200.0 ? 200.0 : max(maxPortrait, 320.0),
-          ))
-        .toDouble();
+    final double imageSize =
+        (isDesktop
+                ? (screenWidth * 0.42).clamp(
+                    200.0,
+                    maxByHeight < 200.0 ? 200.0 : maxByHeight,
+                  )
+                : isLandscape
+                ? screenHeight * 0.52
+                : screenWidth < 360
+                ? screenWidth * 0.9
+                : screenWidth < 600
+                ? screenWidth * 0.92
+                : (screenWidth * 0.72).clamp(
+                    maxPortrait < 200.0 ? 200.0 : min(320.0, maxPortrait),
+                    maxPortrait < 200.0 ? 200.0 : max(maxPortrait, 320.0),
+                  ))
+            .toDouble();
 
     const borderRadius = 22.0;
 
@@ -129,6 +131,7 @@ class NowPlayingArtwork extends StatelessWidget {
           builder: (context, lyrics) => ValueListenableBuilder<bool>(
             valueListenable: lyricsController.isFront,
             builder: (context, isFront, _) => SyncedLyricsView(
+              onExpand: () => showFullPageLyrics(context, metadata),
               metadata: metadata,
               lyrics: lyrics ?? context.l10n.lyricsNotAvailable,
               isActive: !isFront,
@@ -230,7 +233,8 @@ class AudioQualityBadge extends StatelessWidget {
     final resolvedSource = extras['resolvedSource']?.toString();
     // Reflect what is actually playing. A download on disk must not force the
     // "Offline" badge once the track is streaming from a provider.
-    final isOffline = resolvedSource == 'offline' ||
+    final isOffline =
+        resolvedSource == 'offline' ||
         (resolvedSource != 'youtube' &&
             resolvedSource != 'jiosaavn' &&
             (extras['isOffline'] == true ||
@@ -239,9 +243,7 @@ class AudioQualityBadge extends StatelessWidget {
     String label;
     Color color;
     final source =
-        resolvedSource ??
-        extras['downloadSource']?.toString() ??
-        'youtube';
+        resolvedSource ?? extras['downloadSource']?.toString() ?? 'youtube';
 
     if (isOffline) {
       label = 'Offline';
@@ -277,7 +279,11 @@ class AudioQualityBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(CupertinoIcons.waveform, size: 13, color: CupertinoColors.white),
+            const Icon(
+              CupertinoIcons.waveform,
+              size: 13,
+              color: CupertinoColors.white,
+            ),
             const SizedBox(width: 5),
             Container(
               width: 8,
@@ -291,11 +297,11 @@ class AudioQualityBadge extends StatelessWidget {
               child: Icon(
                 isOffline
                     ? (source == 'jiosaavn'
-                        ? CupertinoIcons.music_note_2
-                        : CupertinoIcons.play_rectangle_fill)
+                          ? CupertinoIcons.music_note_2
+                          : CupertinoIcons.play_rectangle_fill)
                     : (source == 'jiosaavn'
-                        ? CupertinoIcons.music_note_2
-                        : CupertinoIcons.play_rectangle_fill),
+                          ? CupertinoIcons.music_note_2
+                          : CupertinoIcons.play_rectangle_fill),
                 size: 16,
                 color: CupertinoColors.white,
               ),

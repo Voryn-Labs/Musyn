@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:musified/services/playlist_download_service.dart';
+import 'package:musified/services/offline_playlist_registry.dart';
 
 class PlaylistUtils {
   static bool isArtistPlaylist(dynamic playlist) =>
@@ -9,7 +9,7 @@ class PlaylistUtils {
 
   static bool isPlaylistOffline(Map playlist) =>
       !isArtistPlaylist(playlist) &&
-      offlinePlaylistService.isPlaylistDownloaded(
+      offlinePlaylistRegistry.isPlaylistDownloaded(
         playlist['ytid']?.toString() ?? '',
       );
 

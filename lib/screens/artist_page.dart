@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musified/constants/app_constants.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
 import 'package:musified/screens/playlist_page.dart';
 import 'package:musified/services/artist_service.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
+import 'package:musified/services/navigation_paths.dart';
 import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/router_service.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/utilities/app_utils.dart';
@@ -161,9 +161,9 @@ class _ArtistPageState extends State<ArtistPage> {
     _cachedResolvedArtistId = null;
     _cachedArtistTitle = null;
     // Each entry of the shelf is a song and its play count, side by side.
-    final topSongs = asMapList(artist['topSongs'])
-        .where((entry) => entry['song'] is Map)
-        .toList();
+    final topSongs = asMapList(
+      artist['topSongs'],
+    ).where((entry) => entry['song'] is Map).toList();
     _topSongs = [
       for (final entry in topSongs)
         Map<String, dynamic>.from(entry['song'] as Map),
@@ -182,21 +182,19 @@ class _ArtistPageState extends State<ArtistPage> {
     if (offlineMode.value) return _buildAllSongsPage();
 
     final isDark = isAppDarkMode(context);
-    final navBarColor = isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
+    final navBarColor = isDark
+        ? const Color(0xB3121214)
+        : const Color(0xB3FFFFFF);
 
     return AsyncLoader<Map<String, dynamic>?>(
       future: _artistFuture ??= _loadArtist(),
       loadingWidget: CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(
-          backgroundColor: navBarColor,
-        ),
+        navigationBar: CupertinoNavigationBar(backgroundColor: navBarColor),
         child: const Center(child: Spinner()),
       ),
       emptyWidget: _buildNotFoundPage(),
       builder: (context, _) => CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(
-          backgroundColor: navBarColor,
-        ),
+        navigationBar: CupertinoNavigationBar(backgroundColor: navBarColor),
         child: SafeArea(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -205,46 +203,46 @@ class _ArtistPageState extends State<ArtistPage> {
               children: [
                 _buildHeaderSection(),
                 _buildTopSongsSection(),
-              if (_albums.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: ArtistShelf(
-                    title: context.l10n.albums,
-                    icon: CupertinoIcons.music_albums,
-                    items: _albums,
-                    subtitleOf: _releaseSubtitle,
-                    onTap: _openRelease,
+                if (_albums.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: ArtistShelf(
+                      title: context.l10n.albums,
+                      icon: CupertinoIcons.music_albums,
+                      items: _albums,
+                      subtitleOf: _releaseSubtitle,
+                      onTap: _openRelease,
+                    ),
                   ),
-                ),
-              if (_singles.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: ArtistShelf(
-                    title: context.l10n.singlesAndEps,
-                    icon: CupertinoIcons.music_note_2,
-                    items: _singles,
-                    subtitleOf: _releaseSubtitle,
-                    onTap: _openRelease,
+                if (_singles.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: ArtistShelf(
+                      title: context.l10n.singlesAndEps,
+                      icon: CupertinoIcons.music_note_2,
+                      items: _singles,
+                      subtitleOf: _releaseSubtitle,
+                      onTap: _openRelease,
+                    ),
                   ),
-                ),
-              if (_relatedArtists.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: ArtistShelf(
-                    title: context.l10n.suggestedArtists,
-                    icon: CupertinoIcons.person_crop_circle,
-                    items: _relatedArtists,
-                    cubeIcon: CupertinoIcons.person_crop_circle_fill,
-                    circular: true,
-                    onTap: _openArtist,
+                if (_relatedArtists.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: ArtistShelf(
+                      title: context.l10n.suggestedArtists,
+                      icon: CupertinoIcons.person_crop_circle,
+                      items: _relatedArtists,
+                      cubeIcon: CupertinoIcons.person_crop_circle_fill,
+                      circular: true,
+                      onTap: _openArtist,
+                    ),
                   ),
-                ),
-              const SizedBox(height: 16),
-              const MiniPlayerBottomSpace(),
-            ],
+                const SizedBox(height: 16),
+                const MiniPlayerBottomSpace(),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -312,7 +310,8 @@ class _ArtistPageState extends State<ArtistPage> {
           children: [
             PlaylistLikeButton(
               playlistId: _resolvedArtistId,
-              playlistData: () => artistPlaylistData(artistMap, songs: const []),
+              playlistData: () =>
+                  artistPlaylistData(artistMap, songs: const []),
             ),
             PlaylistAddToPlaylistButton(resolvePlaylist: _loadCatalog),
             // Downloading artist = downloading all its songs
@@ -327,7 +326,11 @@ class _ArtistPageState extends State<ArtistPage> {
               color: musifiedSecondarySurface(isDark),
               borderRadius: BorderRadius.circular(22),
               onPressed: _refresh,
-              child: const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: Color(0xFFFF2D55)),
+              child: const Icon(
+                CupertinoIcons.arrow_2_circlepath,
+                size: 20,
+                color: Color(0xFFFF2D55),
+              ),
             ),
           ],
         ),
@@ -464,19 +467,13 @@ class _ArtistPageState extends State<ArtistPage> {
     final artistId = artist['ytid']?.toString();
     if (artistId == null || artistId.isEmpty) return;
 
-    context.push(
-      NavigationManager.artistPath(context, artistId),
-      extra: artist,
-    );
+    context.push(NavigationPaths.artistPath(context, artistId), extra: artist);
   }
 
   void _openRelease(Map<String, dynamic> release) {
     final releaseId = release['ytid']?.toString();
     if (releaseId == null || releaseId.isEmpty) return;
 
-    context.push(
-      NavigationManager.albumPath(context, releaseId),
-      extra: release,
-    );
+    context.push(NavigationPaths.albumPath(context, releaseId), extra: release);
   }
 }

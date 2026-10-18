@@ -4,12 +4,14 @@
  */
 
 import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/playlist_download_service.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/utilities/flutter_bottom_sheet.dart';
@@ -125,9 +127,7 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
                         icon: isOffline
                             ? CupertinoIcons.arrow_down_circle_fill
                             : CupertinoIcons.arrow_down_circle,
-                        color: isOffline
-                            ? CupertinoColors.activeBlue
-                            : null,
+                        color: isOffline ? CupertinoColors.activeBlue : null,
                         onPressed: () {
                           HapticFeedback.selectionClick();
                           unawaited(
@@ -187,7 +187,8 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
       child: Icon(
         icon,
         size: size,
-        color: color ??
+        color:
+            color ??
             (active
                 ? CupertinoColors.activeBlue
                 : _iconColor.withValues(alpha: 0.85)),

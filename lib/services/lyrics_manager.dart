@@ -5,6 +5,18 @@ import 'package:http/http.dart' as http;
 
 class LyricsManager {
   Future<String?> fetchLyrics(String artistName, String title) async {
+    final cleanTitle = cleanLyricsTitle(artistName, title);
+    final primaryArtist = artistName
+        .split(RegExp('[,&|/]'))
+        .first
+        .replaceAll(RegExp(' - Topic', caseSensitive: false), '')
+        .replaceAll(RegExp('VEVO', caseSensitive: false), '')
+        .trim();
+
+    return _fetchCleanLyrics(primaryArtist, cleanTitle);
+  }
+
+  static String cleanLyricsTitle(String artistName, String title) {
     // Aggressive cleaning of YouTube title metadata
     var cleanTitle = title
         .replaceAll(RegExp(r'\s*\(.*?video.*?\)', caseSensitive: false), '')
@@ -19,9 +31,10 @@ class LyricsManager {
         .replaceAll(RegExp(r'\s*\(.*?ft\..*?\)', caseSensitive: false), '')
         .replaceAll(RegExp(r'\s*\[.*?prod\..*?\]', caseSensitive: false), '')
         .replaceAll(RegExp(r'\s*\(.*?prod\..*?\)', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\s*4k|hd|8k|hq', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\s*lyrics', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\s*karaoke', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\b(?:4k|8k|hd|hq)\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\blyrics\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\bkaraoke\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\s{2,}'), ' ')
         .trim();
 
     if (cleanTitle.contains(' - ')) {
@@ -39,22 +52,26 @@ class LyricsManager {
     }
 
     if (cleanTitle.isEmpty) cleanTitle = title;
-    final primaryArtist = artistName
-        .split(RegExp('[,&|/]'))
-        .first
-        .replaceAll(RegExp(' - Topic', caseSensitive: false), '')
-        .replaceAll(RegExp('VEVO', caseSensitive: false), '')
-        .trim();
+    return cleanTitle;
+  }
 
+  Future<String?> _fetchCleanLyrics(
+    String primaryArtist,
+    String cleanTitle,
+  ) async {
     // 1. Primary open lyrics catalog: LrcLib (exact query)
-    final lrcLibLyrics = await _fetchLyricsFromLrcLib(primaryArtist, cleanTitle);
+    final lrcLibLyrics = await _fetchLyricsFromLrcLib(
+      primaryArtist,
+      cleanTitle,
+    );
     if (lrcLibLyrics != null && lrcLibLyrics.isNotEmpty) {
       return lrcLibLyrics;
     }
 
     // 2. Try swapped or clean title search
-    final lrcLibSearchLyrics =
-        await _searchLyricsFromLrcLib('$cleanTitle $primaryArtist');
+    final lrcLibSearchLyrics = await _searchLyricsFromLrcLib(
+      '$cleanTitle $primaryArtist',
+    );
     if (lrcLibSearchLyrics != null && lrcLibSearchLyrics.isNotEmpty) {
       return lrcLibSearchLyrics;
     }
@@ -91,8 +108,7 @@ class LyricsManager {
         'artist_name': artist,
         'track_name': title,
       });
-      final response =
-          await http.get(uri).timeout(const Duration(seconds: 4));
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         final plainLyrics = json['plainLyrics'] as String?;
@@ -111,8 +127,7 @@ class LyricsManager {
   Future<String?> _searchLyricsFromLrcLib(String query) async {
     try {
       final uri = Uri.https('lrclib.net', '/api/search', {'q': query});
-      final response =
-          await http.get(uri).timeout(const Duration(seconds: 4));
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
         final list = jsonDecode(response.body);
         if (list is List && list.isNotEmpty) {

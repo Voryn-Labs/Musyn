@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/utilities/app_utils.dart';
@@ -122,7 +121,7 @@ String upgradeArtworkUrl(String url, {int targetSize = 400}) {
 MediaItem mapToMediaItem(Map song) {
   final ytid = song['ytid']?.toString();
   final offlineSong = ytid != null
-      ? getOfflineSongByYtid(ytid)
+      ? getOfflineSongByYtid(ytid, verifyFiles: false)
       : <String, dynamic>{};
   // The active playback decision wins over disk presence. Once a track has
   // been resolved to a streaming provider (via source switch), it must not
@@ -134,17 +133,22 @@ MediaItem mapToMediaItem(Map song) {
   } else if (resolvedSource == 'offline') {
     isOffline = true;
   } else {
-    isOffline = hasPlayableOfflineFile(ytid) || song['isOffline'] == true;
+    // Display metadata uses the registry; playback verifies the actual asset.
+    isOffline = isSongAlreadyOffline(ytid) || song['isOffline'] == true;
   }
   final downloadSource =
       song['downloadSource'] ?? offlineSong['downloadSource'];
 
   final artworkUrl = resolveMediaArtworkUrl(song, ytid: ytid);
 
-  final artworkPath = offlineSong['artworkPath']?.toString();
-  final hasLocalArt = artworkPath != null && File(artworkPath).existsSync();
+  final artworkPath =
+      _nonEmptyUrl(offlineSong['artworkPath']) ??
+      _nonEmptyUrl(song['artworkPath']);
+  final hasLocalArt = artworkPath != null;
   final artUri = isOffline && hasLocalArt
-      ? Uri.file(offlineSong['artworkPath'].toString())
+      ? (artworkPath.startsWith('file:')
+            ? Uri.parse(artworkPath)
+            : Uri.file(artworkPath))
       : (artworkUrl != null && artworkUrl.isNotEmpty && artworkUrl != 'null'
             ? Uri.parse(artworkUrl)
             : (ytid != null &&

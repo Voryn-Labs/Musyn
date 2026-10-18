@@ -1,9 +1,9 @@
 import 'dart:ui';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/utilities/mediaitem.dart' show upgradeArtworkUrl;
+import 'package:musified/utilities/artwork_provider.dart';
+import 'package:musified/utilities/mediaitem.dart' show resolveMediaArtworkUrl;
 import 'package:musified/widgets/now_playing/lyrics/lyrics_theme.dart';
 
 /// Full-screen blurred artwork atmosphere behind lyrics.
@@ -17,30 +17,29 @@ class LyricsBackdrop extends StatelessWidget {
   final MediaItem metadata;
   final LyricsTheme theme;
 
-  String _artUrl() {
-    final extrasImage = metadata.extras?['highResImage']?.toString() ??
-        metadata.extras?['image']?.toString();
-    final ytid = metadata.extras?['ytid']?.toString() ?? metadata.id;
-    final raw = metadata.artUri?.toString();
-    final fallback = extrasImage ??
-        'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
-    final url = (raw != null && raw.isNotEmpty && raw != 'null') ? raw : fallback;
-    return upgradeArtworkUrl(url, targetSize: 800);
-  }
+  String? _artUrl() =>
+      metadata.artUri?.toString() ??
+      resolveMediaArtworkUrl(
+        metadata.extras ?? {},
+        ytid: metadata.extras?['ytid']?.toString() ?? metadata.id,
+        targetSize: 800,
+      );
 
   @override
   Widget build(BuildContext context) {
+    final artwork = _artUrl();
     return Stack(
       fit: StackFit.expand,
       children: [
         Transform.scale(
           scale: 1.15,
-          child: CachedNetworkImage(
-            imageUrl: _artUrl(),
-            fit: BoxFit.cover,
-            placeholder: (_, __) => ColoredBox(color: theme.canvas),
-            errorWidget: (_, __, ___) => ColoredBox(color: theme.canvas),
-          ),
+          child: artwork == null || artwork.isEmpty
+              ? ColoredBox(color: theme.canvas)
+              : Image(
+                  image: ArtworkProvider.get(artwork),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => ColoredBox(color: theme.canvas),
+                ),
         ),
         BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 48, sigmaY: 48),

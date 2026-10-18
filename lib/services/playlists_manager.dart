@@ -2,16 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/database/albums.db.dart';
-import 'package:musified/database/playlists.db.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart' show logger;
 import 'package:musified/services/artist_service.dart';
 import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/playlist_download_service.dart';
-import 'package:musified/services/youtube_client.dart';
 import 'package:musified/services/jiosaavn_service.dart';
+import 'package:musified/services/library_state.dart';
+import 'package:musified/services/logger_service.dart';
+import 'package:musified/services/offline_playlist_registry.dart';
 import 'package:musified/services/settings_manager.dart';
+import 'package:musified/services/youtube_client.dart';
 import 'package:musified/services/youtube_music_sync_service.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/flutter_toast.dart';
@@ -19,35 +18,8 @@ import 'package:musified/utilities/formatter.dart';
 import 'package:musified/utilities/playlist_utils.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
-List<Map> playlists = [...playlistsDB, ...albumsDB];
+export 'package:musified/services/library_state.dart';
 
-T _safeUserListGet<T>(String key, T defaultValue) {
-  try {
-    if (!Hive.isBoxOpen('user')) return defaultValue;
-    final v = Hive.box('user').get(key, defaultValue: defaultValue);
-    if (v is T) return v;
-    return defaultValue;
-  } catch (_) {
-    return defaultValue;
-  }
-}
-
-final userPlaylists = ValueNotifier<List<String>>(
-  List<String>.from(_safeUserListGet<List>('playlists', [])),
-);
-final userCustomPlaylists = ValueNotifier<List<Map>>(
-  List<Map>.from(_safeUserListGet<List>('customPlaylists', [])),
-);
-final userLikedPlaylists = ValueNotifier<List<Map>>(
-  List<Map>.from(_safeUserListGet<List>('likedPlaylists', [])),
-);
-final userPlaylistFolders = ValueNotifier<List<Map>>(
-  List<Map>.from(_safeUserListGet<List>('playlistFolders', [])),
-);
-final pinnedPlaylistIds = ValueNotifier<List<String>>(
-  List<String>.from(_safeUserListGet<List>('pinnedPlaylistIds', [])),
-);
-final onlinePlaylists = ValueNotifier<List<Map>>([]);
 const _maxOnlinePlaylistsCache = 200;
 
 void _trimOnlinePlaylistsCache() {
@@ -114,25 +86,6 @@ List<Map> getLikedArtistItems({bool offlineOnly = false}) {
   return artists;
 }
 
-void reloadPlaylistLibraryStateFromStorage() {
-  final userBox = Hive.box('user');
-  userPlaylists.value = List<String>.from(
-    userBox.get('playlists', defaultValue: []),
-  );
-  userCustomPlaylists.value = List<Map>.from(
-    userBox.get('customPlaylists', defaultValue: []),
-  );
-  userLikedPlaylists.value = List<Map>.from(
-    userBox.get('likedPlaylists', defaultValue: []),
-  );
-  userPlaylistFolders.value = List<Map>.from(
-    userBox.get('playlistFolders', defaultValue: []),
-  );
-  pinnedPlaylistIds.value = List<String>.from(
-    userBox.get('pinnedPlaylistIds', defaultValue: <String>[]),
-  );
-}
-
 void _updateOnlineCache(Map? p) {
   final playlistId = _playlistId(p?['ytid']);
   if (p != null &&
@@ -158,7 +111,7 @@ Map? _searchAppPlaylistsById(String id) {
   for (final p in onlinePlaylists.value) {
     if (p['ytid']?.toString() == id) return p;
   }
-  for (final p in offlinePlaylistService.offlinePlaylists.value) {
+  for (final p in offlinePlaylistRegistry.offlinePlaylists.value) {
     if (p is Map && p['ytid']?.toString() == id) return p;
   }
   for (final p in playlists) {
@@ -304,22 +257,53 @@ Future<String> addSongToYouTubeMusicPlaylist(
   return context.l10n.error;
 }
 
+Future<String> addSongsToYouTubeMusicPlaylist(
+  BuildContext context,
+  String playlistId,
+  List<Map> songs,
+) async {
+  final successMessage = context.l10n.songAdded;
+  final ids = songs
+      .map((song) => song['ytid']?.toString())
+      .whereType<String>()
+      .where(isValidYoutubeVideoId)
+      .toSet()
+      .toList();
+  final skipped = songs
+      .where((song) => !isValidYoutubeVideoId(song['ytid']?.toString()))
+      .length;
+  if (ids.isEmpty) return 'No compatible YouTube tracks to add';
+  final sync = YouTubeMusicSyncService();
+  var added = 0;
+  if (isLikedMusicPlaylist({'playlistId': playlistId})) {
+    for (final id in ids) {
+      if (await sync.likeSong(id)) added++;
+    }
+  } else {
+    added = await sync.addVideosToPlaylist(playlistId, ids);
+  }
+  unawaited(sync.syncPlaylists());
+  if (added == ids.length && skipped == 0) return successMessage;
+  return '$added added; ${ids.length - added + skipped} unavailable or failed';
+}
+
 Future<String> createYouTubeMusicPlaylist(
   String playlistName,
   Map? songToAdd,
-  BuildContext context,
-) async {
+  BuildContext context, {
+  List<Map>? songsToAdd,
+}) async {
+  final errorMessage = context.l10n.error;
+  final successMessage = '${context.l10n.addedSuccess}!';
   final sync = YouTubeMusicSyncService();
-  final videoId = songToAdd?['ytid']?.toString();
-  final id = await sync.createUserPlaylist(
-    playlistName,
-    videoId: isValidYoutubeVideoId(videoId) ? videoId : null,
-  );
-  if (id == null) {
-    return context.l10n.error;
+  final entries = songsToAdd ?? (songToAdd != null ? [songToAdd] : <Map>[]);
+  final id = await sync.createUserPlaylist(playlistName);
+  if (id == null) return errorMessage;
+  if (entries.isNotEmpty && context.mounted) {
+    return addSongsToYouTubeMusicPlaylist(context, id, entries);
   }
   unawaited(sync.syncPlaylists());
-  return '${context.l10n.addedSuccess}!';
+  return successMessage;
 }
 
 String addSongInCustomPlaylist(
@@ -364,24 +348,12 @@ String addSongInCustomPlaylist(
       );
     }
 
-    offlinePlaylistService.checkAndAutoMarkOffline(customPlaylist);
+    offlinePlaylistRegistry.checkAndAutoMarkOffline(customPlaylist);
     return context.l10n.songAdded;
   } else {
     logger.log('Custom playlist not found for ytid: $playlistId');
     return context.l10n.error;
   }
-}
-
-List<Map> getUserCustomPlaylists() {
-  return [
-    ...userCustomPlaylists.value
-        .where((p) => p['source'] == 'user-created')
-        .cast<Map>(),
-    for (final folder in userPlaylistFolders.value)
-      ...(folder['playlists'] as List<dynamic>? ?? [])
-          .where((p) => p['source'] == 'user-created')
-          .cast<Map>(),
-  ];
 }
 
 String addSongsInCustomPlaylist(
@@ -426,7 +398,7 @@ String addSongsInCustomPlaylist(
           ),
         );
       }
-      offlinePlaylistService.checkAndAutoMarkOffline(customPlaylist);
+      offlinePlaylistRegistry.checkAndAutoMarkOffline(customPlaylist);
       return context.l10n.addedSuccess;
     } else {
       return context.l10n.songAlreadyInPlaylist;
@@ -1206,7 +1178,7 @@ Future<Map<String, dynamic>?> resolveArtistInfoForWidget(
 }
 
 Map? _findOfflinePlaylist(String id) {
-  return _findPlaylistById(offlinePlaylistService.offlinePlaylists.value, id);
+  return _findPlaylistById(offlinePlaylistRegistry.offlinePlaylists.value, id);
 }
 
 Map? _findPlaylistById(Iterable<dynamic> playlists, String id) {
@@ -1281,6 +1253,7 @@ Future<Map?> _fetchYouTubePlaylist(String id) async {
   if (list == null || (list is List && list.isEmpty)) {
     playlist['list'] = await _loadSongsForPlaylist(playlist);
   }
+  _updateOnlineCache(playlist);
 
   return playlist;
 }
@@ -1294,11 +1267,6 @@ Future<List> _loadSongsForPlaylist(Map playlist) async {
       playlist['ytid'],
       playlistImage: playlistImage,
     );
-    if (!playlists.any(
-      (p) => p['ytid']?.toString() == playlist['ytid']?.toString(),
-    )) {
-      playlists.add(playlist);
-    }
     return songs;
   } catch (e, stackTrace) {
     logger.log(
@@ -1458,13 +1426,11 @@ Future<void> updatePlaylistLikeStatus(
   bool add, {
   Map? playlistData,
 }) async {
+  final normalizedPlaylistId = playlistId.trim();
+  if (normalizedPlaylistId.isEmpty) return;
+  final updateToken = ++_playlistLikeUpdateToken;
+  _latestPlaylistLikeUpdateTokens[normalizedPlaylistId] = updateToken;
   try {
-    final normalizedPlaylistId = playlistId.trim();
-    if (normalizedPlaylistId.isEmpty) return;
-
-    final updateToken = ++_playlistLikeUpdateToken;
-    _latestPlaylistLikeUpdateTokens[normalizedPlaylistId] = updateToken;
-
     final playlistToAdd = add
         ? await _resolvePlaylistForLikedStatus(
             normalizedPlaylistId,
@@ -1486,7 +1452,7 @@ Future<void> updatePlaylistLikeStatus(
             (playlist) => playlist['ytid']?.toString() == normalizedPlaylistId,
           )) {
         updatedLikedPlaylists.add(playlistToAdd);
-        offlinePlaylistService.checkAndAutoMarkOffline(playlistToAdd);
+        offlinePlaylistRegistry.checkAndAutoMarkOffline(playlistToAdd);
       }
     } else {
       updatedLikedPlaylists.removeWhere(
@@ -1511,6 +1477,10 @@ Future<void> updatePlaylistLikeStatus(
       error: e,
       stackTrace: stackTrace,
     );
+  } finally {
+    if (_latestPlaylistLikeUpdateTokens[normalizedPlaylistId] == updateToken) {
+      _latestPlaylistLikeUpdateTokens.remove(normalizedPlaylistId);
+    }
   }
 }
 
@@ -1596,12 +1566,12 @@ void _unpinPlaylist(String playlistId) {
 Future<void> syncOfflinePlaylistMetadata(Map updatedPlaylist) async {
   final playlistId = updatedPlaylist['ytid']?.toString();
   if (playlistId == null ||
-      !offlinePlaylistService.isPlaylistDownloaded(playlistId)) {
+      !offlinePlaylistRegistry.isPlaylistDownloaded(playlistId)) {
     return;
   }
 
   final offlinePlaylists = List<dynamic>.from(
-    offlinePlaylistService.offlinePlaylists.value,
+    offlinePlaylistRegistry.offlinePlaylists.value,
   );
   final offlineIndex = offlinePlaylists.indexWhere(
     (p) => p['ytid']?.toString() == playlistId,
@@ -1618,7 +1588,7 @@ Future<void> syncOfflinePlaylistMetadata(Map updatedPlaylist) async {
   };
 
   // Create a new list to trigger ValueNotifier listeners
-  offlinePlaylistService.offlinePlaylists.value = List<dynamic>.from(
+  offlinePlaylistRegistry.offlinePlaylists.value = List<dynamic>.from(
     offlinePlaylists,
   );
   unawaited(

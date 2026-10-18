@@ -1,25 +1,26 @@
 import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musified/constants/app_constants.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
+import 'package:musified/services/jiosaavn_service.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/playlists_manager.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/services/youtube_auth_service.dart';
 import 'package:musified/services/youtube_music_sync_service.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';
-import 'package:musified/services/jiosaavn_service.dart';
 import 'package:musified/widgets/mini_player_bottom_space.dart';
 import 'package:musified/widgets/playlist_cube.dart';
 import 'package:musified/widgets/section_header.dart';
 
 /// JioSaavn top-chart playlists (fetched once per app launch).
-final ValueNotifier<List<Map<String, dynamic>>> saavnCharts =
-    ValueNotifier([]);
+final ValueNotifier<List<Map<String, dynamic>>> saavnCharts = ValueNotifier([]);
 
 /// YouTube Music chart playlists (Top 100, etc.) fetched once per session.
 final ValueNotifier<List<Map<String, dynamic>>> ytChartPlaylists =
@@ -97,8 +98,9 @@ class _HomePageState extends State<HomePage> {
       valueListenable: usePureBlackColor,
       builder: (context, _, __) {
         final isDark = isAppDarkMode(context);
-        final navBarColor =
-            isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
+        final navBarColor = isDark
+            ? const Color(0xB3121214)
+            : const Color(0xB3FFFFFF);
 
         return CupertinoPageScaffold(
           backgroundColor: musifiedCanvas(isDark),
@@ -126,9 +128,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              CupertinoSliverRefreshControl(
-                onRefresh: _handleRefresh,
-              ),
+              CupertinoSliverRefreshControl(onRefresh: _handleRefresh),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: commonSingleChildScrollViewPadding,
@@ -273,10 +273,7 @@ class _HomePageState extends State<HomePage> {
                         if (id.isNotEmpty) {
                           context.push(
                             '/home/playlist/$id',
-                            extra: {
-                              'title': title,
-                              'image': playlist['image'],
-                            },
+                            extra: {'title': title, 'image': playlist['image']},
                           );
                         }
                       },
@@ -310,7 +307,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             Text(
-                              playlist['subtitle']?.toString() ?? 'YouTube Music',
+                              playlist['subtitle']?.toString() ??
+                                  'YouTube Music',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -359,7 +357,10 @@ class _HomePageState extends State<HomePage> {
                 itemCount: charts.length,
                 itemBuilder: (context, index) {
                   final chart = charts[index];
-                  final id = chart['saavnPlaylistId']?.toString() ?? chart['ytid']?.toString() ?? '';
+                  final id =
+                      chart['saavnPlaylistId']?.toString() ??
+                      chart['ytid']?.toString() ??
+                      '';
                   final title = chart['title']?.toString() ?? 'Chart';
                   final image = chart['image']?.toString() ?? '';
 
@@ -368,7 +369,9 @@ class _HomePageState extends State<HomePage> {
                     child: GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
-                        final cleanId = id.startsWith('saavn_chart_') ? id : 'saavn_chart_$id';
+                        final cleanId = id.startsWith('saavn_chart_')
+                            ? id
+                            : 'saavn_chart_$id';
                         context.push(
                           '/home/playlist/$cleanId',
                           extra: {
@@ -387,11 +390,7 @@ class _HomePageState extends State<HomePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             PlaylistCube(
-                              {
-                                'title': title,
-                                'image': image,
-                                'ytid': id,
-                              },
+                              {'title': title, 'image': image, 'ytid': id},
                               size: playlistHeight,
                               showTypeLabel: false,
                             ),
@@ -440,15 +439,15 @@ class _HomePageState extends State<HomePage> {
       valueListenable: userRecentlyPlayed,
       builder: (context, rawSongs, _) {
         final songs = rawSongs.whereType<Map>().toList();
-        final ranked = songs.where((song) {
-          final count = song['listeningCount'];
-          return count is num && count > 0;
-        }).toList()
-          ..sort((a, b) {
-            final aCount = (a['listeningCount'] as num?)?.toInt() ?? 0;
-            final bCount = (b['listeningCount'] as num?)?.toInt() ?? 0;
-            return bCount.compareTo(aCount);
-          });
+        final ranked =
+            songs.where((song) {
+              final count = song['listeningCount'];
+              return count is num && count > 0;
+            }).toList()..sort((a, b) {
+              final aCount = (a['listeningCount'] as num?)?.toInt() ?? 0;
+              final bCount = (b['listeningCount'] as num?)?.toInt() ?? 0;
+              return bCount.compareTo(aCount);
+            });
         if (ranked.isEmpty) return const SizedBox.shrink();
 
         final displayList = ranked.take(25).toList();
@@ -471,10 +470,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          title: title,
-          icon: icon,
-        ),
+        SectionHeader(title: title, icon: icon),
         const SizedBox(height: 10),
         SizedBox(
           height: 205,
@@ -491,10 +487,7 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   audioHandler.playPlaylistSong(
-                    playlist: {
-                      'title': title,
-                      'list': songs,
-                    },
+                    playlist: {'title': title, 'list': songs},
                     songIndex: index,
                   );
                 },
@@ -533,7 +526,9 @@ class _HomePageState extends State<HomePage> {
                 itemBuilder: (context, index) {
                   final playlist = customPlaylists[index];
                   final id =
-                      playlist['playlistId'] ?? playlist['ytid'] ?? playlist['id'];
+                      playlist['playlistId'] ??
+                      playlist['ytid'] ??
+                      playlist['id'];
                   return Padding(
                     padding: const EdgeInsets.only(right: 12),
                     child: GestureDetector(
@@ -571,7 +566,8 @@ class _HomePageState extends State<HomePage> {
         trendingSongs,
       ]),
       builder: (context, _) {
-        final hasAny = userLikedSongsList.value.isNotEmpty ||
+        final hasAny =
+            userLikedSongsList.value.isNotEmpty ||
             userRecentlyPlayed.value.isNotEmpty ||
             userCustomPlaylists.value.isNotEmpty ||
             trendingSongs.value.isNotEmpty;
@@ -596,7 +592,9 @@ class _HomePageState extends State<HomePage> {
                     fontFamily: MusifiedStyle.displayFont,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                    color: isDark
+                        ? CupertinoColors.white
+                        : CupertinoColors.black,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -633,7 +631,8 @@ class _HomeSongCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = song['title']?.toString() ?? 'Unknown';
     final artist = song['artist']?.toString() ?? '';
-    final imageUrl = song['highResImage'] ?? song['image'] ?? song['lowResImage'] ?? '';
+    final imageUrl =
+        song['highResImage'] ?? song['image'] ?? song['lowResImage'] ?? '';
     final primaryColor = isDark ? CupertinoColors.white : CupertinoColors.black;
     final secondaryColor = CupertinoColors.systemGrey;
 

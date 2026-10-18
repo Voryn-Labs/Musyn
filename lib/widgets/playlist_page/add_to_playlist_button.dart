@@ -23,9 +23,7 @@ class _PlaylistAddToPlaylistButtonState
       return const SizedBox(
         width: 44,
         height: 44,
-        child: Center(
-          child: CupertinoActivityIndicator(),
-        ),
+        child: Center(child: CupertinoActivityIndicator()),
       );
     }
 
@@ -36,7 +34,11 @@ class _PlaylistAddToPlaylistButtonState
       color: musifiedSecondarySurface(isDark),
       borderRadius: BorderRadius.circular(22),
       onPressed: _resolveAndAdd,
-      child: const Icon(CupertinoIcons.plus, size: 20, color: Color(0xFFFF2D55)),
+      child: const Icon(
+        CupertinoIcons.plus,
+        size: 20,
+        color: Color(0xFFFF2D55),
+      ),
     );
   }
 
@@ -66,6 +68,6 @@ class _PlaylistAddToPlaylistButtonState
       return;
     }
 
-    showAddToPlaylistDialog(context, song: null);
+    showAddToPlaylistDialog(context, songs: songs.whereType<Map>().toList());
   }
 }

@@ -5,10 +5,9 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/main.dart' show logger;
+import 'package:musified/services/logger_service.dart';
 
 class YouTubeAuthService {
-
   factory YouTubeAuthService() => _instance;
 
   YouTubeAuthService._internal();
@@ -27,16 +26,17 @@ class YouTubeAuthService {
 
       final typedCookies = Map<String, String>.from(cookies);
 
-      final cookieString =
-          typedCookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+      final cookieString = typedCookies.entries
+          .map((e) => '${e.key}=${e.value}')
+          .join('; ');
 
       final sapisid =
           typedCookies['SAPISID'] ?? typedCookies['__Secure-3PAPISID'] ?? '';
       if (sapisid.isEmpty) return {};
 
       const origin = 'https://music.youtube.com';
-      final timestamp =
-          (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+      final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000)
+          .toString();
       final hashStr = '$timestamp $sapisid $origin';
 
       final bytes = utf8.encode(hashStr);
@@ -62,7 +62,8 @@ class YouTubeAuthService {
         return;
       }
 
-      final hasRequired = cookies.containsKey('SAPISID') ||
+      final hasRequired =
+          cookies.containsKey('SAPISID') ||
           cookies.containsKey('__Secure-3PAPISID');
       if (!hasRequired) {
         logger.log('Missing SAPISID or __Secure-3PAPISID cookie');
@@ -132,8 +133,8 @@ class YouTubeAuthService {
           'client': {
             'clientName': 'WEB_REMIX',
             'clientVersion': '1.20230508.01.00',
-          }
-        }
+          },
+        },
       });
 
       final response = await http.post(

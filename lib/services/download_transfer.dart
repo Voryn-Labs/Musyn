@@ -4,10 +4,17 @@ import 'dart:io';
 class DownloadCancelled implements Exception {}
 
 class DownloadCancellation {
-  final Completer<void> _cancelled = Completer<void>();
-  bool get isCancelled => _cancelled.isCompleted;
+  final _listeners = <void Function()>{};
+  bool _isCancelled = false;
+  bool get isCancelled => _isCancelled;
   void cancel() {
-    if (!isCancelled) _cancelled.complete();
+    if (isCancelled) return;
+    _isCancelled = true;
+    final listeners = _listeners.toList();
+    _listeners.clear();
+    for (final listener in listeners) {
+      listener();
+    }
   }
 
   void check() {
@@ -15,10 +22,27 @@ class DownloadCancellation {
   }
 
   Future<T> race<T>(Future<T> operation) {
-    return Future.any([
-      operation,
-      _cancelled.future.then<T>((_) => throw DownloadCancelled()),
-    ]);
+    final result = Completer<T>();
+    void onCancel() {
+      if (!result.isCompleted) result.completeError(DownloadCancelled());
+    }
+
+    if (isCancelled) {
+      onCancel();
+    } else {
+      _listeners.add(onCancel);
+    }
+    operation.then(
+      (value) {
+        _listeners.remove(onCancel);
+        if (!result.isCompleted) result.complete(value);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        _listeners.remove(onCancel);
+        if (!result.isCompleted) result.completeError(error, stackTrace);
+      },
+    );
+    return result.future;
   }
 }
 

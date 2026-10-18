@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/utilities/flutter_toast.dart';
@@ -83,7 +83,9 @@ void showSongActionsSheet(
               if (context.mounted) {
                 showToast(
                   context,
-                  nextLiked ? 'Added to Liked Songs' : 'Removed from Liked Songs',
+                  nextLiked
+                      ? 'Added to Liked Songs'
+                      : 'Removed from Liked Songs',
                 );
               }
             },
@@ -91,9 +93,13 @@ void showSongActionsSheet(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  isLiked ? CupertinoIcons.heart_slash_fill : CupertinoIcons.heart_fill,
+                  isLiked
+                      ? CupertinoIcons.heart_slash_fill
+                      : CupertinoIcons.heart_fill,
                   size: 20,
-                  color: isLiked ? CupertinoColors.systemRed : const Color(0xFFFF2D55),
+                  color: isLiked
+                      ? CupertinoColors.systemRed
+                      : const Color(0xFFFF2D55),
                 ),
                 const SizedBox(width: 10),
                 Text(isLiked ? 'Remove from Favorites' : 'Favorite'),
@@ -136,7 +142,9 @@ void showSongActionsSheet(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                isOffline ? CupertinoIcons.trash : CupertinoIcons.arrow_down_circle,
+                isOffline
+                    ? CupertinoIcons.trash
+                    : CupertinoIcons.arrow_down_circle,
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -168,7 +176,11 @@ void showSongActionsSheet(
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(CupertinoIcons.delete, size: 20, color: CupertinoColors.destructiveRed),
+                Icon(
+                  CupertinoIcons.delete,
+                  size: 20,
+                  color: CupertinoColors.destructiveRed,
+                ),
                 SizedBox(width: 10),
                 Text('Remove'),
               ],

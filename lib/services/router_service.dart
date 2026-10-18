@@ -11,6 +11,7 @@ import 'package:musified/screens/playlist_page.dart';
 import 'package:musified/screens/search_page.dart';
 import 'package:musified/screens/settings_page.dart';
 import 'package:musified/screens/user_songs_page.dart';
+import 'package:musified/services/app_navigation_state.dart';
 import 'package:musified/services/playlist_download_service.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/widgets/offline_search_placeholder.dart';
@@ -84,8 +85,7 @@ class NavigationManager {
     return _router;
   }
 
-  static final GlobalKey<NavigatorState> parentNavigatorKey =
-      GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> parentNavigatorKey = appNavigatorKey;
   static final GlobalKey<NavigatorState> homeTabNavigatorKey =
       GlobalKey<NavigatorState>();
   static final GlobalKey<NavigatorState> searchTabNavigatorKey =
@@ -144,34 +144,15 @@ class NavigationManager {
               );
             },
             routes: [
-
               GoRoute(
                 path: 'library',
                 pageBuilder: (context, state) =>
                     _pushPage(child: const LibraryPage(), state: state),
               ),
-              GoRoute(
-                path: 'playlist/:playlistId',
-                pageBuilder: (context, state) => _pushPage(
-                  child: PlaylistPage(
-                    playlistId: state.pathParameters['playlistId'],
-                    playlistData: state.extra,
-                  ),
-                  state: state,
-                ),
-              ),
+              _playlistRoute(),
               _artistRoute(),
               _albumRoute(),
-              GoRoute(
-                path: 'folder/:folderId/:folderName',
-                pageBuilder: (context, state) => _pushPage(
-                  child: PlaylistFolderPage(
-                    folderId: state.pathParameters['folderId'] ?? '',
-                    folderName: state.pathParameters['folderName'] ?? '',
-                  ),
-                  state: state,
-                ),
-              ),
+              _folderRoute(),
             ],
           ),
         ],
@@ -195,7 +176,12 @@ class NavigationManager {
                 state: state,
               );
             },
-            routes: [_artistRoute(), _albumRoute()],
+            routes: [
+              _artistRoute(),
+              _albumRoute(),
+              _playlistRoute(),
+              _folderRoute(),
+            ],
           ),
         ],
       ),
@@ -220,7 +206,8 @@ class NavigationManager {
               ),
               _artistRoute(),
               _albumRoute(),
-
+              _playlistRoute(),
+              _folderRoute(),
             ],
           ),
         ],
@@ -237,10 +224,8 @@ class NavigationManager {
             routes: [
               GoRoute(
                 path: 'logs',
-                pageBuilder: (context, state) => _pushPage(
-                  child: const LogsPage(),
-                  state: state,
-                ),
+                pageBuilder: (context, state) =>
+                    _pushPage(child: const LogsPage(), state: state),
               ),
             ],
           ),
@@ -248,6 +233,28 @@ class NavigationManager {
       ),
     ];
   }
+
+  GoRoute _playlistRoute() => GoRoute(
+    path: 'playlist/:playlistId',
+    pageBuilder: (context, state) => _pushPage(
+      child: PlaylistPage(
+        playlistId: _decodePathParameter(state.pathParameters['playlistId']),
+        playlistData: state.extra,
+      ),
+      state: state,
+    ),
+  );
+
+  GoRoute _folderRoute() => GoRoute(
+    path: 'folder/:folderId/:folderName',
+    pageBuilder: (context, state) => _pushPage(
+      child: PlaylistFolderPage(
+        folderId: _decodePathParameter(state.pathParameters['folderId']),
+        folderName: _decodePathParameter(state.pathParameters['folderName']),
+      ),
+      state: state,
+    ),
+  );
 
   /// The artist landing page, plus the full song catalog of the artist.
   GoRoute _artistRoute() {
@@ -295,33 +302,10 @@ class NavigationManager {
     );
   }
 
-  /// Path of the page of an artist, inside the tab [context] belongs to.
-  static String artistPath(BuildContext context, String artistId) =>
-      '${basePathFor(context)}/artist/${Uri.encodeComponent(artistId)}';
-
-  /// Path of the songs of an artist, i.e. of its "All songs" playlist.
-  static String artistSongsPath(BuildContext context, String artistId) =>
-      '${artistPath(context, artistId)}/songs';
-
-  /// Path of the page of a YouTube Music release.
-  static String albumPath(BuildContext context, String albumId) =>
-      '${basePathFor(context)}/album/${Uri.encodeComponent(albumId)}';
-
-  /// The tab a sub page pushed from [context] belongs to, so that artists,
-  /// albums and playlists stay inside the tab they were opened from.
-  static String basePathFor(BuildContext context) {
-    try {
-      final currentPath = GoRouterState.of(context).uri.path;
-      if (currentPath.startsWith(searchPath)) return searchPath;
-      if (currentPath.startsWith(libraryPath)) return libraryPath;
-    } catch (_) {}
-
-    return homePath;
-  }
-
   static String _decodePathParameter(String? value) {
     if (value == null || value.isEmpty) return '';
-    return Uri.decodeComponent(value);
+    // go_router already decodes path parameters during route matching.
+    return value;
   }
 
   static Map? _extraAsMap(Object? extra) {

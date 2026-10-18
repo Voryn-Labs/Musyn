@@ -55,16 +55,16 @@ class VisionOsClientConfig {
       YoutubeApiClient(Map<String, dynamic>.from(payload), apiUrl);
 
   Map<String, dynamic> toJson() => {
-        'clientName': clientName,
-        'clientVersion': clientVersion,
-        'host': host,
-        'payload': payload,
-        'apiUrl': apiUrl,
-        'userAgent': userAgent,
-        'deviceModel': deviceModel,
-        'osVersion': osVersion,
-        'isBuiltin': isBuiltin,
-      };
+    'clientName': clientName,
+    'clientVersion': clientVersion,
+    'host': host,
+    'payload': payload,
+    'apiUrl': apiUrl,
+    'userAgent': userAgent,
+    'deviceModel': deviceModel,
+    'osVersion': osVersion,
+    'isBuiltin': isBuiltin,
+  };
 
   factory VisionOsClientConfig.fromJson(Map<String, dynamic> json) {
     return VisionOsClientConfig(
@@ -81,13 +81,13 @@ class VisionOsClientConfig {
   }
 
   Map<String, Object?> logFields() => {
-        'client': displayLabel,
-        'host': host,
-        'deviceModel': deviceModel ?? '-',
-        'osVersion': osVersion ?? '-',
-        'userAgent': userAgent ?? '-',
-        'builtin': isBuiltin,
-      };
+    'client': displayLabel,
+    'host': host,
+    'deviceModel': deviceModel ?? '-',
+    'osVersion': osVersion ?? '-',
+    'userAgent': userAgent ?? '-',
+    'builtin': isBuiltin,
+  };
 }
 
 class YtdlpClientSyncService {
@@ -121,8 +121,8 @@ class YtdlpClientSyncService {
     ];
     final out = <YoutubeApiClient>[primary];
     for (final client in fallbacks) {
-      final name =
-          client.payload['context']?['client']?['clientName']?.toString();
+      final name = client.payload['context']?['client']?['clientName']
+          ?.toString();
       if (name == null || name == primaryName) continue;
       if (out.any(
         (c) =>
@@ -137,12 +137,8 @@ class YtdlpClientSyncService {
 
   Future<void> ensureLoaded() async {
     if (_loaded) return;
-    _loaded = true;
 
-    logger.log(
-      'YouTube visionos client boot',
-      data: _active.logFields(),
-    );
+    logger.log('YouTube visionos client boot', data: _active.logFields());
 
     if (!Hive.isBoxOpen('settings')) return;
     final settings = Hive.box('settings');
@@ -183,6 +179,7 @@ class YtdlpClientSyncService {
         );
       }
     }
+    _loaded = true;
   }
 
   /// User-initiated: pull yt-dlp's current visionos block and persist it.
@@ -229,7 +226,11 @@ class YtdlpClientSyncService {
       final syncedAt = DateTime.now();
       lastSyncedAt.value = syncedAt;
 
-      await addOrUpdateData('settings', _clientEntryKey, jsonEncode(parsed.toJson()));
+      await addOrUpdateData(
+        'settings',
+        _clientEntryKey,
+        jsonEncode(parsed.toJson()),
+      );
       await addOrUpdateData('settings', _syncAtKey, syncedAt.toIso8601String());
 
       final commit = await _latestCommitSha();
@@ -253,11 +254,7 @@ class YtdlpClientSyncService {
         commit: commit,
       );
     } catch (e, st) {
-      logger.log(
-        'YouTube visionos sync error',
-        error: e,
-        stackTrace: st,
-      );
+      logger.log('YouTube visionos sync error', error: e, stackTrace: st);
       return YtdlpClientSyncResult.failed(_readableError(e));
     } finally {
       syncing.value = false;
@@ -268,8 +265,13 @@ class YtdlpClientSyncService {
     try {
       final response = await http
           .get(
-            Uri.parse('https://api.github.com/repos/yt-dlp/yt-dlp/commits/master'),
-            headers: {'Accept': 'application/vnd.github+json'},
+            Uri.parse(
+              'https://api.github.com/repos/yt-dlp/yt-dlp/commits/master',
+            ),
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'User-Agent': 'Musified-App',
+            },
           )
           .timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return null;
@@ -297,8 +299,10 @@ class YtdlpClientSyncResult {
   final String? commit;
   final String? error;
 
-  factory YtdlpClientSyncResult.success({required String label, String? commit}) =>
-      YtdlpClientSyncResult._(ok: true, label: label, commit: commit);
+  factory YtdlpClientSyncResult.success({
+    required String label,
+    String? commit,
+  }) => YtdlpClientSyncResult._(ok: true, label: label, commit: commit);
 
   factory YtdlpClientSyncResult.failed(String error) =>
       YtdlpClientSyncResult._(ok: false, error: error);
@@ -376,9 +380,7 @@ int? _matchingBrace(String source, int openBraceIndex) {
 VisionOsClientConfig? _parseVisionOsBlock(String block) {
   final clientName = _quotedField(block, 'clientName');
   final clientVersion = _quotedField(block, 'clientVersion');
-  if (clientName == null ||
-      clientVersion == null ||
-      clientName != 'VISIONOS') {
+  if (clientName == null || clientVersion == null || clientName != 'VISIONOS') {
     return null;
   }
 
@@ -408,7 +410,9 @@ VisionOsClientConfig? _parseVisionOsBlock(String block) {
     clientName: clientName,
     clientVersion: clientVersion,
     host: host,
-    payload: {'context': {'client': client}},
+    payload: {
+      'context': {'client': client},
+    },
     apiUrl: 'https://$host/youtubei/v1/player?prettyPrint=false',
     userAgent: client['userAgent']?.toString(),
     deviceModel: client['deviceModel']?.toString(),

@@ -5,14 +5,13 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
-import 'package:hive/hive.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/data_manager.dart';
 import 'package:musified/services/download_transfer.dart';
 import 'package:musified/services/io_service.dart';
-import 'package:musified/services/playlists_manager.dart';
+import 'package:musified/services/logger_service.dart';
+import 'package:musified/services/offline_playlist_registry.dart';
 import 'package:musified/services/settings_manager.dart';
 import 'package:musified/utilities/flutter_toast.dart';
 
@@ -27,79 +26,26 @@ class OfflinePlaylistService {
       {};
   final List<String> activeDownloads = [];
 
-  // List of playlists that are fully available offline
-  final offlinePlaylists = ValueNotifier<List<dynamic>>(() {
-    try {
-      if (Hive.isBoxOpen('userNoBackup')) {
-        return Hive.box(
-          'userNoBackup',
-        ).get('offlinePlaylists', defaultValue: []);
-      }
-    } catch (_) {}
-    return [];
-  }());
-
-  void reloadOfflinePlaylistsFromStorage() {
-    try {
-      if (Hive.isBoxOpen('userNoBackup')) {
-        offlinePlaylists.value = List.from(
-          Hive.box('userNoBackup').get('offlinePlaylists', defaultValue: []),
-        );
-      }
-    } catch (_) {}
-  }
+  ValueNotifier<List<dynamic>> get offlinePlaylists =>
+      offlinePlaylistRegistry.offlinePlaylists;
+  void reloadOfflinePlaylistsFromStorage() =>
+      offlinePlaylistRegistry.reloadOfflinePlaylistsFromStorage();
+  bool isPlaylistDownloaded(String id) =>
+      offlinePlaylistRegistry.isPlaylistDownloaded(id);
+  Map? getOfflinePlaylist(String id) =>
+      offlinePlaylistRegistry.getOfflinePlaylist(id);
+  void checkAndAutoMarkOffline(Map playlist) =>
+      offlinePlaylistRegistry.checkAndAutoMarkOffline(playlist);
 
   ValueNotifier<DownloadProgress> getProgressNotifier(String playlistId) {
     return downloadProgressNotifiers.putIfAbsent(
       playlistId,
-      () => ValueNotifier<DownloadProgress>(DownloadProgress(total: 0)),
+      () => _DownloadProgressNotifier(() => _releaseUnusedProgress(playlistId)),
     );
-  }
-
-  bool isPlaylistDownloaded(String playlistId) {
-    return offlinePlaylists.value.any(
-      (playlist) => playlist['ytid'] == playlistId,
-    );
-  }
-
-  Map? getOfflinePlaylist(String playlistId) {
-    for (final playlist in offlinePlaylists.value) {
-      if (playlist is Map && playlist['ytid']?.toString() == playlistId) {
-        return playlist;
-      }
-    }
-    return null;
   }
 
   bool isPlaylistDownloading(String playlistId) {
     return activeDownloads.contains(playlistId);
-  }
-
-  /// Marks [playlist] offline when all of its songs are available locally.
-  void checkAndAutoMarkOffline(Map playlist) {
-    final id = playlist['ytid']?.toString();
-    final pList = playlist['list'] as List?;
-    if (id == null || pList == null || pList.isEmpty) return;
-    if (isPlaylistDownloaded(id)) return;
-
-    final offlineSongIds = userOfflineSongs.value.map((s) => s['ytid']).toSet();
-    if (!pList.every((s) => offlineSongIds.contains(s['ytid']))) return;
-
-    offlinePlaylists.value = [
-      ...offlinePlaylists.value,
-      {
-        ...playlist,
-        'list': pList,
-        'downloadedAt': DateTime.now().millisecondsSinceEpoch,
-      },
-    ];
-    unawaited(
-      addOrUpdateData<List>(
-        'userNoBackup',
-        'offlinePlaylists',
-        offlinePlaylists.value,
-      ),
-    );
   }
 
   Future<void> downloadPlaylist(BuildContext context, Map playlist) async {
@@ -510,10 +456,9 @@ class OfflinePlaylistService {
 
       offlinePlaylists.value = [];
 
-      for (final notifier in downloadProgressNotifiers.values) {
-        notifier.dispose();
+      for (final id in downloadProgressNotifiers.keys.toList()) {
+        cleanupProgressNotifier(id);
       }
-      downloadProgressNotifiers.clear();
       activeDownloads.clear();
 
       unawaited(addOrUpdateData<List>('userNoBackup', 'offlineSongs', []));
@@ -535,6 +480,7 @@ class OfflinePlaylistService {
       if (downloadProgressNotifiers.containsKey(playlistId)) {
         final notifier = downloadProgressNotifiers[playlistId];
         notifier?.value = DownloadProgress(total: 0);
+        _releaseUnusedProgress(playlistId);
       }
     } catch (e, stackTrace) {
       logger.log(
@@ -543,6 +489,16 @@ class OfflinePlaylistService {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  void _releaseUnusedProgress(String playlistId) {
+    final notifier = downloadProgressNotifiers[playlistId];
+    if (notifier == null ||
+        notifier.hasListeners ||
+        isPlaylistDownloading(playlistId))
+      return;
+    downloadProgressNotifiers.remove(playlistId);
+    notifier.dispose();
   }
 
   Future<void> _processDownloadQueue(
@@ -590,6 +546,17 @@ class OfflinePlaylistService {
         progressNotifier.notifyListeners();
       }
     }
+  }
+}
+
+class _DownloadProgressNotifier extends ValueNotifier<DownloadProgress> {
+  _DownloadProgressNotifier(this.onUnused) : super(DownloadProgress(total: 0));
+  final VoidCallback onUnused;
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    scheduleMicrotask(onUnused);
   }
 }
 

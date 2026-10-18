@@ -31,7 +31,9 @@ class ArtworkProvider {
         provider = MemoryImage(bytes);
       } else if (!kIsWeb &&
           (artwork.startsWith('file://') || artwork.startsWith('/'))) {
-        final path = artwork.replaceFirst('file://', '');
+        final path = artwork.startsWith('file:')
+            ? Uri.parse(artwork).toFilePath()
+            : artwork;
         provider = FileImage(File(path));
       } else {
         provider = AssetImage(artwork);

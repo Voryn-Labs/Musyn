@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/main.dart';
 import 'package:musified/services/common_services.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/mediaitem.dart';
 
@@ -25,11 +25,16 @@ class AudioPlaybackInstall {
           'Building file source',
           data: {'path': songUrl, 'bytes': bytes, 'title': song['title']},
         );
-        final fileSource = AudioSource.uri(Uri.file(songUrl), tag: mapToMediaItem(song));
+        final fileSource = AudioSource.uri(
+          Uri.file(songUrl),
+          tag: mapToMediaItem(song),
+        );
         final catalogDuration = parseSongDuration(song['duration']);
-        final codec = song['audioCodec']?.toString() ??
-            getOfflineSongByYtid(song['ytid']?.toString() ?? '')['audioCodec']
-                ?.toString();
+        final codec =
+            song['audioCodec']?.toString() ??
+            getOfflineSongByYtid(
+              song['ytid']?.toString() ?? '',
+            )['audioCodec']?.toString();
         if (catalogDuration != null &&
             catalogDuration > const Duration(seconds: 5) &&
             isHeAacFormatLabel(codec)) {
@@ -79,7 +84,11 @@ class AudioPlaybackInstall {
         };
       }
 
-      final uriSource = AudioSource.uri(playbackUri, headers: headers, tag: tag);
+      final uriSource = AudioSource.uri(
+        playbackUri,
+        headers: headers,
+        tag: tag,
+      );
       final catalogDuration = parseSongDuration(song['duration']);
 
       if (isYoutube &&

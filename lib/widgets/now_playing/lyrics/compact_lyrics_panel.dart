@@ -83,7 +83,7 @@ class CompactLyricsPanel extends StatelessWidget {
 
   List<_Slot> _visibleSlots() {
     if (lines.isEmpty) return const [];
-    final idx = currentIndex < 0 ? 0 : currentIndex;
+    final idx = currentIndex.clamp(0, lines.length - 1);
     final slots = <_Slot>[];
     if (idx > 0) slots.add(_Slot(index: idx - 1, role: _SlotRole.past));
     slots.add(_Slot(index: idx, role: _SlotRole.active));

@@ -1,10 +1,11 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';
+import 'package:musified/utilities/mediaitem.dart';
 import 'package:musified/widgets/song_actions_sheet.dart';
+import 'package:musified/widgets/song_artwork.dart';
 
 /// Clean, high-performance iOS Apple-style song row.
 class SongTile extends StatelessWidget {
@@ -30,10 +31,6 @@ class SongTile extends StatelessWidget {
     final ytid = song['ytid']?.toString() ?? '';
     final title = song['title']?.toString() ?? 'Unknown Title';
     final artist = song['artist']?.toString() ?? 'Unknown Artist';
-    final imageUrl = song['lowResImage']?.toString() ??
-        song['image']?.toString() ??
-        song['thumbnail']?.toString() ??
-        'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
 
     final isDark = isAppDarkMode(context);
     final primaryColor = isDark ? CupertinoColors.white : CupertinoColors.black;
@@ -64,17 +61,10 @@ class SongTile extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                          color: musifiedSecondarySurface(isDark),
-                          child: const Icon(
-                            CupertinoIcons.music_note,
-                            size: 20,
-                            color: CupertinoColors.systemGrey,
-                          ),
-                        ),
+                      SongArtworkWidget(
+                        metadata: mapToMediaItem(song),
+                        size: 48,
+                        borderRadius: 8,
                       ),
                       if (isPlaying)
                         Container(
@@ -104,7 +94,9 @@ class SongTile extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.2,
-                        color: isPlaying ? const Color(0xFFFF2D55) : primaryColor,
+                        color: isPlaying
+                            ? const Color(0xFFFF2D55)
+                            : primaryColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

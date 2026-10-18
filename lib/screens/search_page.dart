@@ -1,13 +1,15 @@
 import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/data_manager.dart';
+import 'package:musified/services/logger_service.dart';
+import 'package:musified/services/navigation_paths.dart';
 import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/router_service.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';
 import 'package:musified/widgets/artist_bar.dart';
@@ -300,7 +302,7 @@ class _SearchPageState extends State<SearchPage> {
                           onTap: () {
                             if (a['ytid'] != null) {
                               context.push(
-                                NavigationManager.artistPath(
+                                NavigationPaths.artistPath(
                                   context,
                                   a['ytid'].toString(),
                                 ),

@@ -44,10 +44,6 @@ class AudioQueueState {
 
   Map? get currentSong => songAt(currentIndex);
 
-  void resetIndices() {
-    loadingIndex = -1;
-  }
-
   void addToHistory(Map song) {
     history.insert(0, song);
     if (history.length > maxHistorySize) {

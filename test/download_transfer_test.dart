@@ -5,6 +5,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:musified/services/download_transfer.dart';
 
 void main() {
+  test(
+    'cancellation after completed races handles late errors safely',
+    () async {
+      final token = DownloadCancellation();
+      for (var i = 0; i < 100; i++) {
+        expect(await token.race(Future.value(i)), i);
+      }
+      final late = Completer<int>();
+      final pending = token.race(late.future);
+      final cancelled = expectLater(pending, throwsA(isA<DownloadCancelled>()));
+      token.cancel();
+      await cancelled;
+      late.completeError(StateError('request failed after cancellation'));
+      await Future<void>.delayed(Duration.zero);
+    },
+  );
+
   late Directory directory;
   late File file;
   setUp(() async {

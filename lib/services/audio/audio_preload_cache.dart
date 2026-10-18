@@ -2,22 +2,40 @@
 class AudioPreloadCache {
   static const int _maxStreamUrls = 30;
 
-  int activeCount = 0;
-  final Set<String> preloadingYtIds = <String>{};
+  final Map<String, Object> _inFlight = {};
+  final Set<Object> _discarded = {};
+  int get activeCount => _inFlight.length;
+  Set<String> get preloadingYtIds => _inFlight.keys.toSet();
   final Set<String> preloadedYtIds = <String>{};
   final Map<String, String> streamUrls = <String, String>{};
 
   void reset() {
-    activeCount = 0;
-    preloadingYtIds.clear();
+    _discarded.addAll(_inFlight.values);
     preloadedYtIds.clear();
     streamUrls.clear();
   }
 
   void drop(String ytid) {
-    preloadingYtIds.remove(ytid);
+    final pending = _inFlight[ytid];
+    if (pending != null) _discarded.add(pending);
     preloadedYtIds.remove(ytid);
     streamUrls.remove(ytid);
+  }
+
+  Object? begin(String ytid, {required int maxConcurrent}) {
+    if (_inFlight.containsKey(ytid) || activeCount >= maxConcurrent)
+      return null;
+    final ticket = Object();
+    _inFlight[ytid] = ticket;
+    return ticket;
+  }
+
+  /// Invalidating cached data does not cancel an already running request.
+  /// Hold its concurrency slot until that request actually finishes.
+  bool finish(String ytid, Object ticket) {
+    if (!identical(_inFlight[ytid], ticket)) return false;
+    _inFlight.remove(ytid);
+    return !_discarded.remove(ticket);
   }
 
   /// Evict oldest entries when the cache exceeds its size limit.

@@ -4,8 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musified/services/artist_service.dart';
 import 'package:musified/services/common_services.dart';
+import 'package:musified/services/navigation_paths.dart';
 import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/router_service.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';
 import 'package:musified/utilities/artwork_provider.dart';
@@ -57,9 +57,15 @@ class PlaylistBar extends StatelessWidget {
   void _showActionSheet(BuildContext context) {
     final isUserCreated = playlistData?['source'] == 'user-created';
     final pinnedIds = pinnedPlaylistIds.value;
-    final isPinned = _resolvedPlaylistId != null && pinnedIds.contains(_resolvedPlaylistId);
-    final isLiked = _resolvedPlaylistId != null && isPlaylistAlreadyLiked(_resolvedPlaylistId);
-    final isOffline = playlistData != null && (playlistData!['downloadedAt'] != null || playlistData!['isOffline'] == true);
+    final isPinned =
+        _resolvedPlaylistId != null && pinnedIds.contains(_resolvedPlaylistId);
+    final isLiked =
+        _resolvedPlaylistId != null &&
+        isPlaylistAlreadyLiked(_resolvedPlaylistId);
+    final isOffline =
+        playlistData != null &&
+        (playlistData!['downloadedAt'] != null ||
+            playlistData!['isOffline'] == true);
 
     showCupertinoModalPopup<void>(
       context: context,
@@ -75,38 +81,61 @@ class PlaylistBar extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(isPinned ? CupertinoIcons.pin_slash : CupertinoIcons.pin, size: 20),
+                  Icon(
+                    isPinned ? CupertinoIcons.pin_slash : CupertinoIcons.pin,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(isPinned ? 'Unpin from Library' : 'Pin to Library'),
                 ],
               ),
             ),
-          if (!isFolder && (onDelete == null || !isUserCreated) && _resolvedPlaylistId != null)
+          if (!isFolder &&
+              (onDelete == null || !isUserCreated) &&
+              _resolvedPlaylistId != null)
             CupertinoActionSheetAction(
               onPressed: () {
                 Navigator.pop(ctx);
-                unawaited(updatePlaylistLikeStatus(_resolvedPlaylistId!, !isLiked, playlistData: playlistData));
+                unawaited(
+                  updatePlaylistLikeStatus(
+                    _resolvedPlaylistId!,
+                    !isLiked,
+                    playlistData: playlistData,
+                  ),
+                );
               },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(isLiked ? CupertinoIcons.heart_fill : CupertinoIcons.heart, size: 20),
+                  Icon(
+                    isLiked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(isLiked ? 'Remove from Favorites' : 'Add to Favorites'),
                 ],
               ),
             ),
-          if (isOffline && playlistData != null && playlistData!['ytid'] != null)
+          if (isOffline &&
+              playlistData != null &&
+              playlistData!['ytid'] != null)
             CupertinoActionSheetAction(
               isDestructiveAction: true,
               onPressed: () {
                 Navigator.pop(ctx);
-                showRemoveOfflinePlaylistDialog(context, playlistData!['ytid'].toString());
+                showRemoveOfflinePlaylistDialog(
+                  context,
+                  playlistData!['ytid'].toString(),
+                );
               },
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(CupertinoIcons.cloud_download, size: 20, color: CupertinoColors.destructiveRed),
+                  Icon(
+                    CupertinoIcons.cloud_download,
+                    size: 20,
+                    color: CupertinoColors.destructiveRed,
+                  ),
                   SizedBox(width: 8),
                   Text('Remove Offline Download'),
                 ],
@@ -122,7 +151,11 @@ class PlaylistBar extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(CupertinoIcons.trash, size: 20, color: CupertinoColors.destructiveRed),
+                  const Icon(
+                    CupertinoIcons.trash,
+                    size: 20,
+                    color: CupertinoColors.destructiveRed,
+                  ),
                   const SizedBox(width: 8),
                   Text(isFolder ? 'Delete Folder' : 'Delete Playlist'),
                 ],
@@ -151,7 +184,9 @@ class PlaylistBar extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: borderRadius == BorderRadius.zero ? BorderRadius.circular(12) : borderRadius,
+        borderRadius: borderRadius == BorderRadius.zero
+            ? BorderRadius.circular(12)
+            : borderRadius,
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -223,7 +258,11 @@ class PlaylistBar extends StatelessWidget {
                 CupertinoButton(
                   padding: const EdgeInsets.all(8),
                   onPressed: () => _showActionSheet(context),
-                  child: const Icon(CupertinoIcons.ellipsis, size: 20, color: CupertinoColors.systemGrey),
+                  child: const Icon(
+                    CupertinoIcons.ellipsis,
+                    size: 20,
+                    color: CupertinoColors.systemGrey,
+                  ),
                 ),
             ],
           ),
@@ -284,7 +323,11 @@ class PlaylistBar extends StatelessWidget {
     if (isFolder && playlistData != null) {
       return () {
         context.push(
-          '/home/folder/${playlistData!['id']}/${Uri.encodeComponent(playlistTitle)}',
+          NavigationPaths.folderPath(
+            context,
+            playlistData!['id'].toString(),
+            playlistTitle,
+          ),
         );
       };
     }
@@ -299,13 +342,16 @@ class PlaylistBar extends StatelessWidget {
 
       if (isArtist) {
         context.push(
-          NavigationManager.artistPath(context, _resolvedPlaylistId!),
+          NavigationPaths.artistPath(context, _resolvedPlaylistId!),
           extra: playlistData,
         );
         return;
       }
 
-      context.push('/home/playlist/$_resolvedPlaylistId');
+      context.push(
+        NavigationPaths.playlistPath(context, _resolvedPlaylistId!),
+        extra: playlistData,
+      );
     };
   }
 }

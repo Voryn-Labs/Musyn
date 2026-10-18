@@ -2,7 +2,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musified/extensions/l10n.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 
 Widget buildPlaybackIconButton(
   double iconSize,
@@ -47,7 +47,7 @@ Widget buildPlaybackIconButton(
 
       final isBufferingOrLoading =
           processingState == AudioProcessingState.loading ||
-              processingState == AudioProcessingState.buffering;
+          processingState == AudioProcessingState.buffering;
 
       if (isPlaying) {
         iconWidget = Icon(

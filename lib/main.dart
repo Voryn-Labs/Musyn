@@ -9,13 +9,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:musified/extensions/l10n.dart';
 import 'package:musified/localization/app_localizations.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/services/audio_service.dart';
 import 'package:musified/services/common_services.dart';
 import 'package:musified/services/data_manager.dart';
 import 'package:musified/services/io_service.dart';
 import 'package:musified/services/logger_service.dart';
-
-export 'package:musified/services/logger_service.dart' show logger, Logger;
 import 'package:musified/services/playlist_download_service.dart';
 import 'package:musified/services/playlist_sharing.dart';
 import 'package:musified/services/playlists_manager.dart';
@@ -32,15 +31,8 @@ import 'package:musified/utilities/language_utils.dart';
 import 'package:musified/utilities/playlist_utils.dart';
 import 'package:path_provider/path_provider.dart';
 
-MusifiedAudioHandler? _audioHandlerInstance;
-final audioHandlerReady = ValueNotifier<bool>(false);
-MusifiedAudioHandler get audioHandler {
-  final h = _audioHandlerInstance;
-  if (h != null) return h;
-  throw StateError('audioHandler not initialized yet');
-}
-
-bool get isAudioHandlerInitialized => _audioHandlerInstance != null;
+export 'package:musified/services/audio/audio_runtime.dart';
+export 'package:musified/services/logger_service.dart' show logger, Logger;
 
 // Re-exported from logger_service for files that import main.dart.
 final appLinks = AppLinks();
@@ -265,7 +257,7 @@ void main() async {
     // Hive boxes + AudioService.init() (which does real native work: audio
     // session config, MPRemoteCommandCenter/MPNowPlayingInfoCenter setup)
     // can legitimately take longer than that. When the old 4s timeout fired,
-    // runApp() was called while `_audioHandlerInstance` was still null, so
+    // runApp() was called while `audioHandlerInstance` was still null, so
     // any UI built in that window (e.g. tapping play) would find the player
     // "not ready" - looking exactly like songs silently refusing to play
     // right after opening the app. The slow AudioService.init() call itself
@@ -331,8 +323,8 @@ Future<void> initialisation() async {
     // Bounded so a slow/stuck native AudioService setup can never stall the
     // whole app: if it doesn't finish in time we fall through to the plain
     // MusifyAudioHandler() below (no system media integration, but songs
-    // still play), instead of leaving `_audioHandlerInstance` null forever.
-    _audioHandlerInstance = await AudioService.init(
+    // still play), instead of leaving `audioHandlerInstance` null forever.
+    audioHandlerInstance = await AudioService.init(
       builder: MusifiedAudioHandler.new,
       config: const AudioServiceConfig(
         artDownscaleWidth: 512,
@@ -348,20 +340,20 @@ Future<void> initialisation() async {
       await AudioService.stop();
     } catch (_) {}
     try {
-      _audioHandlerInstance = MusifiedAudioHandler();
+      audioHandlerInstance = MusifiedAudioHandler();
       logger.log('Created fallback MusifiedAudioHandler without AudioService');
     } catch (e2, st2) {
       logger.log('Fallback handler also failed', error: e2, stackTrace: st2);
     }
   }
-  if (_audioHandlerInstance == null) {
+  if (audioHandlerInstance == null) {
     try {
-      _audioHandlerInstance = MusifiedAudioHandler();
+      audioHandlerInstance = MusifiedAudioHandler();
     } catch (e, st) {
       logger.log('Last-resort handler failed', error: e, stackTrace: st);
     }
   }
-  audioHandlerReady.value = _audioHandlerInstance != null;
+  audioHandlerReady.value = audioHandlerInstance != null;
 
   // Phase 4: router - MUST always run
   try {
@@ -390,7 +382,10 @@ Future<void> initialisation() async {
 }
 
 Future<void> handleIncomingLink(Uri? uri) async {
-  if (uri == null || (uri.scheme != 'musified' && uri.scheme != 'musify') || uri.host != 'playlist') return;
+  if (uri == null ||
+      (uri.scheme != 'musified' && uri.scheme != 'musify') ||
+      uri.host != 'playlist')
+    return;
 
   if (uri.pathSegments.length < 2 || uri.pathSegments[0] != 'custom') return;
 
@@ -426,17 +421,15 @@ Future<void> handleIncomingLink(Uri? uri) async {
       userCustomPlaylists.value,
     );
 
-    final navContext = NavigationManager.router.routerDelegate.navigatorKey.currentContext;
+    final navContext =
+        NavigationManager.router.routerDelegate.navigatorKey.currentContext;
     if (navContext == null) {
       logger.log('Deep link received before navigator mounted');
       return;
     }
 
     if (isDuplicate) {
-      showToast(
-        navContext,
-        navContext.l10n.playlistAlreadyExists,
-      );
+      showToast(navContext, navContext.l10n.playlistAlreadyExists);
     } else {
       userCustomPlaylists.value = [...userCustomPlaylists.value, playlist];
       unawaited(
@@ -446,22 +439,21 @@ Future<void> handleIncomingLink(Uri? uri) async {
           userCustomPlaylists.value,
         ),
       );
-      showToast(
-        navContext,
-        '${navContext.l10n.addedSuccess}!',
-      );
+      showToast(navContext, '${navContext.l10n.addedSuccess}!');
     }
   } catch (e, stackTrace) {
-    logger.log('Failed to handle playlist deep link', error: e, stackTrace: stackTrace);
+    logger.log(
+      'Failed to handle playlist deep link',
+      error: e,
+      stackTrace: stackTrace,
+    );
     _showPlaylistError();
   }
 }
 
 void _showPlaylistError() {
-  final navContext = NavigationManager.router.routerDelegate.navigatorKey.currentContext;
+  final navContext =
+      NavigationManager.router.routerDelegate.navigatorKey.currentContext;
   if (navContext == null) return;
-  showToast(
-    navContext,
-    navContext.l10n.failedToLoadPlaylist,
-  );
+  showToast(navContext, navContext.l10n.failedToLoadPlaylist);
 }

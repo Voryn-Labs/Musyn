@@ -1,26 +1,33 @@
 import 'dart:convert';
 import 'package:dart_des/dart_des.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/main.dart' show logger;
+import 'package:musified/services/logger_service.dart';
 
 class JioSaavnService {
   factory JioSaavnService() => _instance;
   JioSaavnService._();
-  
+
   static final JioSaavnService _instance = JioSaavnService._();
 
   /// Search for tracks matching a query
-  Future<List<Map<String, dynamic>>> searchTracks(String query, {int limit = 5}) async {
+  Future<List<Map<String, dynamic>>> searchTracks(
+    String query, {
+    int limit = 5,
+  }) async {
     try {
       final url = Uri.parse(
-          'https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=$limit&q=${Uri.encodeComponent(query)}');
+        'https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=$limit&q=${Uri.encodeComponent(query)}',
+      );
       final response = await http
-          .get(url, headers: {
-            'User-Agent':
-                'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-            'Accept': 'application/json, text/plain, */*',
-            'Referer': 'https://www.jiosaavn.com/',
-          })
+          .get(
+            url,
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+              'Accept': 'application/json, text/plain, */*',
+              'Referer': 'https://www.jiosaavn.com/',
+            },
+          )
           .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final body = response.body.trim();
@@ -54,7 +61,10 @@ class JioSaavnService {
 
   /// Get the direct streaming URL for a JioSaavn track
   /// quality: '96', '160', '320' (map 128->96 for Saavn compatibility)
-  Future<String?> getStreamUrl(String encryptedMediaUrl, {String quality = '320'}) async {
+  Future<String?> getStreamUrl(
+    String encryptedMediaUrl, {
+    String quality = '320',
+  }) async {
     try {
       if (encryptedMediaUrl.isEmpty) return null;
       final q = quality == '128' ? '96' : quality;
@@ -102,7 +112,9 @@ class JioSaavnService {
     if (primary is String && primary.isNotEmpty) {
       artist = primary;
     } else if (primary is List && primary.isNotEmpty) {
-      artist = primary.map((e) => e is Map ? e['name']?.toString() ?? '' : e.toString()).join(', ');
+      artist = primary
+          .map((e) => e is Map ? e['name']?.toString() ?? '' : e.toString())
+          .join(', ');
     }
     if (artist.isEmpty) {
       final artistMap = moreInfo?['artistMap'];
@@ -117,9 +129,14 @@ class JioSaavnService {
       }
     }
     if (artist.isEmpty) artist = subtitle;
-    artist = artist.replaceAll('&amp;', '&').replaceAll('&quot;', '"').replaceAll('&#039;', "'").trim();
+    artist = artist
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#039;', "'")
+        .trim();
 
-    var image = rawTrack['image']?.toString() ?? moreInfo?['image']?.toString() ?? '';
+    var image =
+        rawTrack['image']?.toString() ?? moreInfo?['image']?.toString() ?? '';
     if (image.contains('150x150')) {
       image = image.replaceAll('150x150', '500x500');
     }
@@ -127,7 +144,10 @@ class JioSaavnService {
       image = image.replaceAll('50x50', '500x500');
     }
 
-    final encryptedUrl = moreInfo?['encrypted_media_url']?.toString() ?? rawTrack['encrypted_media_url']?.toString() ?? '';
+    final encryptedUrl =
+        moreInfo?['encrypted_media_url']?.toString() ??
+        rawTrack['encrypted_media_url']?.toString() ??
+        '';
 
     // duration may be string seconds or int
     final rawDur = moreInfo?['duration'] ?? rawTrack['duration'] ?? '0';
@@ -154,13 +174,16 @@ class JioSaavnService {
         '&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=$limit',
       );
       final response = await http
-          .get(url, headers: {
-            'User-Agent':
-                'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
-                'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-            'Accept': 'application/json',
-            'Referer': 'https://www.jiosaavn.com/',
-          })
+          .get(
+            url,
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
+                  'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+              'Accept': 'application/json',
+              'Referer': 'https://www.jiosaavn.com/',
+            },
+          )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return [];
       final body = response.body.trim();
@@ -173,14 +196,17 @@ class JioSaavnService {
       for (final item in raw) {
         if (item is! Map) continue;
         final id = item['id']?.toString() ?? '';
-        var title = (item['title']?.toString() ?? item['listname']?.toString() ?? '')
-            .replaceAll('&quot;', '"')
-            .replaceAll('&amp;', '&')
-            .replaceAll('&#039;', "'")
-            .trim();
+        var title =
+            (item['title']?.toString() ?? item['listname']?.toString() ?? '')
+                .replaceAll('&quot;', '"')
+                .replaceAll('&amp;', '&')
+                .replaceAll('&#039;', "'")
+                .trim();
         var image = item['image']?.toString() ?? '';
-        if (image.contains('150x150')) image = image.replaceAll('150x150', '500x500');
-        if (image.contains('50x50')) image = image.replaceAll('50x50', '500x500');
+        if (image.contains('150x150'))
+          image = image.replaceAll('150x150', '500x500');
+        if (image.contains('50x50'))
+          image = image.replaceAll('50x50', '500x500');
         if (id.isEmpty || title.isEmpty) continue;
         charts.add({
           'ytid': 'saavn_chart_$id',
@@ -214,13 +240,16 @@ class JioSaavnService {
         '&_format=json&_marker=0&api_version=4&ctx=web6dot0&listid=$cleanId',
       );
       final response = await http
-          .get(url, headers: {
-            'User-Agent':
-                'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
-                'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-            'Accept': 'application/json',
-            'Referer': 'https://www.jiosaavn.com/',
-          })
+          .get(
+            url,
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
+                  'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+              'Accept': 'application/json',
+              'Referer': 'https://www.jiosaavn.com/',
+            },
+          )
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) return null;
@@ -231,13 +260,15 @@ class JioSaavnService {
       if (raw is! Map) return null;
 
       final id = raw['id']?.toString() ?? cleanId;
-      var title = (raw['title']?.toString() ?? raw['listname']?.toString() ?? '')
-          .replaceAll('&quot;', '"')
-          .replaceAll('&amp;', '&')
-          .replaceAll('&#039;', "'")
-          .trim();
+      var title =
+          (raw['title']?.toString() ?? raw['listname']?.toString() ?? '')
+              .replaceAll('&quot;', '"')
+              .replaceAll('&amp;', '&')
+              .replaceAll('&#039;', "'")
+              .trim();
       var image = raw['image']?.toString() ?? '';
-      if (image.contains('150x150')) image = image.replaceAll('150x150', '500x500');
+      if (image.contains('150x150'))
+        image = image.replaceAll('150x150', '500x500');
       if (image.contains('50x50')) image = image.replaceAll('50x50', '500x500');
 
       final rawList = raw['list'];
@@ -270,4 +301,3 @@ class JioSaavnService {
     }
   }
 }
-

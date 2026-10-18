@@ -3,7 +3,7 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/main.dart' show logger;
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/utilities/artwork_provider.dart';
 
 // Cache durations for different types of data
@@ -69,10 +69,7 @@ Future<void> addOrUpdateData<T>(String category, String key, T value) async {
   final _box = await _openBox(category);
 
   if (category == 'cache') {
-    await _box.putAll({
-      key: value,
-      '${key}_date': DateTime.now(),
-    });
+    await _box.putAll({key: value, '${key}_date': DateTime.now()});
     final cacheKey = '${category}_$key';
     _setMemoryCacheEntry(cacheKey, _CacheEntry(value, DateTime.now()));
   } else {

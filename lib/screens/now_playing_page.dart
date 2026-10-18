@@ -1,6 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/main.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/widgets/flip_card.dart';
 import 'package:musified/widgets/now_playing/bottom_actions_row.dart';
@@ -31,7 +31,9 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
     final isDark = isAppDarkMode(context);
     final bg = musifiedCanvas(isDark);
     final screenWidth = size.width;
-    final baseIconSize = screenWidth < 360 ? 36.0 : (screenWidth < 400 ? 40.0 : 44.0);
+    final baseIconSize = screenWidth < 360
+        ? 36.0
+        : (screenWidth < 400 ? 40.0 : 44.0);
     final miniIconSize = screenWidth < 360 ? 18.0 : 22.0;
 
     return CupertinoPageScaffold(

@@ -1,10 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
-import 'package:musified/main.dart';
-import 'package:musified/services/router_service.dart';
+import 'package:musified/constants/player_layout.dart';
+import 'package:musified/services/app_navigation_state.dart';
+import 'package:musified/services/audio/audio_runtime.dart';
 import 'package:musified/theme/app_themes.dart';
 import 'package:musified/theme/musified_style.dart';
-import 'package:musified/widgets/mini_player.dart';
 
 OverlayEntry? _activeToast;
 Timer? _toastTimer;
@@ -26,7 +27,7 @@ void showToast(
   final bottom =
       16.0 +
       MediaQuery.paddingOf(context).bottom +
-      (isMiniPlayerVisible ? MiniPlayer.playerHeight + 8 : 0);
+      (isMiniPlayerVisible ? miniPlayerHeight + 8 : 0);
 
   late final OverlayEntry entry;
   entry = OverlayEntry(
@@ -46,10 +47,15 @@ void showToast(
                       : const Color(0xFF1C1C1E),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
+                    color: isDark
+                        ? const Color(0x33FFFFFF)
+                        : const Color(0x1F000000),
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -106,7 +112,7 @@ void showToastWithButton(
   final bottom =
       16.0 +
       MediaQuery.paddingOf(context).bottom +
-      (isMiniPlayerVisible ? MiniPlayer.playerHeight + 8 : 0);
+      (isMiniPlayerVisible ? miniPlayerHeight + 8 : 0);
 
   late final OverlayEntry entry;
   entry = OverlayEntry(
@@ -122,7 +128,9 @@ void showToastWithButton(
                   : const Color(0xFF1C1C1E),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
+                color: isDark
+                    ? const Color(0x33FFFFFF)
+                    : const Color(0x1F000000),
               ),
             ),
             padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
@@ -190,7 +198,7 @@ void showAppToast(
   Duration duration = const Duration(seconds: 3),
   IconData icon = CupertinoIcons.exclamationmark_circle_fill,
 }) {
-  final context = NavigationManager.parentNavigatorKey.currentContext;
+  final context = appNavigatorKey.currentContext;
   if (context == null) return;
   showToast(context, text, duration: duration, icon: icon);
 }

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:musified/main.dart';
+import 'package:musified/services/logger_service.dart';
 import 'package:musified/services/youtube_client.dart';
 import 'package:musified/utilities/app_utils.dart';
 import 'package:musified/utilities/formatter.dart';
@@ -45,7 +45,9 @@ class PlaylistSharingService {
   ) async {
     final List<dynamic> songIds = compactPlaylist['list'];
     if (songIds.length > _maxSharedPlaylistSongs) {
-      throw StateError('Shared playlist exceeds $_maxSharedPlaylistSongs songs');
+      throw StateError(
+        'Shared playlist exceeds $_maxSharedPlaylistSongs songs',
+      );
     }
 
     final expandedSongs = await _mapWithConcurrency<Map<String, dynamic>?>(

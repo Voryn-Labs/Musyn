@@ -57,6 +57,7 @@ List<Map<String, dynamic>> playlistsDB = [
   {
     'ytid': 'PLgzTt0k8mXzHcKebL8d0uYHfawiARhQja',
     'title': 'Best Sad and Emotional Songs',
+    'image': '',
     'list': [],
   },
   {
@@ -298,6 +299,7 @@ List<Map<String, dynamic>> playlistsDB = [
   {
     'ytid': 'PLXpMeQYR1ilIgQ0klpqWf7-RdfouCeJLj',
     'title': 'Remix music 2026',
+    'image': '',
     'list': [],
   },
   {
@@ -351,6 +353,7 @@ List<Map<String, dynamic>> playlistsDB = [
   {
     'ytid': 'PLXpMeQYR1ilKXzjYmIb-FIKmYnzWZ7v4b',
     'title': 'New House Songs 2026',
+    'image': '',
     'list': [],
   },
   {
