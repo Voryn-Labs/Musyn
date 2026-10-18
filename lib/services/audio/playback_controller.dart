@@ -31,6 +31,7 @@ abstract class PlaybackController extends BaseAudioHandler {
   Future<void> playAgain();
   Future<void> skipToSong(int index);
   Future<void> removeFromQueue(int index);
+  Future<void> reorderQueue(int oldIndex, int newIndex);
   void clearQueue();
   void clearPinnedSources();
   Future<String?> switchSource(String source);

@@ -51,7 +51,7 @@ class _QueueWidgetState extends State<QueueWidget> {
       if (!mounted || !_scrollController.hasClients) return;
       final currentIndex = audioHandler.currentQueueIndex;
       if (currentIndex <= 0) return;
-      const estimatedItemHeight = 60.0;
+      const estimatedItemHeight = 64.0;
       final targetOffset = currentIndex * estimatedItemHeight;
       final clampedOffset = targetOffset.clamp(
         0.0,
@@ -184,6 +184,7 @@ class _QueueWidgetState extends State<QueueWidget> {
                 style: TextStyle(
                   color: CupertinoColors.destructiveRed,
                   fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -212,7 +213,7 @@ class _QueueWidgetState extends State<QueueWidget> {
       );
     }
     return SizedBox(
-      height: MediaQuery.sizeOf(context).height * 0.52,
+      height: MediaQuery.sizeOf(context).height * 0.54,
       child: _buildList(context, isDark, currentIndex, closeOnTap: true),
     );
   }
@@ -253,42 +254,163 @@ class _QueueWidgetState extends State<QueueWidget> {
     );
   }
 
-  String _queueEntryKey(Map song, int index) {
-    final entryId = song['queueEntryId']?.toString() ?? song['ytid'];
-    return '${entryId}_$index';
-  }
-
   Widget _buildList(
     BuildContext context,
     bool isDark,
     int currentIndex, {
     bool closeOnTap = false,
   }) {
-    return ListView.builder(
+    final hasNowPlaying = currentIndex >= 0 && currentIndex < _queue.length;
+    final nowPlayingSong = hasNowPlaying ? _queue[currentIndex] : null;
+
+    final upcomingStart = hasNowPlaying ? currentIndex + 1 : 0;
+    final upcomingSongs = upcomingStart < _queue.length
+        ? _queue.sublist(upcomingStart)
+        : <Map>[];
+
+    return CustomScrollView(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      itemCount: _queue.length,
-      itemBuilder: (context, index) {
-        final song = _queue[index];
-        final isCurrentSong = index == currentIndex;
-        final queueEntryId = _queueEntryKey(song, index);
-        return _QueueTile(
-          key: ValueKey(queueEntryId),
-          song: song,
-          index: index,
-          isCurrentSong: isCurrentSong,
-          isDark: isDark,
-          onTap: () {
-            HapticFeedback.selectionClick();
-            audioHandler.skipToSong(index);
-            if (closeOnTap) Navigator.pop(context);
-          },
-          onRemove: () {
-            audioHandler.removeFromQueue(index);
-          },
-        );
-      },
+      slivers: [
+        if (nowPlayingSong != null) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+              child: _buildSectionLabel('NOW PLAYING'),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: _QueueTile(
+                key: ValueKey('np_${nowPlayingSong['ytid']}_$currentIndex'),
+                song: nowPlayingSong,
+                index: currentIndex,
+                isCurrentSong: true,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  if (closeOnTap) Navigator.pop(context);
+                },
+                onRemove: () => audioHandler.removeFromQueue(currentIndex),
+              ),
+            ),
+          ),
+        ],
+        if (upcomingSongs.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+              child: _buildSectionLabel('NEXT IN QUEUE • ${upcomingSongs.length}'),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            sliver: SliverReorderableList(
+              itemCount: upcomingSongs.length,
+              onReorderItem: (oldIndex, newIndex) {
+                final fullOldIndex = upcomingStart + oldIndex;
+                final fullTargetIndex = upcomingStart + newIndex;
+                audioHandler.reorderQueue(fullOldIndex, fullTargetIndex);
+              },
+              itemBuilder: (context, index) {
+                final song = upcomingSongs[index];
+                final fullIndex = upcomingStart + index;
+                final entryKey = 'up_${song['ytid']}_$fullIndex';
+
+                return ReorderableDelayedDragStartListener(
+                  key: ValueKey(entryKey),
+                  index: index,
+                  child: _QueueTile(
+                    song: song,
+                    index: fullIndex,
+                    isCurrentSong: false,
+                    isDark: isDark,
+                    showDragHandle: true,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      audioHandler.skipToSong(fullIndex);
+                      if (closeOnTap) Navigator.pop(context);
+                    },
+                    onRemove: () => audioHandler.removeFromQueue(fullIndex),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+            child: _buildAutoplayCard(isDark),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontFamily: MusifiedStyle.uiFont,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+        color: CupertinoColors.systemGrey,
+        decoration: TextDecoration.none,
+      ),
+    );
+  }
+
+  Widget _buildAutoplayCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: musifiedElevatedSurface(isDark),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
+          width: 0.5,
+        ),
+      ),
+      child: const Row(
+        children: [
+          Icon(
+            CupertinoIcons.infinite,
+            color: MusifiedStyle.appleRed,
+            size: 22,
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Continuous Autoplay Active',
+                  style: TextStyle(
+                    fontFamily: MusifiedStyle.uiFont,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Similar tracks keep playing when your queue finishes.',
+                  style: TextStyle(
+                    fontFamily: MusifiedStyle.uiFont,
+                    fontSize: 11,
+                    color: CupertinoColors.systemGrey,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -302,6 +424,7 @@ class _QueueTile extends StatelessWidget {
     required this.isDark,
     required this.onTap,
     required this.onRemove,
+    this.showDragHandle = false,
   });
 
   final Map song;
@@ -310,6 +433,7 @@ class _QueueTile extends StatelessWidget {
   final bool isDark;
   final VoidCallback onTap;
   final VoidCallback onRemove;
+  final bool showDragHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -330,6 +454,9 @@ class _QueueTile extends StatelessWidget {
             ? activeColor.withValues(alpha: 0.12)
             : musifiedElevatedSurface(isDark),
         borderRadius: BorderRadius.circular(10),
+        border: isCurrentSong
+            ? Border.all(color: activeColor.withValues(alpha: 0.35), width: 0.8)
+            : null,
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -343,23 +470,40 @@ class _QueueTile extends StatelessWidget {
                 child: SizedBox(
                   width: 44,
                   height: 44,
-                  child: isLocalFile
-                      ? Image.file(
-                          File(image.replaceFirst('file://', '')),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const NullArtworkWidget(iconSize: 18, size: 44),
-                        )
-                      : image.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: image,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 88,
-                          memCacheHeight: 88,
-                          errorWidget: (_, __, ___) =>
-                              const NullArtworkWidget(iconSize: 18, size: 44),
-                        )
-                      : const NullArtworkWidget(iconSize: 18, size: 44),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: isLocalFile
+                            ? Image.file(
+                                File(image.replaceFirst('file://', '')),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const NullArtworkWidget(iconSize: 18, size: 44),
+                              )
+                            : image.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: image,
+                                fit: BoxFit.cover,
+                                memCacheWidth: 88,
+                                memCacheHeight: 88,
+                                errorWidget: (_, __, ___) =>
+                                    const NullArtworkWidget(iconSize: 18, size: 44),
+                              )
+                            : const NullArtworkWidget(iconSize: 18, size: 44),
+                      ),
+                      if (isCurrentSong)
+                        const ColoredBox(
+                          color: Color(0x66000000),
+                          child: Center(
+                            child: Icon(
+                              CupertinoIcons.waveform,
+                              color: CupertinoColors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -406,6 +550,14 @@ class _QueueTile extends StatelessWidget {
                   color: CupertinoColors.systemGrey,
                 ),
               ),
+              if (showDragHandle) ...[
+                const SizedBox(width: 4),
+                const Icon(
+                  CupertinoIcons.bars,
+                  size: 18,
+                  color: CupertinoColors.systemGrey,
+                ),
+              ],
             ],
           ),
         ),

@@ -1226,6 +1226,7 @@ class MusifiedAudioHandler extends PlaybackController {
     await removeFromQueue(index);
   }
 
+  @override
   Future<void> reorderQueue(int oldIndex, int newIndex) async {
     try {
       final pendingId = _pendingNavigationEntryId();

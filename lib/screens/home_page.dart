@@ -18,6 +18,7 @@ import 'package:musified/theme/musified_style.dart';
 import 'package:musified/widgets/mini_player_bottom_space.dart';
 import 'package:musified/widgets/playlist_cube.dart';
 import 'package:musified/widgets/section_header.dart';
+import 'package:musified/widgets/song_actions_sheet.dart';
 
 /// JioSaavn top-chart playlists (fetched once per app launch).
 final ValueNotifier<List<Map<String, dynamic>>> saavnCharts = ValueNotifier([]);
@@ -34,6 +35,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool _recentsIsList = false;
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +54,10 @@ class _HomePageState extends State<HomePage> {
       ]);
     } catch (e) {
       logger.log('Error loading trending: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -136,13 +144,15 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 12),
+                      _buildHeroShelf(isDark),
+                      _buildRecentsShelf(isDark),
                       _buildLikedSongsSection(isDark),
-                      _buildTopPlayedSection(isDark),
                       _buildTrendingSection(isDark),
                       _buildYtChartsSection(isDark),
                       _buildSaavnChartsSection(isDark),
                       _buildPlaylistsSection(),
                       _buildMostPlayedSection(isDark),
+                      if (_isLoading) _buildFeedSkeleton(isDark),
                       _buildEmptyStateIfNeeded(isDark),
                       const MiniPlayerBottomSpace(),
                     ],
@@ -151,6 +161,154 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeroShelf(bool isDark) {
+    return ValueListenableBuilder<List>(
+      valueListenable: trendingSongs,
+      builder: (context, rawSongs, _) {
+        final songs = rawSongs.whereType<Map>().toList();
+        if (songs.isEmpty) return const SizedBox.shrink();
+
+        final heroSongs = songs.take(8).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(
+              title: 'Featured Today',
+              icon: CupertinoIcons.sparkles,
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 172,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                itemCount: heroSongs.length,
+                itemBuilder: (context, index) {
+                  final song = heroSongs[index];
+                  return _HeroCard(
+                    song: song,
+                    isDark: isDark,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      audioHandler.playPlaylistSong(
+                        playlist: {'title': 'Featured Today', 'list': heroSongs},
+                        songIndex: index,
+                      );
+                    },
+                    onLongPress: () => showSongActionsSheet(context, song: song),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRecentsShelf(bool isDark) {
+    return ValueListenableBuilder<List>(
+      valueListenable: userRecentlyPlayed,
+      builder: (context, rawSongs, _) {
+        final songs = rawSongs.whereType<Map>().toList();
+        if (songs.isEmpty) return const SizedBox.shrink();
+
+        final displayList = songs.take(20).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const SectionHeader(
+                  title: 'Recently Played',
+                  icon: CupertinoIcons.clock_fill,
+                ),
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _recentsIsList = !_recentsIsList);
+                  },
+                  child: Icon(
+                    _recentsIsList
+                        ? CupertinoIcons.square_grid_2x2
+                        : CupertinoIcons.list_bullet,
+                    size: 19,
+                    color: MusifiedStyle.appleRed,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_recentsIsList)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: musifiedElevatedSurface(isDark),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: displayList.length > 6 ? 6 : displayList.length,
+                  separatorBuilder: (_, __) => Container(
+                    height: 0.5,
+                    margin: const EdgeInsets.only(left: 64),
+                    color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
+                  ),
+                  itemBuilder: (context, index) {
+                    final song = displayList[index];
+                    return _CompactTrackRow(
+                      song: song,
+                      isDark: isDark,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        audioHandler.playPlaylistSong(
+                          playlist: {'title': 'Recently Played', 'list': displayList},
+                          songIndex: index,
+                        );
+                      },
+                      onLongPress: () => showSongActionsSheet(context, song: song),
+                    );
+                  },
+                ),
+              )
+            else
+              SizedBox(
+                height: 205,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  itemCount: displayList.length,
+                  itemBuilder: (context, index) {
+                    final song = displayList[index];
+                    return _HomeSongCard(
+                      song: song,
+                      isDark: isDark,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        audioHandler.playPlaylistSong(
+                          playlist: {'title': 'Recently Played', 'list': displayList},
+                          songIndex: index,
+                        );
+                      },
+                      onLongPress: () => showSongActionsSheet(context, song: song),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 18),
+          ],
         );
       },
     );
@@ -190,30 +348,13 @@ class _HomePageState extends State<HomePage> {
                         songIndex: index,
                       );
                     },
+                    onLongPress: () => showSongActionsSheet(context, song: song),
                   );
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
           ],
-        );
-      },
-    );
-  }
-
-  Widget _buildTopPlayedSection(bool isDark) {
-    return ValueListenableBuilder<List>(
-      valueListenable: userRecentlyPlayed,
-      builder: (context, rawSongs, _) {
-        final songs = rawSongs.whereType<Map>().toList();
-        if (songs.isEmpty) return const SizedBox.shrink();
-
-        final displayList = songs.take(25).toList();
-        return _buildHorizontalSongSection(
-          isDark: isDark,
-          title: 'Top Played',
-          icon: CupertinoIcons.clock_fill,
-          songs: displayList,
         );
       },
     );
@@ -226,7 +367,9 @@ class _HomePageState extends State<HomePage> {
         final songs = rawSongs.whereType<Map>().toList();
         if (songs.isEmpty) return const SizedBox.shrink();
 
-        final displayList = songs.take(20).toList();
+        final displayList = songs.skip(8).take(20).toList();
+        if (displayList.isEmpty) return const SizedBox.shrink();
+
         return _buildHorizontalSongSection(
           isDark: isDark,
           title: 'Trending on YouTube',
@@ -325,7 +468,7 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
           ],
         );
       },
@@ -427,7 +570,7 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
           ],
         );
       },
@@ -491,11 +634,12 @@ class _HomePageState extends State<HomePage> {
                     songIndex: index,
                   );
                 },
+                onLongPress: () => showSongActionsSheet(context, song: song),
               );
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
       ],
     );
   }
@@ -550,10 +694,42 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildFeedSkeleton(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 300,
+          height: 170,
+          decoration: BoxDecoration(
+            color: musifiedElevatedSurface(isDark),
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: List.generate(
+            3,
+            (index) => Container(
+              width: 140,
+              height: 180,
+              margin: const EdgeInsets.only(right: 14),
+              decoration: BoxDecoration(
+                color: musifiedElevatedSurface(isDark),
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 
@@ -616,15 +792,269 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.song,
+    required this.isDark,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  final Map song;
+  final bool isDark;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = song['title']?.toString() ?? 'Featured';
+    final artist = song['artist']?.toString() ?? '';
+    final imageUrl =
+        song['highResImage'] ?? song['image'] ?? song['lowResImage'] ?? '';
+
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Container(
+        width: 300,
+        height: 172,
+        margin: const EdgeInsets.only(right: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (imageUrl.toString().isNotEmpty)
+                CachedNetworkImage(
+                  imageUrl: imageUrl.toString(),
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => ColoredBox(
+                    color: musifiedSecondarySurface(isDark),
+                    child: const Icon(
+                      CupertinoIcons.music_note,
+                      size: 40,
+                      color: CupertinoColors.systemGrey,
+                    ),
+                  ),
+                )
+              else
+                ColoredBox(
+                  color: musifiedSecondarySurface(isDark),
+                  child: const Icon(
+                    CupertinoIcons.music_note,
+                    size: 40,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ),
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0x00000000),
+                      Color(0x55000000),
+                      Color(0xCC000000),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.35, 0.65, 1.0],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 14,
+                right: 56,
+                bottom: 14,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: MusifiedStyle.displayFont,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                        color: CupertinoColors.white,
+                      ),
+                    ),
+                    if (artist.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: MusifiedStyle.uiFont,
+                          fontSize: 12,
+                          color: Color(0xB8FFFFFF),
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 14,
+                bottom: 14,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: MusifiedStyle.appleRed,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.play_fill,
+                    size: 16,
+                    color: CupertinoColors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactTrackRow extends StatelessWidget {
+  const _CompactTrackRow({
+    required this.song,
+    required this.isDark,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  final Map song;
+  final bool isDark;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = song['title']?.toString() ?? 'Track';
+    final artist = song['artist']?.toString() ?? '';
+    final imageUrl =
+        song['highResImage'] ?? song['image'] ?? song['lowResImage'] ?? '';
+    final currentPlaying = audioHandler.currentPlayingYtid.value;
+    final isCurrent = currentPlaying != null && currentPlaying == song['ytid'];
+
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: imageUrl.toString().isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl.toString(),
+                        fit: BoxFit.cover,
+                        memCacheWidth: 88,
+                        memCacheHeight: 88,
+                        errorWidget: (_, __, ___) => ColoredBox(
+                          color: musifiedSecondarySurface(isDark),
+                          child: const Icon(
+                            CupertinoIcons.music_note,
+                            size: 18,
+                            color: CupertinoColors.systemGrey,
+                          ),
+                        ),
+                      )
+                    : ColoredBox(
+                        color: musifiedSecondarySurface(isDark),
+                        child: const Icon(
+                          CupertinoIcons.music_note,
+                          size: 18,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: MusifiedStyle.uiFont,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                      color: isCurrent
+                          ? MusifiedStyle.appleRed
+                          : (isDark
+                              ? CupertinoColors.white
+                              : CupertinoColors.black),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: MusifiedStyle.uiFont,
+                      fontSize: 12,
+                      color: CupertinoColors.systemGrey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onLongPress != null)
+              CupertinoButton(
+                padding: const EdgeInsets.all(8),
+                onPressed: onLongPress,
+                child: const Icon(
+                  CupertinoIcons.ellipsis,
+                  size: 18,
+                  color: CupertinoColors.systemGrey,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeSongCard extends StatelessWidget {
   const _HomeSongCard({
     required this.song,
     required this.onTap,
     required this.isDark,
+    this.onLongPress,
   });
 
   final Map song;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool isDark;
 
   @override
@@ -638,6 +1068,7 @@ class _HomeSongCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         width: 140,
         margin: const EdgeInsets.only(right: 14),
