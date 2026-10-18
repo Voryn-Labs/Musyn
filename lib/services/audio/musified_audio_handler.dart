@@ -1471,7 +1471,7 @@ class MusifiedAudioHandler extends PlaybackController {
     unawaited(
       AudioSession.instance
           .then((s) => s.setActive(true))
-          .catchError((_) {}),
+          .catchError((_) => false),
     );
 
     final wasPlayingBeforeLoad = audioPlayer.playing;
