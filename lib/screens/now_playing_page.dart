@@ -197,11 +197,96 @@ class _NowPlayingPageState extends State<NowPlayingPage>
       case _PlayerPane.lyrics:
         return AsyncLoader<String?>(
           future: _lyrics!,
-          emptyWidget: const Center(
-            child: Text('No lyrics available for this track'),
+          emptyWidget: Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0x1AFFFFFF),
+                  width: 0.5,
+                ),
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.quote_bubble,
+                    size: 38,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    'No Lyrics Available',
+                    style: TextStyle(
+                      fontFamily: MusynStyle.displayFont,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: CupertinoColors.white,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Enjoy the audio stream for this track',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: MusynStyle.uiFont,
+                      fontSize: 13,
+                      color: CupertinoColors.systemGrey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          errorBuilder: (_, _, _) =>
-              const Center(child: Text('Could not load lyrics')),
+          errorBuilder: (_, _, _) => Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0x1AFFFFFF),
+                  width: 0.5,
+                ),
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.exclamationmark_bubble,
+                    size: 38,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    'Could Not Load Lyrics',
+                    style: TextStyle(
+                      fontFamily: MusynStyle.displayFont,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: CupertinoColors.white,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Tap the lyrics bubble to return to player',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: MusynStyle.uiFont,
+                      fontSize: 13,
+                      color: CupertinoColors.systemGrey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           builder: (context, lyrics) => SyncedLyricsView(
             metadata: item,
             lyrics: lyrics ?? '',

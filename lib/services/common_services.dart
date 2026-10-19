@@ -681,36 +681,104 @@ Future<List<String>> getSearchSuggestions(String query) async {
   return suggestions;
 }
 
-Future<Map?> getSimilarSong(String songYtId) async {
+/// Fetches a list of similar / radio songs based on track ID or title & artist.
+/// Fully guards against invalid YouTube IDs (e.g. JioSaavn tokens) and uses
+/// search resolution and radio fallback gracefully.
+Future<List<Map<String, dynamic>>> getSimilarSongs(
+  String songYtId, {
+  String? title,
+  String? artist,
+  int limit = 4,
+}) async {
   try {
-    // Prefer YouTube Music /next radio (WEB_REMIX) over watch-page HTML parsing.
-    // related_videos_client.dart HTML remains a brittle fallback risk.
-    final fromMusic = await YouTubeMusicSyncService().fetchRadioNextTrack(
-      songYtId,
-    );
-    if (fromMusic != null) {
-      return Map<String, dynamic>.from(fromMusic)
-        ..['source'] = 'youtube-recommended';
+    String? validYtId;
+    if (isValidYoutubeVideoId(songYtId)) {
+      validYtId = songYtId;
+    } else if (title != null && title.isNotEmpty) {
+      final query = (artist != null && artist.isNotEmpty)
+          ? '$title $artist'
+          : title;
+      try {
+        final results = await fetchSongsList(query);
+        for (final r in results) {
+          final id = r['ytid']?.toString();
+          if (id != null && isValidYoutubeVideoId(id)) {
+            validYtId = id;
+            break;
+          }
+        }
+      } catch (e) {
+        logger.log('Error resolving YouTube ID for similar song search: $e');
+      }
     }
 
-    final song = await ytClient.videos.get(songYtId);
-    final relatedSongs = await ytClient.videos.getRelatedVideos(song) ?? [];
+    if (validYtId != null) {
+      final radioTracks = await YouTubeMusicSyncService().fetchRadioTracks(
+        validYtId,
+        limit: limit,
+      );
+      if (radioTracks.isNotEmpty) {
+        return radioTracks.map((t) {
+          final m = Map<String, dynamic>.from(t);
+          m['source'] = 'youtube-recommended';
+          return m;
+        }).toList();
+      }
 
-    if (relatedSongs.isNotEmpty) {
-      final layout = returnSongLayout(0, relatedSongs[0]);
-      layout['source'] = 'youtube-recommended';
-      return layout;
-    } else {
-      logger.log('No related songs found for $songYtId');
+      try {
+        final song = await ytClient.videos.get(validYtId);
+        final relatedSongs = await ytClient.videos.getRelatedVideos(song) ?? [];
+        if (relatedSongs.isNotEmpty) {
+          return relatedSongs.take(limit).map((v) {
+            final layout = returnSongLayout(0, v);
+            layout['source'] = 'youtube-recommended';
+            return layout;
+          }).toList();
+        }
+      } catch (e) {
+        logger.log('Error getting related videos for $validYtId: $e');
+      }
+    }
+
+    final fallbackQuery = (artist != null && artist.isNotEmpty) ? artist : title;
+    if (fallbackQuery != null && fallbackQuery.isNotEmpty) {
+      try {
+        final searchRes = await fetchSongsList(fallbackQuery);
+        final candidates = <Map<String, dynamic>>[];
+        for (final candidate in searchRes) {
+          final candidateId = candidate['ytid']?.toString();
+          if (candidateId != null && candidateId != songYtId) {
+            final res = Map<String, dynamic>.from(candidate);
+            res['source'] = 'youtube-recommended';
+            candidates.add(res);
+            if (candidates.length >= limit) break;
+          }
+        }
+        if (candidates.isNotEmpty) return candidates;
+      } catch (_) {}
     }
   } catch (e, stackTrace) {
     logger.log(
-      'Error while fetching next similar song:',
+      'Error while fetching next similar songs:',
       error: e,
       stackTrace: stackTrace,
     );
   }
-  return null;
+  return [];
+}
+
+Future<Map?> getSimilarSong(
+  String songYtId, {
+  String? title,
+  String? artist,
+}) async {
+  final list = await getSimilarSongs(
+    songYtId,
+    title: title,
+    artist: artist,
+    limit: 1,
+  );
+  return list.firstOrNull;
 }
 
 /// In-memory cache of the audio stream picked for a song at the current
@@ -1022,7 +1090,9 @@ Future<String?> fetchSongStreamUrl(
 
     final isSaavnTrack =
         song['source'] == 'saavn' ||
+        song['source'] == 'jiosaavn' ||
         song['catalogOrigin'] == 'saavn' ||
+        song['catalogOrigin'] == 'jiosaavn' ||
         (song['encrypted_media_url'] != null &&
             song['encrypted_media_url'].toString().isNotEmpty);
 
@@ -1303,9 +1373,15 @@ Future<bool> _makeSongOffline(
       return false;
     }
 
-    if (!isValidYoutubeVideoId(ytid) &&
-        song['source'] != 'saavn' &&
-        song['catalogOrigin'] != 'saavn') {
+    final isSaavnTrack =
+        song['source'] == 'saavn' ||
+        song['source'] == 'jiosaavn' ||
+        song['catalogOrigin'] == 'saavn' ||
+        song['catalogOrigin'] == 'jiosaavn' ||
+        (song['encrypted_media_url'] != null &&
+            song['encrypted_media_url'].toString().isNotEmpty);
+
+    if (!isValidYoutubeVideoId(ytid) && !isSaavnTrack) {
       logger.log('makeSongOffline: invalid ytid "$ytid"');
       return false;
     }
@@ -1357,11 +1433,12 @@ Future<bool> _makeSongOffline(
       var mappedQuality = quality;
       // Saavn only supports 96/160/320, map 128 -> 96
       if (mappedQuality == '128') mappedQuality = '96';
-      if (normalizedSource != 'youtube' && jiosaavnEnabled.value) {
+      if (normalizedSource != 'youtube' &&
+          (jiosaavnEnabled.value || isSaavnTrack)) {
         try {
           saavnSource = await SourceResolver()
               .resolveAudioSource(offlineSong, quality: mappedQuality)
-              .timeout(const Duration(seconds: 6), onTimeout: () => null);
+              .timeout(const Duration(seconds: 8), onTimeout: () => null);
         } catch (e) {
           logger.log('Saavn resolve for offline failed: $e');
         }
@@ -1408,6 +1485,24 @@ Future<bool> _makeSongOffline(
           await cancellation.race(fetchSongStreamUrl(offlineSong, false));
           youtubeId = offlineSong['resolvedYoutubeId']?.toString() ?? '';
           offlineSong.remove('forceSource');
+          if (!isValidYoutubeVideoId(youtubeId)) {
+            final query = '${offlineSong['title']} ${offlineSong['artist']}'.trim();
+            if (query.isNotEmpty) {
+              try {
+                final searchRes = await cancellation.race(
+                  fetchSongsList(query),
+                );
+                for (final cand in searchRes) {
+                  final candId = cand['ytid']?.toString();
+                  if (candId != null && isValidYoutubeVideoId(candId)) {
+                    youtubeId = candId;
+                    offlineSong['resolvedYoutubeId'] = candId;
+                    break;
+                  }
+                }
+              } catch (_) {}
+            }
+          }
           if (!isValidYoutubeVideoId(youtubeId)) return false;
         }
         final audioManifest = await cancellation.race(

@@ -76,12 +76,12 @@ class LyricsStage extends StatelessWidget {
             },
           ),
         ),
-        // Top vignette.
+        // Top vignette - subtle darkening so top text recedes without hiding artwork aura
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          height: 130,
+          height: 120,
           child: IgnorePointer(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -89,15 +89,15 @@ class LyricsStage extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    theme.canvas.withValues(alpha: 0.98),
-                    theme.canvas.withValues(alpha: 0),
+                    CupertinoColors.black.withValues(alpha: 0.45),
+                    CupertinoColors.black.withValues(alpha: 0),
                   ],
                 ),
               ),
             ),
           ),
         ),
-        // Bottom vignette.
+        // Bottom vignette - subtle darkening above player controls
         Positioned(
           bottom: 0,
           left: 0,
@@ -110,8 +110,8 @@ class LyricsStage extends StatelessWidget {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    theme.canvas.withValues(alpha: 0.98),
-                    theme.canvas.withValues(alpha: 0),
+                    CupertinoColors.black.withValues(alpha: 0.45),
+                    CupertinoColors.black.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -148,12 +148,13 @@ class _StageLine extends StatelessWidget {
         duration: const Duration(milliseconds: 380),
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
-          vertical: isCurrent ? 20 : 10,
+          vertical: isCurrent ? 18 : 9,
         ),
         child: AnimatedScale(
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeOutCubic,
-          scale: isCurrent ? 1.0 : 0.92,
+          scale: isCurrent ? 1.0 : 0.94,
+          alignment: Alignment.centerLeft,
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 340),
             curve: Curves.easeOutCubic,
@@ -164,7 +165,7 @@ class _StageLine extends StatelessWidget {
             ),
             child: Text(
               line.text,
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
           ),
         ),

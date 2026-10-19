@@ -172,12 +172,7 @@ class SettingsPage extends StatelessWidget {
                         const SizedBox(width: 8),
                         CupertinoSwitch(
                           value: pureBlack,
-                          activeTrackColor: isDark
-                              ? CupertinoColors.white
-                              : CupertinoColors.black,
-                          thumbColor: pureBlack && isDark
-                              ? CupertinoColors.black
-                              : CupertinoColors.white,
+                          activeTrackColor: MusynStyle.appleRed,
                           onChanged: (val) {
                             HapticFeedback.selectionClick();
                             usePureBlackColor.value = val;
@@ -209,12 +204,11 @@ class SettingsPage extends StatelessWidget {
     required VoidCallback onTap,
     required bool isDark,
   }) {
-    final primaryColor = isDark ? CupertinoColors.white : CupertinoColors.black;
     final buttonBg = isSelected
-        ? primaryColor
+        ? MusynStyle.appleRed
         : musynSecondarySurface(isDark);
     final textColor = isSelected
-        ? (isDark ? CupertinoColors.black : CupertinoColors.white)
+        ? CupertinoColors.white
         : (isDark ? CupertinoColors.white : CupertinoColors.black);
 
     return Expanded(
@@ -514,7 +508,7 @@ class SettingsPage extends StatelessWidget {
                   }
                   return _buildSettingRow(
                     icon: CupertinoIcons.music_note_2,
-
+                    iconBg: CupertinoColors.systemIndigo,
                     title: 'Default Audio Provider',
                     subtitle:
                         'Applies to upcoming tracks. Switch the current track in the player.',
@@ -529,6 +523,7 @@ class SettingsPage extends StatelessWidget {
                 valueListenable: audioQualitySetting,
                 builder: (context, value, _) => _buildSettingRow(
                   icon: CupertinoIcons.waveform,
+                  iconBg: const Color(0xFFFF0033),
                   title: 'YouTube streaming quality',
                   subtitle:
                       'Applies to upcoming tracks. Available quality depends on the track.',
@@ -557,6 +552,7 @@ class SettingsPage extends StatelessWidget {
                 valueListenable: jiosaavnQuality,
                 builder: (context, value, _) => _buildSettingRow(
                   icon: CupertinoIcons.music_note,
+                  iconBg: CupertinoColors.systemGreen,
                   title: 'JioSaavn streaming quality',
                   subtitle: 'AAC audio for upcoming tracks.',
                   trailingText: '$value kbps',
@@ -579,7 +575,7 @@ class SettingsPage extends StatelessWidget {
                       final service = YtdlpClientSyncService.instance;
                       return _buildSettingRow(
                         icon: CupertinoIcons.cloud_download,
-
+                        iconBg: CupertinoColors.systemTeal,
                         title: 'Repair YouTube playback',
                         subtitle: syncing
                             ? 'Updating playback settings…'
@@ -600,7 +596,7 @@ class SettingsPage extends StatelessWidget {
                 builder: (context, enabled, _) {
                   return _buildSwitchRow(
                     icon: CupertinoIcons.waveform,
-
+                    iconBg: CupertinoColors.systemGreen,
                     title: 'JioSaavn AAC · up to 320 kbps',
                     subtitle: 'Allow matching and playback from JioSaavn.',
                     value: enabled,
@@ -621,7 +617,7 @@ class SettingsPage extends StatelessWidget {
                 builder: (context, autoPlay, _) {
                   return _buildSwitchRow(
                     icon: CupertinoIcons.infinite,
-
+                    iconBg: CupertinoColors.systemPurple,
                     title: 'Infinite Recommendations',
                     subtitle: 'Auto-play similar music when queue ends',
                     value: autoPlay,
@@ -646,7 +642,7 @@ class SettingsPage extends StatelessWidget {
                 builder: (context, offline, _) {
                   return _buildSwitchRow(
                     icon: CupertinoIcons.airplane,
-
+                    iconBg: CupertinoColors.systemOrange,
                     title: 'Offline Mode Only',
                     subtitle: 'Play exclusively from downloaded local tracks',
                     value: offline,
@@ -692,7 +688,7 @@ class SettingsPage extends StatelessWidget {
             children: [
               _buildSettingRow(
                 icon: CupertinoIcons.trash_fill,
-
+                iconBg: CupertinoColors.systemRed,
                 title: 'Clear Audio Cache',
                 subtitle:
                     'Remove temporary playback data. Downloads stay saved.',
@@ -717,7 +713,7 @@ class SettingsPage extends StatelessWidget {
               _buildDivider(isDark),
               _buildSettingRow(
                 icon: CupertinoIcons.clock_fill,
-
+                iconBg: CupertinoColors.systemBlue,
                 title: 'Clear History & Recents',
                 subtitle: 'Resets search keywords and recently played',
                 onTap: () async {
@@ -762,7 +758,7 @@ class SettingsPage extends StatelessWidget {
             children: [
               _buildSettingRow(
                 icon: CupertinoIcons.info_circle_fill,
-
+                iconBg: CupertinoColors.systemPink,
                 title: 'Version',
                 subtitle: 'Musyn by Voryn Labs',
                 trailingText: 'v$appVersion',
@@ -771,7 +767,7 @@ class SettingsPage extends StatelessWidget {
               _buildDivider(isDark),
               _buildSettingRow(
                 icon: CupertinoIcons.doc_plaintext,
-
+                iconBg: CupertinoColors.systemGrey,
                 title: 'Diagnostic Logs',
                 subtitle: 'Inspect live network & audio pipeline logs',
                 onTap: () {
@@ -808,6 +804,7 @@ class SettingsPage extends StatelessWidget {
 
   Widget _buildSettingRow({
     required IconData icon,
+    Color? iconBg,
     required String title,
     required String subtitle,
     String? trailingText,
@@ -822,16 +819,18 @@ class SettingsPage extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: musynSecondarySurface(isDark),
-                borderRadius: BorderRadius.circular(10),
+                color: iconBg ?? musynSecondarySurface(isDark),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
-                color: isDark ? CupertinoColors.white : CupertinoColors.black,
-                size: 20,
+                color: iconBg != null
+                    ? CupertinoColors.white
+                    : (isDark ? CupertinoColors.white : CupertinoColors.black),
+                size: 18,
               ),
             ),
             const SizedBox(width: 14),
@@ -890,6 +889,7 @@ class SettingsPage extends StatelessWidget {
 
   Widget _buildSwitchRow({
     required IconData icon,
+    Color? iconBg,
     required String title,
     required String subtitle,
     required bool value,
@@ -901,16 +901,18 @@ class SettingsPage extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: musynSecondarySurface(isDark),
-              borderRadius: BorderRadius.circular(10),
+              color: iconBg ?? musynSecondarySurface(isDark),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
-              color: isDark ? CupertinoColors.white : CupertinoColors.black,
-              size: 20,
+              color: iconBg != null
+                  ? CupertinoColors.white
+                  : (isDark ? CupertinoColors.white : CupertinoColors.black),
+              size: 18,
             ),
           ),
           const SizedBox(width: 14),
@@ -940,12 +942,7 @@ class SettingsPage extends StatelessWidget {
           ),
           CupertinoSwitch(
             value: value,
-            activeTrackColor: isDark
-                ? CupertinoColors.white
-                : CupertinoColors.black,
-            thumbColor: value && isDark
-                ? CupertinoColors.black
-                : CupertinoColors.white,
+            activeTrackColor: MusynStyle.appleRed,
             onChanged: onChanged,
           ),
         ],

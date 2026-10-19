@@ -192,41 +192,22 @@ class MusynAudioHandler extends PlaybackController {
           .throttleTime(const Duration(milliseconds: 120), trailing: true)
           .asBroadcastStream();
 
-  static const List<MediaControl> _controlsMultiplePlaying = [
+  static const List<MediaControl> _controlsPlaying = [
     MediaControl.skipToPrevious,
     MediaControl.pause,
     MediaControl.stop,
     MediaControl.skipToNext,
   ];
 
-  static const List<MediaControl> _controlsMultiplePaused = [
+  static const List<MediaControl> _controlsPaused = [
     MediaControl.skipToPrevious,
     MediaControl.play,
     MediaControl.stop,
     MediaControl.skipToNext,
-  ];
-
-  static const List<MediaControl> _controlsSinglePlaying = [
-    MediaControl.rewind,
-    MediaControl.pause,
-    MediaControl.stop,
-    MediaControl.fastForward,
-  ];
-
-  static const List<MediaControl> _controlsSinglePaused = [
-    MediaControl.rewind,
-    MediaControl.play,
-    MediaControl.stop,
-    MediaControl.fastForward,
   ];
 
   List<MediaControl> _controls(bool playing) {
-    final hasMultipleTracks = _hub.queue.items.length > 1;
-    if (hasMultipleTracks) {
-      return playing ? _controlsMultiplePlaying : _controlsMultiplePaused;
-    } else {
-      return playing ? _controlsSinglePlaying : _controlsSinglePaused;
-    }
+    return playing ? _controlsPlaying : _controlsPaused;
   }
 
   final List<StreamSubscription> _subscriptions = [];
@@ -569,7 +550,7 @@ class MusynAudioHandler extends PlaybackController {
           !_interrupted,
       hasAnotherTrack: () =>
           _hub.queue.currentIndex < _hub.queue.items.length - 1 ||
-          (playNextSongAutomatically.value && nextRecommendedSong != null),
+          (playNextSongAutomatically.value && !offlineMode.value),
     );
   }
 
@@ -849,6 +830,8 @@ class MusynAudioHandler extends PlaybackController {
               MediaAction.seek,
               MediaAction.seekForward,
               MediaAction.seekBackward,
+              MediaAction.setShuffleMode,
+              MediaAction.setRepeatMode,
             },
             processingState: newProcessingState,
             playing: isPlaying,
@@ -899,20 +882,19 @@ class MusynAudioHandler extends PlaybackController {
 
   Future<void> _backgroundAddSongsToQueue() async {
     // Fire and forget - this runs as a background task without blocking playback
-    if (offlineMode.value) return;
+    if (offlineMode.value || !playNextSongAutomatically.value) return;
     if (_backgroundFetchInProgress) return;
     // Fill the queue while audio is still playing. Waiting until the last
     // song ends means a 6s related-song fetch in silence, which iOS kills.
-    // Start fetching when 3 or fewer songs remain so the preloader can warm
-    // URLs for the new entries before the current track ends.
+    // Maintain a healthy buffer of upcoming tracks (up to 4 tracks ahead)
+    // so rapid skipping on lock screen or autoplay never starves.
     final remaining = _hub.queue.items.length - 1 - _hub.queue.currentIndex;
-    if (_hub.queue.items.isNotEmpty && remaining > 3) {
+    if (_hub.queue.items.isNotEmpty && remaining >= 4) {
       return;
     }
 
     _backgroundFetchInProgress = true;
     final selection = _selectionRevision;
-    // Use microtask to avoid blocking the current operation
     unawaited(
       Future.microtask(() async {
         try {
@@ -923,15 +905,31 @@ class MusynAudioHandler extends PlaybackController {
 
           final ytid = baseSong['ytid']?.toString();
           if (ytid == null || ytid.isEmpty) return;
+          final title = baseSong['title']?.toString();
+          final artist = baseSong['artist']?.toString();
 
-          final songToAdd = await getSimilarSong(
+          final needed = (4 - remaining).clamp(1, 4);
+          final songsToAdd = await getSimilarSongs(
             ytid,
-          ).timeout(const Duration(seconds: 8), onTimeout: () => null);
+            title: title,
+            artist: artist,
+            limit: needed,
+          ).timeout(const Duration(seconds: 8), onTimeout: () => []);
+
           if (selection != _selectionRevision ||
               offlineMode.value ||
-              !playNextSongAutomatically.value)
+              !playNextSongAutomatically.value) {
             return;
-          if (songToAdd != null) await _insertRecommendedSong(songToAdd);
+          }
+
+          for (final song in songsToAdd) {
+            final alreadyInQueue = _hub.queue.items.any(
+              (item) => item['ytid'] == song['ytid'],
+            );
+            if (!alreadyInQueue) {
+              await _insertRecommendedSong(song);
+            }
+          }
         } catch (e, stackTrace) {
           logger.log(
             'Error in background song addition',
@@ -1666,7 +1664,8 @@ class MusynAudioHandler extends PlaybackController {
   @override
   bool get hasNext =>
       _hub.queue.currentIndex < _hub.queue.items.length - 1 ||
-      repeatNotifier.value == AudioServiceRepeatMode.all;
+      repeatNotifier.value == AudioServiceRepeatMode.all ||
+      (playNextSongAutomatically.value && !offlineMode.value);
 
   @override
   bool get hasPrevious =>
@@ -2630,16 +2629,24 @@ class MusynAudioHandler extends PlaybackController {
       } else if (repeatNotifier.value == AudioServiceRepeatMode.all &&
           _hub.queue.items.isNotEmpty) {
         await _requestQueueIndex(0);
-      } else if (playNextSongAutomatically.value &&
-          nextRecommendedSong != null) {
-        // Only a song already fetched while the previous track was playing.
-        // A network fetch here is silence, and the lock screen will not resume.
-        final songToAdd = nextRecommendedSong;
-        nextRecommendedSong = null;
-        if (songToAdd != null) {
-          await _insertRecommendedSong(songToAdd);
-          if (_hub.queue.currentIndex < _hub.queue.items.length - 1) {
-            await _requestQueueIndex(_hub.queue.currentIndex + 1);
+      } else if (playNextSongAutomatically.value && !offlineMode.value) {
+        // Queue ran dry (e.g. rapid skips faster than background prefetch).
+        // Fetch next recommendation immediately and advance so playback never halts.
+        final baseSong = _getCurrentSongForRecommendations();
+        if (baseSong != null) {
+          final ytid = baseSong['ytid']?.toString() ?? '';
+          final title = baseSong['title']?.toString();
+          final artist = baseSong['artist']?.toString();
+          final songToAdd = await getSimilarSong(
+            ytid,
+            title: title,
+            artist: artist,
+          ).timeout(const Duration(seconds: 4), onTimeout: () => null);
+          if (songToAdd != null) {
+            await _insertRecommendedSong(songToAdd);
+            if (_hub.queue.currentIndex < _hub.queue.items.length - 1) {
+              await _requestQueueIndex(_hub.queue.currentIndex + 1);
+            }
           }
         }
       }

@@ -651,10 +651,12 @@ class YouTubeMusicSyncService {
     });
   }
 
-  /// Next song from YouTube Music radio (`RDAMVM` + `/next`), preferred over
-  /// watch-page HTML related-video parsing.
-  Future<Map<String, dynamic>?> fetchRadioNextTrack(String videoId) async {
-    if (!_isValidYouTubeVideoId(videoId)) return null;
+  /// Fetches a batch of next tracks from the YouTube Music Radio stream (`RDAMVM` + `/next`).
+  Future<List<Map<String, dynamic>>> fetchRadioTracks(
+    String videoId, {
+    int limit = 5,
+  }) async {
+    if (!_isValidYouTubeVideoId(videoId)) return [];
     try {
       Map<String, dynamic> response;
       try {
@@ -671,10 +673,12 @@ class YouTubeMusicSyncService {
         });
       }
 
+      final results = <Map<String, dynamic>>[];
       for (final item in _findRenderers(
         response,
         'playlistPanelVideoRenderer',
       )) {
+        if (results.length >= limit) break;
         final id = item['videoId']?.toString();
         if (id == null || id.isEmpty || id == videoId) continue;
         if (!_isValidYouTubeVideoId(id)) continue;
@@ -708,7 +712,7 @@ class YouTubeMusicSyncService {
           );
         }
 
-        return {
+        results.add({
           'ytid': id,
           'title': title,
           'artist': artist,
@@ -717,13 +721,20 @@ class YouTubeMusicSyncService {
           'source': 'youtube',
           'catalogOrigin': 'youtube',
           if (durationSeconds != null) 'duration': durationSeconds,
-        };
+        });
       }
-      return null;
+      return results;
     } catch (e) {
-      logger.log('fetchRadioNextTrack failed for $videoId: $e');
-      return null;
+      logger.log('fetchRadioTracks failed for $videoId: $e');
+      return [];
     }
+  }
+
+  /// Next song from YouTube Music radio (`RDAMVM` + `/next`), preferred over
+  /// watch-page HTML related-video parsing.
+  Future<Map<String, dynamic>?> fetchRadioNextTrack(String videoId) async {
+    final tracks = await fetchRadioTracks(videoId, limit: 1);
+    return tracks.firstOrNull;
   }
 
   /// Reports a play to YouTube Music watch history when the user is signed in.

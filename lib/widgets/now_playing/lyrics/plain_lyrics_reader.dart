@@ -31,7 +31,7 @@ class PlainLyricsReader extends StatelessWidget {
           child: Text(
             text,
             style: theme.plainBodyStyle(layout),
-            textAlign: TextAlign.center,
+            textAlign: TextAlign.left,
           ),
         ),
         if (onExpand != null)

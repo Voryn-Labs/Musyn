@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +9,8 @@ import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 
-/// Compact iOS action sheet for selecting JioSaavn, YouTube Music, or Downloaded playback.
+/// Apple Music / BitChord styled Cupertino action sheet for selecting
+/// JioSaavn, YouTube Music, or Offline playback source.
 void showAudioSourcePicker(
   BuildContext context,
   MediaItem metadata, {
@@ -34,21 +36,24 @@ void showAudioSourcePicker(
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, updateSheet) {
         final isDark = isAppDarkMode(ctx);
-        final sheetBg = musynElevatedSurface(isDark);
+        final sheetBg = isDark
+            ? const Color(0xE61C1C1E)
+            : const Color(0xE6F2F2F7);
         final rowBg = isDark
-            ? musynSecondarySurface(isDark)
-            : CupertinoColors.white;
+            ? const Color(0x33FFFFFF)
+            : const Color(0x66FFFFFF);
         final label = isDark ? CupertinoColors.white : CupertinoColors.black;
         const secondary = CupertinoColors.systemGrey;
         final separator = isDark
-            ? const Color(0x33FFFFFF)
+            ? const Color(0x1FFFFFFF)
             : const Color(0x1F000000);
 
         Widget row({
           required IconData icon,
-          required Color iconColor,
+          required Color iconBg,
           required String title,
           required String subtitle,
+          required String badge,
           required bool selected,
           required bool enabled,
           required VoidCallback? onTap,
@@ -58,7 +63,7 @@ void showAudioSourcePicker(
             behavior: HitTestBehavior.opaque,
             onTap: enabled && pendingSource == null ? onTap : null,
             child: Opacity(
-              opacity: enabled ? 1 : 0.45,
+              opacity: enabled ? 1 : 0.42,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -66,21 +71,65 @@ void showAudioSourcePicker(
                 ),
                 child: Row(
                   children: [
-                    Icon(icon, color: iconColor, size: 22),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: iconBg,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          icon,
+                          color: CupertinoColors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontFamily: MusynStyle.uiFont,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: label,
-                              decoration: TextDecoration.none,
-                            ),
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                title,
+                                style: TextStyle(
+                                  fontFamily: MusynStyle.displayFont,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                  color: label,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0x26FFFFFF)
+                                      : const Color(0x1F000000),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  badge,
+                                  style: const TextStyle(
+                                    fontFamily: MusynStyle.uiFont,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: secondary,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -99,8 +148,8 @@ void showAudioSourcePicker(
                     if (selected && !loading)
                       const Icon(
                         CupertinoIcons.checkmark_alt,
-                        size: 20,
-                        color: CupertinoColors.activeBlue,
+                        size: 22,
+                        color: MusynStyle.appleRed,
                       ),
                   ],
                 ),
@@ -148,7 +197,7 @@ void showAudioSourcePicker(
         }
 
         return SafeArea(
-          minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          minimum: const EdgeInsets.fromLTRB(14, 0, 14, 14),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxHeight: MediaQuery.sizeOf(ctx).height * .85,
@@ -158,100 +207,144 @@ void showAudioSourcePicker(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: sheetBg,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-                          child: Text(
-                            pendingSource != null
-                                ? 'Switching source…'
-                                : sourceError ?? 'Audio Source',
-                            style: const TextStyle(
-                              fontFamily: MusynStyle.uiFont,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: secondary,
-                              letterSpacing: 0.2,
-                              decoration: TextDecoration.none,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: sheetBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0x1AFFFFFF)
+                                : const Color(0x14000000),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 10),
+                            Center(
+                              child: Container(
+                                width: 36,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0x4DFFFFFF)
+                                      : const Color(0x33000000),
+                                  borderRadius: BorderRadius.circular(2.5),
+                                ),
+                              ),
                             ),
-                          ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                              child: Text(
+                                pendingSource != null
+                                    ? 'Switching source…'
+                                    : sourceError ?? 'AUDIO STREAM PROVIDER',
+                                style: TextStyle(
+                                  fontFamily: MusynStyle.uiFont,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: sourceError != null
+                                      ? CupertinoColors.destructiveRed
+                                      : secondary,
+                                  letterSpacing: 0.6,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              decoration: BoxDecoration(
+                                color: rowBg,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  row(
+                                    icon: CupertinoIcons.waveform,
+                                    iconBg: CupertinoColors.systemGreen,
+                                    title: 'JioSaavn',
+                                    badge: '320k Lossless',
+                                    loading: pendingSource == 'jiosaavn',
+                                    subtitle: jiosaavnEnabled.value
+                                        ? 'AAC · up to 320 kbps (High Fidelity)'
+                                        : 'Enable JioSaavn in Settings to use this source',
+                                    selected: currentSource == 'jiosaavn',
+                                    enabled: jiosaavnEnabled.value,
+                                    onTap: () => select('jiosaavn'),
+                                  ),
+                                  Container(height: 0.5, color: separator),
+                                  row(
+                                    icon: CupertinoIcons.play_rectangle_fill,
+                                    iconBg: const Color(0xFFFF0033),
+                                    title: 'YouTube Music',
+                                    badge: '160k AAC',
+                                    loading: pendingSource == 'youtube',
+                                    subtitle: 'AAC · Adaptive Stream',
+                                    selected: currentSource == 'youtube',
+                                    enabled: true,
+                                    onTap: () => select('youtube'),
+                                  ),
+                                  Container(height: 0.5, color: separator),
+                                  row(
+                                    icon: CupertinoIcons.arrow_down_circle_fill,
+                                    iconBg: CupertinoColors.systemBlue,
+                                    title: 'Downloaded',
+                                    badge: 'Offline',
+                                    loading: pendingSource == 'offline',
+                                    subtitle: hasDownload
+                                        ? (isOffline
+                                              ? 'Playing from this device'
+                                              : 'Play the downloaded copy')
+                                        : 'Download this track to use offline',
+                                    selected: isOffline,
+                                    enabled: hasDownload && !isOffline,
+                                    onTap: hasDownload
+                                        ? () => select('offline')
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                          decoration: BoxDecoration(
-                            color: rowBg,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              row(
-                                icon: CupertinoIcons.music_note_2,
-                                iconColor: CupertinoColors.systemGreen,
-                                title: 'JioSaavn',
-                                loading: pendingSource == 'jiosaavn',
-                                subtitle: jiosaavnEnabled.value
-                                    ? 'AAC · up to 320 kbps'
-                                    : 'Enable JioSaavn in Settings to use this source',
-                                selected: currentSource == 'jiosaavn',
-                                enabled: jiosaavnEnabled.value,
-                                onTap: () => select('jiosaavn'),
-                              ),
-                              Container(height: 0.5, color: separator),
-                              row(
-                                icon: CupertinoIcons.play_circle_fill,
-                                iconColor: const Color(0xFFFF0033),
-                                title: 'YouTube Music',
-                                loading: pendingSource == 'youtube',
-                                subtitle: '160k AAC',
-                                selected: currentSource == 'youtube',
-                                enabled: true,
-                                onTap: () => select('youtube'),
-                              ),
-                              Container(height: 0.5, color: separator),
-                              row(
-                                icon: CupertinoIcons.arrow_down_circle_fill,
-                                iconColor: CupertinoColors.systemBlue,
-                                title: 'Downloaded',
-                                loading: pendingSource == 'offline',
-                                subtitle: hasDownload
-                                    ? (isOffline
-                                          ? 'Playing from this device'
-                                          : 'Play the downloaded copy')
-                                    : 'Download this track to use offline',
-                                selected: isOffline,
-                                enabled: hasDownload && !isOffline,
-                                onTap: hasDownload
-                                    ? () => select('offline')
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: CupertinoButton(
-                      color: rowBg,
-                      borderRadius: BorderRadius.circular(14),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: CupertinoColors.activeBlue,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: sheetBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0x1AFFFFFF)
+                                : const Color(0x14000000),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontFamily: MusynStyle.uiFont,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: MusynStyle.appleRed,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -278,9 +371,9 @@ IconData audioSourceIcon(MediaItem metadata) {
   final extras = metadata.extras ?? {};
   if (_isPlayingOffline(extras)) return CupertinoIcons.device_phone_portrait;
   if (extras['resolvedSource'] == 'jiosaavn') {
-    return CupertinoIcons.music_note_2;
+    return CupertinoIcons.waveform;
   }
-  return CupertinoIcons.play_circle_fill;
+  return CupertinoIcons.play_rectangle_fill;
 }
 
 Color audioSourceColor(MediaItem metadata) {

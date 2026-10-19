@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/services/settings_manager.dart';
@@ -89,8 +91,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     final title = widget.song['title']?.toString() ?? 'Track';
     final artist = widget.song['artist']?.toString() ?? '';
     final isDark = isAppDarkMode(context);
-    final primaryColor = CupertinoTheme.of(context).primaryColor;
-    final cardBg = musynSecondarySurface(isDark);
+    final cardBg = isDark ? const Color(0x26FFFFFF) : const Color(0x0F000000);
     final textColor = isDark ? CupertinoColors.white : CupertinoColors.black;
     const secondaryTextColor = CupertinoColors.systemGrey;
 
@@ -110,7 +111,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
             padding: EdgeInsets.only(
               left: 18,
               right: 18,
-              top: 14,
+              top: 12,
               bottom: MediaQuery.of(context).viewInsets.bottom + 18,
             ),
             child: Column(
@@ -123,7 +124,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                     height: 5,
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0x66FFFFFF)
+                          ? const Color(0x4DFFFFFF)
                           : const Color(0x33000000),
                       borderRadius: BorderRadius.circular(2.5),
                     ),
@@ -133,11 +134,11 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 Row(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       child: SongArtworkWidget(
                         metadata: mapToMediaItem(widget.song),
-                        size: 54,
-                        errorWidgetIconSize: 24,
+                        size: 58,
+                        errorWidgetIconSize: 26,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -175,7 +176,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 const Text(
                   'AUDIO PROVIDER',
                   style: TextStyle(
@@ -183,7 +184,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: secondaryTextColor,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.6,
                     decoration: TextDecoration.none,
                   ),
                 ),
@@ -191,6 +192,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 _buildSourceOption(
                   value: 'saavn',
                   title: 'JioSaavn',
+                  badge: '320 kbps',
                   subtitle: !jiosaavnEnabled.value
                       ? 'Enable JioSaavn in Settings to use this source'
                       : _isCheckingSaavn
@@ -204,7 +206,6 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                   iconBg: CupertinoColors.systemGreen,
                   isEnabled: !_isCheckingSaavn && _isSaavnAvailable,
                   isDark: isDark,
-                  primaryColor: primaryColor,
                   cardBg: cardBg,
                   textColor: textColor,
                   secondaryTextColor: secondaryTextColor,
@@ -212,21 +213,22 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 _buildSourceOption(
                   value: 'youtube',
                   title: 'YouTube Music',
-                  subtitle: 'AAC · best available within the quality limit',
+                  badge: '160k AAC',
+                  subtitle: 'AAC · best available stream',
                   icon: CupertinoIcons.play_rectangle_fill,
                   iconBg: const Color(0xFFFF0033),
                   isEnabled: true,
                   isDark: isDark,
-                  primaryColor: primaryColor,
                   cardBg: cardBg,
                   textColor: textColor,
                   secondaryTextColor: secondaryTextColor,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,
-                  spacing: 12,
-                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     const Text(
                       'AUDIO QUALITY',
@@ -235,23 +237,33 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: secondaryTextColor,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.6,
                         decoration: TextDecoration.none,
                       ),
                     ),
-                    Text(
-                      'Up to $_selectedQuality kbps',
-                      style: TextStyle(
-                        fontFamily: MusynStyle.uiFont,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: primaryColor,
-                        decoration: TextDecoration.none,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: MusynStyle.appleRed.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Up to $_selectedQuality kbps',
+                        style: const TextStyle(
+                          fontFamily: MusynStyle.uiFont,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: MusynStyle.appleRed,
+                          decoration: TextDecoration.none,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
                   child: CupertinoSlidingSegmentedControl<String>(
@@ -260,7 +272,14 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                       for (final quality in _availableBitrates)
                         quality: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text('$quality kbps'),
+                          child: Text(
+                            '$quality kbps',
+                            style: const TextStyle(
+                              fontFamily: MusynStyle.uiFont,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
                         ),
                     },
                     onValueChanged: (quality) {
@@ -270,46 +289,45 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                     },
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 const Text(
-                  'Downloads use the selected source. If unavailable, you can choose another source and retry.',
+                  'Downloads are saved to your offline library for instant playback without an active connection.',
                   style: TextStyle(
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 12,
-                    color: CupertinoColors.systemGrey,
+                    color: secondaryTextColor,
+                    height: 1.35,
+                    decoration: TextDecoration.none,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 SizedBox(
                   width: double.infinity,
                   child: CupertinoButton(
-                    color: primaryColor,
-                    borderRadius: BorderRadius.circular(14),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    color: MusynStyle.appleRed,
+                    borderRadius: BorderRadius.circular(16),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
                     onPressed: () {
                       HapticFeedback.mediumImpact();
                       Navigator.pop(context);
                       widget.onDownload(_selectedSource, _selectedQuality);
                     },
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           CupertinoIcons.arrow_down_circle_fill,
-                          color: CupertinoTheme.of(
-                            context,
-                          ).primaryContrastingColor,
+                          color: CupertinoColors.white,
                           size: 20,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Download Track',
                           style: TextStyle(
                             fontFamily: MusynStyle.uiFont,
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
-                            color: CupertinoTheme.of(
-                              context,
-                            ).primaryContrastingColor,
+                            color: CupertinoColors.white,
                           ),
                         ),
                       ],
@@ -328,11 +346,11 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     required String value,
     required String title,
     required String subtitle,
+    required String badge,
     required IconData icon,
     required Color iconBg,
     required bool isEnabled,
     required bool isDark,
-    required Color primaryColor,
     required Color cardBg,
     required Color textColor,
     required Color secondaryTextColor,
@@ -353,43 +371,79 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
           : null,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
-        opacity: isEnabled ? 1.0 : 0.45,
+        opacity: isEnabled ? 1.0 : 0.42,
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? primaryColor.withValues(alpha: 0.12) : cardBg,
+            color: selected
+                ? MusynStyle.appleRed.withValues(alpha: 0.12)
+                : cardBg,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? primaryColor : const Color(0x00000000),
-              width: 1.5,
+              color: selected
+                  ? MusynStyle.appleRed
+                  : (isDark ? const Color(0x1AFFFFFF) : const Color(0x14000000)),
+              width: selected ? 1.5 : 0.5,
             ),
           ),
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: iconBg,
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, color: CupertinoColors.white, size: 18),
+                child: Center(
+                  child: Icon(icon, color: CupertinoColors.white, size: 19),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontFamily: MusynStyle.uiFont,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: selected ? primaryColor : textColor,
-                        decoration: TextDecoration.none,
-                      ),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 2,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontFamily: MusynStyle.displayFont,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: selected ? MusynStyle.appleRed : textColor,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                        if (isEnabled)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0x26FFFFFF)
+                                  : const Color(0x1F000000),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              badge,
+                              style: TextStyle(
+                                fontFamily: MusynStyle.uiFont,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: secondaryTextColor,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -408,7 +462,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 selected
                     ? CupertinoIcons.checkmark_circle_fill
                     : CupertinoIcons.circle,
-                color: selected ? primaryColor : secondaryTextColor,
+                color: selected ? MusynStyle.appleRed : secondaryTextColor,
                 size: 20,
               ),
             ],
@@ -425,17 +479,32 @@ Future<void> showDownloadPicker(
   void Function(String source, String quality) onDownload,
 ) {
   final isDark = isAppDarkMode(context);
+  final sheetBg = isDark
+      ? const Color(0xE61C1C1E)
+      : const Color(0xE6F2F2F7);
 
   return showCupertinoModalPopup<void>(
     context: context,
-    builder: (ctx) => DecoratedBox(
-      decoration: BoxDecoration(
-        color: isDark
-            ? musynElevatedSurface(isDark)
-            : const Color(0xFFFFFFFF),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    builder: (ctx) => ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? const Color(0x1AFFFFFF)
+                    : const Color(0x14000000),
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: DownloadPickerSheet(song: song, onDownload: onDownload),
+        ),
       ),
-      child: DownloadPickerSheet(song: song, onDownload: onDownload),
     ),
   );
 }
