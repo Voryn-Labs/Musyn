@@ -7,12 +7,24 @@ Map mediaItemToMap(MediaItem mediaItem) {
   final album = mediaItem.album;
   return {
     'id': mediaItem.id,
-    'ytid': extras?['ytid'],
+    'ytid': extras?['ytid'] ?? mediaItem.id,
     'album': (album == null || album == 'null') ? null : album,
     'artist': mediaItem.artist?.toString(),
     'title': mediaItem.title,
     'artistId': extras?['artistId'],
     'videoAuthor': extras?['videoAuthor'],
+    'duration': mediaItem.duration?.inSeconds ??
+        extras?['catalogDurationSeconds'] ??
+        extras?['duration'],
+    'source': extras?['source'] ??
+        extras?['catalogOrigin'] ??
+        extras?['resolvedSource'] ??
+        extras?['downloadSource'],
+    'catalogOrigin': extras?['catalogOrigin'],
+    'saavnId': extras?['saavnId'],
+    'encrypted_media_url': extras?['encrypted_media_url'],
+    'media_url': extras?['media_url'],
+    'perma_url': extras?['perma_url'],
     'highResImage':
         extras?['highResImage'] ??
         extras?['image'] ??
@@ -21,6 +33,7 @@ Map mediaItemToMap(MediaItem mediaItem) {
         extras?['image'] ??
         extras?['highResImage'] ??
         mediaItem.artUri?.toString(),
+    'catalogImage': extras?['catalogImage'],
     'lowResImage': extras?['lowResImage'],
     'isLive': extras?['isLive'] ?? false,
     'isOffline': extras?['isOffline'] ?? false,
@@ -181,14 +194,22 @@ MediaItem mapToMediaItem(Map song) {
     duration: parseSongDuration(song['duration']),
     extras: {
       'lowResImage': song['lowResImage'],
-      'ytid': song['ytid'],
+      'ytid': song['ytid'] ?? song['id'],
       'artistId': song['artistId'],
       'videoAuthor': song['videoAuthor'],
       'isLive': song['isLive'],
       'isOffline': isOffline,
+      'source': song['source'] ??
+          song['catalogOrigin'] ??
+          song['resolvedSource'] ??
+          song['downloadSource'],
       'downloadSource': downloadSource,
       'catalogImage': song['catalogImage'],
       'catalogOrigin': song['catalogOrigin'],
+      'saavnId': song['saavnId'],
+      'encrypted_media_url': song['encrypted_media_url'],
+      'media_url': song['media_url'],
+      'perma_url': song['perma_url'],
       'highResImage': artworkUrl ?? song['highResImage'] ?? song['image'],
       'artWorkPath': artworkFilePath,
       'artworkPath': artworkFilePath,
@@ -197,6 +218,7 @@ MediaItem mapToMediaItem(Map song) {
       'resolvedBitrate': song['resolvedBitrate'],
       'resolvedFormat': song['resolvedFormat'],
       'catalogDurationSeconds': parseSongDuration(song['duration'])?.inSeconds,
+      'duration': song['duration'],
     },
   );
 }

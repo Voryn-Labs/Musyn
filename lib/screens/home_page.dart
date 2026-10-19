@@ -168,14 +168,22 @@ class _HomePageState extends State<HomePage> {
                       _buildMostPlayedSection(isDark),
                       if (_isLoading) _buildFeedSkeleton(isDark),
                       if (_feedFailed && !_isLoading)
-                        ContentState(
-                          icon: CupertinoIcons.wifi_exclamationmark,
-                          title: 'Some music could not be refreshed',
-                          message:
-                              'Your saved music is still available. Retry to refresh the catalogues.',
-                          actionLabel: 'Refresh music',
-                          onAction: _handleRefresh,
-                        ),
+                        if (_hasAnySongs)
+                          _buildRefreshBanner(isDark)
+                        else
+                          Column(
+                            children: [
+                              ContentState(
+                                icon: CupertinoIcons.wifi_exclamationmark,
+                                title: 'Some music could not be refreshed',
+                                message:
+                                    'Your saved music is still available. Retry to refresh the catalogues.',
+                                actionLabel: 'Refresh music',
+                                onAction: _handleRefresh,
+                              ),
+                              const DiscoveryLinks(),
+                            ],
+                          ),
                       _buildEmptyStateIfNeeded(isDark),
                       const MiniPlayerBottomSpace(),
                     ],
@@ -771,6 +779,64 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildRefreshBanner(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0D000000),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0x14FFFFFF) : const Color(0x10000000),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            CupertinoIcons.wifi_exclamationmark,
+            size: 18,
+            color: CupertinoColors.systemGrey,
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Some music could not be refreshed',
+              style: TextStyle(
+                fontFamily: MusynStyle.uiFont,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: CupertinoColors.systemGrey,
+              ),
+            ),
+          ),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            minimumSize: Size.zero,
+            onPressed: _handleRefresh,
+            child: const Text(
+              'Retry',
+              style: TextStyle(
+                fontFamily: MusynStyle.uiFont,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: MusynStyle.appleRed,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool get _hasAnySongs =>
+      userLikedSongsList.value.isNotEmpty ||
+      userRecentlyPlayed.value.isNotEmpty ||
+      userCustomPlaylists.value.isNotEmpty ||
+      trendingSongs.value.isNotEmpty ||
+      ytChartPlaylists.value.isNotEmpty ||
+      (jiosaavnEnabled.value && saavnCharts.value.isNotEmpty);
+
   Widget _buildEmptyStateIfNeeded(bool isDark) => AnimatedBuilder(
     animation: Listenable.merge([
       userLikedSongsList,
@@ -781,14 +847,8 @@ class _HomePageState extends State<HomePage> {
       saavnCharts,
     ]),
     builder: (context, _) {
-      final hasAny =
-          userLikedSongsList.value.isNotEmpty ||
-          userRecentlyPlayed.value.isNotEmpty ||
-          userCustomPlaylists.value.isNotEmpty ||
-          trendingSongs.value.isNotEmpty ||
-          ytChartPlaylists.value.isNotEmpty ||
-          (jiosaavnEnabled.value && saavnCharts.value.isNotEmpty);
-      if (hasAny || _isLoading) return const SizedBox.shrink();
+      final hasAny = _hasAnySongs;
+      if (hasAny || _isLoading || _feedFailed) return const SizedBox.shrink();
       return Column(
         children: [
           ContentState(

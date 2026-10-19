@@ -22,8 +22,8 @@ class LyricsTheme {
   Color get onCanvas =>
       isDark ? CupertinoColors.white : CupertinoColors.black;
 
-  /// Active line uses a warm pink accent for clear highlighting.
-  Color get activeColor => const Color(0xFFFF375F);
+  /// Active line matches Apple Music signature high-contrast typography.
+  Color get activeColor => onCanvas;
 
   /// Past lines — clearly visible but receded.
   Color get pastColor =>

@@ -517,14 +517,6 @@ class AudioPlaybackCoordinator {
             stackTrace: st,
           );
         }
-      } else {
-        try {
-          await audioPlayer
-              .seek(Duration.zero)
-              .timeout(const Duration(seconds: 2));
-        } catch (e, st) {
-          logger.log('Seek to start failed', error: e, stackTrace: st);
-        }
       }
 
       if (isStale(transitionId)) return false;

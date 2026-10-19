@@ -9,6 +9,7 @@ import 'package:musyn/services/download_activity.dart';
 import 'package:musyn/services/playlist_download_service.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/widgets/content_state.dart';
 import 'package:musyn/widgets/mini_player_bottom_space.dart';
 import 'package:musyn/widgets/song_tile.dart';
@@ -68,7 +69,14 @@ class _DownloadsPageState extends State<DownloadsPage> {
           ),
           slivers: [
             CupertinoSliverNavigationBar(
-              largeTitle: const Text('Downloads'),
+              largeTitle: const Text(
+                'Downloads',
+                style: TextStyle(
+                  fontFamily: MusynStyle.displayFont,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
               border: null,
               trailing: CupertinoButton(
                 padding: EdgeInsets.zero,
@@ -130,8 +138,10 @@ class _DownloadsPageState extends State<DownloadsPage> {
                         child: Text(
                           'Transfer activity',
                           style: TextStyle(
+                            fontFamily: MusynStyle.displayFont,
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
                           ),
                         ),
                       ),
@@ -156,8 +166,10 @@ class _DownloadsPageState extends State<DownloadsPage> {
                 child: Text(
                   'Saved tracks · ${userOfflineSongs.value.length}',
                   style: const TextStyle(
+                    fontFamily: MusynStyle.displayFont,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ),

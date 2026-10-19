@@ -1,9 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:musyn/constants/player_layout.dart';
 import 'package:musyn/services/app_navigation_state.dart';
-import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 
@@ -22,39 +20,42 @@ void showToast(
   if (overlay == null) return;
 
   final isDark = isAppDarkMode(context);
-  final isMiniPlayerVisible =
-      isAudioHandlerInitialized && audioHandler.mediaItem.valueOrNull != null;
-  final bottom =
-      16.0 +
-      MediaQuery.paddingOf(context).bottom +
-      (isMiniPlayerVisible ? miniPlayerHeight + 8 : 0);
+  final top = MediaQuery.paddingOf(context).top + 10.0;
 
   late final OverlayEntry entry;
   entry = OverlayEntry(
     builder: (ctx) {
       return IgnorePointer(
         child: Align(
-          alignment: Alignment.bottomCenter,
+          alignment: Alignment.topCenter,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(24, 0, 24, bottom),
+            padding: EdgeInsets.fromLTRB(20, top, 20, 0),
             child: AnimatedOpacity(
               opacity: 1,
               duration: const Duration(milliseconds: 180),
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark
-                      ? musynSecondarySurface(isDark)
-                      : const Color(0xFF1C1C1E),
+                      ? const Color(0xE61C1C1E)
+                      : const Color(0xF21C1C1E),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: isDark
                         ? const Color(0x33FFFFFF)
                         : const Color(0x1F000000),
+                    width: 0.5,
                   ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x40000000),
+                      blurRadius: 16,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: 18,
+                  vertical: 11,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -72,7 +73,7 @@ void showToast(
                           fontFamily: MusynStyle.uiFont,
                           color: CupertinoColors.white,
                           fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           letterSpacing: -0.15,
                           decoration: TextDecoration.none,
                         ),
@@ -107,31 +108,34 @@ void showToastWithButton(
   if (overlay == null) return;
 
   final isDark = isAppDarkMode(context);
-  final isMiniPlayerVisible =
-      isAudioHandlerInitialized && audioHandler.mediaItem.valueOrNull != null;
-  final bottom =
-      16.0 +
-      MediaQuery.paddingOf(context).bottom +
-      (isMiniPlayerVisible ? miniPlayerHeight + 8 : 0);
+  final top = MediaQuery.paddingOf(context).top + 10.0;
 
   late final OverlayEntry entry;
   entry = OverlayEntry(
     builder: (ctx) {
       return Align(
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.topCenter,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 0, 24, bottom),
+          padding: EdgeInsets.fromLTRB(20, top, 20, 0),
           child: Container(
             decoration: BoxDecoration(
               color: isDark
-                  ? musynSecondarySurface(isDark)
-                  : const Color(0xFF1C1C1E),
+                  ? const Color(0xE61C1C1E)
+                  : const Color(0xF21C1C1E),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: isDark
                     ? const Color(0x33FFFFFF)
                     : const Color(0x1F000000),
+                width: 0.5,
               ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x40000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
             padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
             child: Row(

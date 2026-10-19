@@ -1374,12 +1374,19 @@ Future<bool> _makeSongOffline(
     }
 
     final isSaavnTrack =
+        normalizedSource == 'saavn' ||
         song['source'] == 'saavn' ||
         song['source'] == 'jiosaavn' ||
         song['catalogOrigin'] == 'saavn' ||
         song['catalogOrigin'] == 'jiosaavn' ||
+        song['resolvedSource'] == 'saavn' ||
+        song['resolvedSource'] == 'jiosaavn' ||
+        song['downloadSource'] == 'saavn' ||
+        song['downloadSource'] == 'jiosaavn' ||
+        song['saavnId'] != null ||
         (song['encrypted_media_url'] != null &&
-            song['encrypted_media_url'].toString().isNotEmpty);
+            song['encrypted_media_url'].toString().isNotEmpty) ||
+        !isValidYoutubeVideoId(ytid);
 
     if (!isValidYoutubeVideoId(ytid) && !isSaavnTrack) {
       logger.log('makeSongOffline: invalid ytid "$ytid"');

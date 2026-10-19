@@ -89,21 +89,6 @@ class AudioPlaybackInstall {
         headers: headers,
         tag: tag,
       );
-      final catalogDuration = parseSongDuration(song['duration']);
-
-      if (isYoutube &&
-          catalogDuration != null &&
-          catalogDuration > const Duration(seconds: 5)) {
-        logger.log(
-          'Clipping YouTube "${song['title']}" to ${catalogDuration.inSeconds}s '
-          '(itag=${song['resolvedItag'] ?? '-'} codec=${song['resolvedFormat'] ?? '-'})',
-        );
-        return ClippingAudioSource(
-          child: uriSource,
-          end: catalogDuration,
-          tag: tag,
-        );
-      }
       return uriSource;
     } catch (e, stackTrace) {
       logger.log(

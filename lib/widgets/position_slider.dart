@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:musyn/models/position_data.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/theme/app_themes.dart';
@@ -89,31 +91,25 @@ class _PositionSliderState extends State<PositionSlider> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: double.infinity,
-              height: 24,
-              child: CupertinoSlider(
-                value: currentValue.clamp(0.0, maxDuration),
-                activeColor: MusynStyle.appleRed,
-                thumbColor: isDark
-                    ? CupertinoColors.white
-                    : CupertinoColors.black,
-                onChanged: (value) {
-                  setState(() {
-                    _isDragging = true;
-                    _dragValue = value;
-                  });
-                },
-                onChangeEnd: (value) {
-                  audioHandler.seek(Duration(milliseconds: value.round()));
-                  setState(() {
-                    _isDragging = false;
-                  });
-                },
-                max: maxDuration,
-              ),
+            _AppleMusicScrubber(
+              value: currentValue.clamp(0.0, maxDuration),
+              max: maxDuration,
+              isDragging: _isDragging,
+              isDark: isDark,
+              onChanged: (value) {
+                setState(() {
+                  _isDragging = true;
+                  _dragValue = value;
+                });
+              },
+              onChangeEnd: (value) {
+                audioHandler.seek(Duration(milliseconds: value.round()));
+                setState(() {
+                  _isDragging = false;
+                });
+              },
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             _buildPositionRow(context, displayPositionData),
           ],
         );
@@ -184,6 +180,125 @@ class _PositionSliderState extends State<PositionSlider> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AppleMusicScrubber extends StatelessWidget {
+  const _AppleMusicScrubber({
+    required this.value,
+    required this.max,
+    required this.isDragging,
+    required this.isDark,
+    required this.onChanged,
+    required this.onChangeEnd,
+  });
+
+  final double value;
+  final double max;
+  final bool isDragging;
+  final bool isDark;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        final progress = (max > 0 ? (value / max) : 0.0).clamp(0.0, 1.0);
+        final thumbDiameter = isDragging ? 18.0 : 13.0;
+        final trackHeight = isDragging ? 5.0 : 4.0;
+        final activeWidth = totalWidth * progress;
+
+        void handleTouch(Offset localPosition) {
+          final ratio = (localPosition.dx / totalWidth).clamp(0.0, 1.0);
+          onChanged(ratio * max);
+        }
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (details) {
+            unawaited(HapticFeedback.selectionClick());
+            handleTouch(details.localPosition);
+          },
+          onHorizontalDragUpdate: (details) {
+            handleTouch(details.localPosition);
+          },
+          onHorizontalDragEnd: (_) {
+            onChangeEnd(value);
+          },
+          onHorizontalDragCancel: () {
+            onChangeEnd(value);
+          },
+          onTapDown: (details) {
+            unawaited(HapticFeedback.selectionClick());
+            handleTouch(details.localPosition);
+          },
+          onTapUp: (details) {
+            handleTouch(details.localPosition);
+            onChangeEnd(value);
+          },
+          child: SizedBox(
+            width: totalWidth,
+            height: 28,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              clipBehavior: Clip.none,
+              children: [
+                // Inactive background track
+                Center(
+                  child: Container(
+                    height: trackHeight,
+                    width: totalWidth,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0x38FFFFFF)
+                          : const Color(0x26000000),
+                      borderRadius: BorderRadius.circular(trackHeight / 2),
+                    ),
+                  ),
+                ),
+                // Active progress track
+                Positioned(
+                  left: 0,
+                  top: (28 - trackHeight) / 2,
+                  child: Container(
+                    height: trackHeight,
+                    width: activeWidth,
+                    decoration: BoxDecoration(
+                      color: MusynStyle.appleRed,
+                      borderRadius: BorderRadius.circular(trackHeight / 2),
+                    ),
+                  ),
+                ),
+                // Native Apple Music sleek white scrubber thumb
+                Positioned(
+                  left: (activeWidth - (thumbDiameter / 2))
+                      .clamp(0.0, totalWidth - thumbDiameter),
+                  top: (28 - thumbDiameter) / 2,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: thumbDiameter,
+                    height: thumbDiameter,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: CupertinoColors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x44000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

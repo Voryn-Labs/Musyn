@@ -382,9 +382,9 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected
-                  ? MusynStyle.appleRed
+                  ? MusynStyle.appleRed.withValues(alpha: 0.4)
                   : (isDark ? const Color(0x1AFFFFFF) : const Color(0x14000000)),
-              width: selected ? 1.5 : 0.5,
+              width: selected ? 1 : 0.5,
             ),
           ),
           child: Row(
@@ -480,15 +480,16 @@ Future<void> showDownloadPicker(
 ) {
   final isDark = isAppDarkMode(context);
   final sheetBg = isDark
-      ? const Color(0xE61C1C1E)
-      : const Color(0xE6F2F2F7);
+      ? const Color(0xF51C1C1E)
+      : const Color(0xF5F2F2F7);
 
   return showCupertinoModalPopup<void>(
     context: context,
+    barrierColor: CupertinoColors.black.withValues(alpha: 0.65),
     builder: (ctx) => ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: sheetBg,
