@@ -1,4 +1,4 @@
-import 'package:musified/utilities/async_operation_queue.dart';
+import 'package:musyn/utilities/async_operation_queue.dart';
 
 /// Serializes read/modify/persist/publish across concurrent download workers.
 class OfflineSongRegistry {

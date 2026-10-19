@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/utilities/mediaitem.dart'
+import 'package:musyn/utilities/mediaitem.dart'
     show resolveMediaArtworkUrl, upgradeArtworkUrl;
-import 'package:musified/widgets/no_artwork_cube.dart';
-import 'package:musified/widgets/spinner.dart';
+import 'package:musyn/widgets/no_artwork_cube.dart';
+import 'package:musyn/widgets/spinner.dart';
 
 class SongArtworkWidget extends StatelessWidget {
   const SongArtworkWidget({
@@ -16,6 +16,14 @@ class SongArtworkWidget extends StatelessWidget {
     this.borderRadius = 10.0,
     this.errorWidgetIconSize = 20.0,
   });
+  static Widget flightShuttle(
+    BuildContext context,
+    Animation<double> animation,
+    HeroFlightDirection direction,
+    BuildContext from,
+    BuildContext to,
+  ) => FittedBox(fit: BoxFit.cover, child: (to.widget as Hero).child);
+
   final double size;
   final MediaItem metadata;
   final double borderRadius;
@@ -61,7 +69,9 @@ class SongArtworkWidget extends StatelessWidget {
             imageUrl: imageUrl,
             memCacheWidth: cacheDimension,
             memCacheHeight: cacheDimension,
-            fadeInDuration: const Duration(milliseconds: 300),
+            fadeInDuration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 300),
             fit: BoxFit.cover,
             placeholder: (_, __) => const Spinner(),
             errorWidget: (_, __, ___) =>

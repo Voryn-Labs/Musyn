@@ -1,7 +1,7 @@
-import 'package:musified/services/audio/audio_preload_cache.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/utilities/app_utils.dart';
+import 'package:musyn/services/audio/audio_preload_cache.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/utilities/app_utils.dart';
 
 /// Stream URL preloading. Only talks to [AudioPreloadCache] + network helpers.
 /// Queue position/items are passed in by `AudioHandlerHub` — no queue imports.
@@ -143,6 +143,17 @@ class AudioPreloadService {
           cache.preloadedYtIds.add(ytid);
           cache.streamUrls[ytid] = preloadUrl;
           cache.trimIfNeeded();
+          // Keep resolver headers and provenance attached to this exact URL without
+          // publishing them as the queue item's active playback metadata.
+          nextSong['_preloadedStreamMetadata'] = {
+            for (final entry in songCopy.entries)
+              if (entry.key.startsWith('resolved') ||
+                  entry.key == 'clientUserAgent')
+                entry.key: entry.value,
+          };
+          cache.streamMetadata[ytid] = Map<String, dynamic>.from(
+            nextSong['_preloadedStreamMetadata'] as Map,
+          );
           nextSong['_preloadedStreamUrl'] = preloadUrl;
           logger.log(
             'Preloaded stream for $ytid',

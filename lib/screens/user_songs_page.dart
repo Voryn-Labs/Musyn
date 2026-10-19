@@ -1,20 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/constants/app_constants.dart';
-import 'package:musified/models/playlist_sort_type.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/widgets/mini_player_bottom_space.dart';
-import 'package:musified/widgets/playlist_cube.dart';
-import 'package:musified/widgets/playlist_page/empty_playlist_state.dart';
-import 'package:musified/widgets/playlist_page/playlist_action_buttons.dart';
-import 'package:musified/widgets/playlist_page/playlist_header.dart';
-import 'package:musified/widgets/song_tile.dart';
+import 'package:go_router/go_router.dart';
+import 'package:musyn/constants/app_constants.dart';
+import 'package:musyn/models/playlist_sort_type.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/library_ranking.dart';
+import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/playlist_cube.dart';
+import 'package:musyn/widgets/playlist_page/playlist_action_buttons.dart';
+import 'package:musyn/widgets/playlist_page/playlist_header.dart';
+import 'package:musyn/widgets/song_tile.dart';
 
 class UserSongsPage extends StatefulWidget {
   const UserSongsPage({super.key, required this.page});
@@ -27,6 +31,7 @@ class UserSongsPage extends StatefulWidget {
 
 class _UserSongsPageState extends State<UserSongsPage> {
   List _getDisplayList(List songsList) {
+    if (widget.page == 'mostPlayed') return mostPlayedTracks(songsList);
     var list = List.from(songsList);
     if (widget.page == 'offline') {
       list = _sortOfflineSongsLocal(list, _getCurrentOfflineSortType());
@@ -36,6 +41,28 @@ class _UserSongsPageState extends State<UserSongsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!const {
+      'liked',
+      'offline',
+      'recents',
+      'mostPlayed',
+    }.contains(widget.page)) {
+      return CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(
+          middle: Text('Collection unavailable'),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: ContentState(
+              title: 'Collection unavailable',
+              message: 'Open your library to choose a saved collection.',
+              actionLabel: 'Open library',
+              onAction: () => context.go('/library'),
+            ),
+          ),
+        ),
+      );
+    }
     final title = getTitle(widget.page, context);
     final icon = getIcon(widget.page);
     final isOfflineSongs = widget.page == 'offline';
@@ -49,10 +76,20 @@ class _UserSongsPageState extends State<UserSongsPage> {
           ? const Color(0xFF000000)
           : const Color(0xFFFFFFFF),
       navigationBar: CupertinoNavigationBar(
+        trailing: isOfflineSongs
+            ? CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _showSort,
+                child: const Icon(
+                  CupertinoIcons.sort_down,
+                  semanticLabel: 'Sort downloads',
+                ),
+              )
+            : null,
         middle: Text(
           title,
           style: const TextStyle(
-            fontFamily: MusifiedStyle.displayFont,
+            fontFamily: MusynStyle.displayFont,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -77,7 +114,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
             builder: (_, songsList, __) => _buildCustomScrollView(
               title,
               icon,
-              songsList.length,
+              _getDisplayList(songsList).length,
               isOfflineSongs,
               isDark,
             ),
@@ -123,9 +160,10 @@ class _UserSongsPageState extends State<UserSongsPage> {
 
   String getTitle(String page, BuildContext context) {
     return switch (page) {
-      'liked' => 'Favorite Tracks',
+      'liked' => 'Liked Music',
       'offline' => 'Downloaded Songs',
       'recents' => 'Recently Played',
+      'mostPlayed' => 'Most Played',
       _ => 'Playlist',
     };
   }
@@ -135,6 +173,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
       'liked' => CupertinoIcons.heart_fill,
       'offline' => CupertinoIcons.arrow_down_circle_fill,
       'recents' => CupertinoIcons.clock_fill,
+      'mostPlayed' => CupertinoIcons.chart_bar_fill,
       _ => CupertinoIcons.heart_fill,
     };
   }
@@ -164,23 +203,14 @@ class _UserSongsPageState extends State<UserSongsPage> {
                   : widget.page == 'offline'
                   ? userOfflineSongs.value
                   : userRecentlyPlayed.value;
-              var sortedList = songsList;
-              if (isOfflineSongs) {
-                sortedList = _sortOfflineSongsLocal(
-                  songsList,
-                  _getCurrentOfflineSortType(),
-                );
-              }
+              final sortedList = _getDisplayList(songsList);
               final playlist = {
                 'ytid': '',
                 'title': title,
                 'source': 'user-created',
                 'list': sortedList,
               };
-              audioHandler.playPlaylistSong(
-                playlist: playlist,
-                songIndex: 0,
-              );
+              audioHandler.playPlaylistSong(playlist: playlist, songIndex: 0);
             },
             onShuffle: () async {
               final songs = widget.page == 'liked'
@@ -189,8 +219,9 @@ class _UserSongsPageState extends State<UserSongsPage> {
                   ? userOfflineSongs.value
                   : userRecentlyPlayed.value;
               if (songs.isEmpty) return;
-              final shuffled = List<Map>.from(songs.whereType<Map>())
-                ..shuffle();
+              final shuffled = List<Map>.from(
+                _getDisplayList(songs).whereType<Map>(),
+              )..shuffle();
               await audioHandler.addPlaylistToQueue(
                 shuffled,
                 replace: true,
@@ -247,9 +278,24 @@ class _UserSongsPageState extends State<UserSongsPage> {
       builder: (context, rawSongs, _) {
         final songs = _getDisplayList(rawSongs);
         if (songs.isEmpty) {
-          return EmptyPlaylistState(
-            icon: getIcon(widget.page),
-            message: 'No tracks found in $title',
+          return SliverToBoxAdapter(
+            child: ContentState(
+              icon: getIcon(widget.page),
+              title: widget.page == 'offline'
+                  ? 'No downloads yet'
+                  : widget.page == 'liked'
+                  ? 'Your favorites belong here'
+                  : 'Your listening starts here',
+              message: widget.page == 'offline'
+                  ? 'Download tracks from their options menu to listen without a connection.'
+                  : widget.page == 'liked'
+                  ? 'Tap the heart on a track to save it to Liked Music.'
+                  : 'Play music to build your listening history and most-played collection.',
+              actionLabel: offlineMode.value
+                  ? 'Go online to find music'
+                  : 'Find music',
+              onAction: _findMusic,
+            ),
           );
         }
 
@@ -278,6 +324,46 @@ class _UserSongsPageState extends State<UserSongsPage> {
           }, childCount: songs.length),
         );
       },
+    );
+  }
+
+  void _findMusic() {
+    if (offlineMode.value) {
+      offlineMode.value = false;
+      unawaited(addOrUpdateData('settings', 'offlineMode', false));
+    }
+    context.go('/search');
+  }
+
+  void _showSort() {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheet) => CupertinoActionSheet(
+        title: const Text('Sort downloaded tracks'),
+        actions: [
+          for (final type in OfflineSortType.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: type == _getCurrentOfflineSortType(),
+              onPressed: () {
+                Navigator.pop(sheet);
+                setState(() => offlineSortSetting = type.name);
+                unawaited(
+                  addOrUpdateData('settings', 'offlineSortType', type.name),
+                );
+              },
+              child: Text(switch (type) {
+                OfflineSortType.default_ => 'Default order',
+                OfflineSortType.title => 'Title',
+                OfflineSortType.artist => 'Artist',
+                OfflineSortType.dateAdded => 'Newest first',
+              }),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheet),
+          child: const Text('Cancel'),
+        ),
+      ),
     );
   }
 

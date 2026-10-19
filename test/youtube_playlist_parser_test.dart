@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/utilities/youtube_playlist_parser.dart';
+import 'package:musyn/utilities/youtube_playlist_parser.dart';
 
 void main() {
   test('chart playlist with a preview video remains a playlist', () {
@@ -90,4 +90,35 @@ void main() {
       isNull,
     );
   });
+  test(
+    'mood destinations retain params and deduplicate personalised shortcuts',
+    () {
+      Map button(String key, String params) => {
+        'musicNavigationButtonRenderer': {
+          'buttonText': {
+            'runs': [
+              {'text': 'Chill'},
+            ],
+          },
+          key: {
+            'browseEndpoint': {
+              'browseId': 'FEmusic_moods_and_genres_category',
+              'params': params,
+            },
+          },
+          'solid': {'leftStripeColor': '4283842435'},
+        },
+      };
+      final items = YouTubePlaylistParser.moodCategories({
+        'contents': [
+          button('clickCommand', 'chill'),
+          button('navigationEndpoint', 'chill'),
+          button('clickCommand', 'focus'),
+        ],
+      });
+      expect(items.length, 2);
+      expect(items.map((item) => item['params']), ['chill', 'focus']);
+      expect(items.first['stripeColor'], 4283842435);
+    },
+  );
 }

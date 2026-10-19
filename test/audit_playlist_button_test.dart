@@ -3,15 +3,15 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/youtube_auth_service.dart';
-import 'package:musified/widgets/playlist_page/add_to_playlist_button.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/widgets/playlist_page/add_to_playlist_button.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('musified-batch-');
+    directory = await Directory.systemTemp.createTemp('musyn-batch-');
     Hive.init(directory.path);
     await Hive.openBox('user');
     YouTubeAuthService().isSignedIn.value = false;

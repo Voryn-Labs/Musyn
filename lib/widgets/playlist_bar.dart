@@ -2,16 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
-import 'package:musified/services/artist_service.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/navigation_paths.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/artwork_provider.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/offline_playlist_dialogs.dart';
-import 'package:musified/utilities/playlist_utils.dart';
+import 'package:musyn/services/artist_service.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/navigation_paths.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/artwork_provider.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/offline_playlist_dialogs.dart';
+import 'package:musyn/utilities/playlist_utils.dart';
 
 class PlaylistBar extends StatelessWidget {
   const PlaylistBar(
@@ -54,7 +54,7 @@ class PlaylistBar extends StatelessWidget {
   String? get _resolvedPlaylistId =>
       playlistId ?? playlistData?['ytid']?.toString();
 
-  void _showActionSheet(BuildContext context) {
+  void showActions(BuildContext context) {
     final isUserCreated = playlistData?['source'] == 'user-created';
     final pinnedIds = pinnedPlaylistIds.value;
     final isPinned =
@@ -76,7 +76,15 @@ class PlaylistBar extends StatelessWidget {
             CupertinoActionSheetAction(
               onPressed: () {
                 Navigator.pop(ctx);
-                togglePinnedPlaylist(_resolvedPlaylistId!, context);
+                final pinned = togglePinnedPlaylist(
+                  _resolvedPlaylistId!,
+                  context,
+                );
+                if (!pinned && !isPinned)
+                  showToast(
+                    context,
+                    'Unpin a collection before pinning another.',
+                  );
               },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -178,7 +186,7 @@ class PlaylistBar extends StatelessWidget {
         ? normalizeArtistDisplayTitle(playlistTitle)
         : playlistTitle;
     final titleColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-    final cardBg = musifiedElevatedSurface(isDark);
+    final cardBg = musynElevatedSurface(isDark);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -214,12 +222,14 @@ class PlaylistBar extends StatelessWidget {
                               if (!ids.contains(_resolvedPlaylistId)) {
                                 return const SizedBox.shrink();
                               }
-                              return const Padding(
-                                padding: EdgeInsets.only(right: 6),
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
                                 child: Icon(
                                   CupertinoIcons.pin_fill,
                                   size: 13,
-                                  color: MusifiedStyle.appleRed,
+                                  color: isDark
+                                      ? CupertinoColors.white
+                                      : CupertinoColors.black,
                                 ),
                               );
                             },
@@ -228,7 +238,7 @@ class PlaylistBar extends StatelessWidget {
                           child: Text(
                             displayTitle,
                             style: TextStyle(
-                              fontFamily: MusifiedStyle.uiFont,
+                              fontFamily: MusynStyle.uiFont,
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
                               color: titleColor,
@@ -244,7 +254,7 @@ class PlaylistBar extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: const TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
+                          fontFamily: MusynStyle.uiFont,
                           fontSize: 13,
                           color: CupertinoColors.systemGrey,
                           decoration: TextDecoration.none,
@@ -257,7 +267,7 @@ class PlaylistBar extends StatelessWidget {
               if (showBuildActions)
                 CupertinoButton(
                   padding: const EdgeInsets.all(8),
-                  onPressed: () => _showActionSheet(context),
+                  onPressed: () => showActions(context),
                   child: const Icon(
                     CupertinoIcons.ellipsis,
                     size: 20,
@@ -295,11 +305,15 @@ class PlaylistBar extends StatelessWidget {
       width: artworkSize,
       height: artworkSize,
       decoration: BoxDecoration(
-        color: musifiedSecondarySurface(isDark),
+        color: musynSecondarySurface(isDark),
         shape: isArtist ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: isArtist ? null : BorderRadius.circular(10),
       ),
-      child: Icon(cubeIcon, size: 24, color: MusifiedStyle.appleRed),
+      child: Icon(
+        cubeIcon,
+        size: 24,
+        color: isDark ? CupertinoColors.white : CupertinoColors.black,
+      ),
     );
   }
 
@@ -308,13 +322,13 @@ class PlaylistBar extends StatelessWidget {
       width: artworkSize,
       height: artworkSize,
       decoration: BoxDecoration(
-        color: musifiedSecondarySurface(isDark),
+        color: musynSecondarySurface(isDark),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Icon(
+      child: Icon(
         CupertinoIcons.folder_fill,
         size: 24,
-        color: MusifiedStyle.appleRed,
+        color: isDark ? CupertinoColors.white : CupertinoColors.black,
       ),
     );
   }

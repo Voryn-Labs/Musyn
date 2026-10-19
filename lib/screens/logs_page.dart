@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
 
 class LogsPage extends StatelessWidget {
   const LogsPage({super.key});
@@ -28,7 +28,7 @@ class LogsPage extends StatelessWidget {
         middle: const Text(
           'Diagnostic Logs',
           style: TextStyle(
-            fontFamily: MusifiedStyle.displayFont,
+            fontFamily: MusynStyle.displayFont,
             fontWeight: FontWeight.w700,
           ),
         ),

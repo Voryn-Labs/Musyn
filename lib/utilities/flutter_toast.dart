@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:musified/constants/player_layout.dart';
-import 'package:musified/services/app_navigation_state.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/constants/player_layout.dart';
+import 'package:musyn/services/app_navigation_state.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 OverlayEntry? _activeToast;
 Timer? _toastTimer;
@@ -43,7 +43,7 @@ void showToast(
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark
-                      ? musifiedSecondarySurface(isDark)
+                      ? musynSecondarySurface(isDark)
                       : const Color(0xFF1C1C1E),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
@@ -62,14 +62,14 @@ void showToast(
                     Icon(
                       icon ?? CupertinoIcons.checkmark_circle_fill,
                       size: 18,
-                      color: MusifiedStyle.appleRed,
+                      color: MusynStyle.appleRed,
                     ),
                     const SizedBox(width: 10),
                     Flexible(
                       child: Text(
                         text,
                         style: const TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
+                          fontFamily: MusynStyle.uiFont,
                           color: CupertinoColors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -124,7 +124,7 @@ void showToastWithButton(
           child: Container(
             decoration: BoxDecoration(
               color: isDark
-                  ? musifiedSecondarySurface(isDark)
+                  ? musynSecondarySurface(isDark)
                   : const Color(0xFF1C1C1E),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
@@ -140,14 +140,14 @@ void showToastWithButton(
                 Icon(
                   icon ?? CupertinoIcons.info_circle_fill,
                   size: 18,
-                  color: MusifiedStyle.appleRed,
+                  color: MusynStyle.appleRed,
                 ),
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
                     text,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       color: CupertinoColors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -165,8 +165,8 @@ void showToastWithButton(
                   child: Text(
                     buttonName,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
-                      color: MusifiedStyle.appleRed,
+                      fontFamily: MusynStyle.uiFont,
+                      color: MusynStyle.appleRed,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),

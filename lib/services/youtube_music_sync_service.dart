@@ -5,12 +5,12 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/library_state.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/youtube_auth_service.dart';
-import 'package:musified/utilities/youtube_playlist_parser.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/library_state.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/utilities/youtube_playlist_parser.dart';
 
 class YouTubeMusicSyncService {
   factory YouTubeMusicSyncService() => _instance;
@@ -313,6 +313,25 @@ class YouTubeMusicSyncService {
       logger.log('Error fetching chart playlists: $e');
       return [];
     }
+  }
+
+  /// Server-defined Explore destinations: no search phrases masquerading as charts.
+  Future<List<Map<String, dynamic>>> fetchMoodCategories() async {
+    final response = await _browsePost({
+      'browseId': 'FEmusic_moods_and_genres',
+    });
+    return YouTubePlaylistParser.moodCategories(response);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchExploreCollections(
+    String browseId, {
+    String? params,
+  }) async {
+    final response = await _browsePost({
+      'browseId': browseId,
+      if (params != null) 'params': params,
+    });
+    return YouTubePlaylistParser.charts(response);
   }
 
   Future<Map<String, dynamic>> _browsePost(Map<String, dynamic> body) async {

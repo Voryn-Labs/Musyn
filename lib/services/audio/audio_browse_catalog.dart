@@ -1,7 +1,7 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/map_utils.dart';
-import 'package:musified/utilities/mediaitem.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/map_utils.dart';
+import 'package:musyn/utilities/mediaitem.dart';
 
 /// Lock-screen / CarPlay browse IDs and song lookup helpers.
 abstract final class AudioBrowseCatalog {
@@ -147,7 +147,7 @@ abstract final class AudioBrowseCatalog {
     return mapToMediaItem(normalised).copyWith(
       id: recentMediaId(ytid),
       displayTitle: normalised['title']?.toString(),
-      displaySubtitle: artist.isEmpty ? 'Musify' : artist,
+      displaySubtitle: artist.isEmpty ? 'Musyn' : artist,
     );
   }
 

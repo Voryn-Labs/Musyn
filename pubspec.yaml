@@ -1,11 +1,11 @@
-name: musified
-description: Premium iOS Streaming App with YouTube Music & JioSaavn Lossless Audio
-homepage: https://github.com/tinyredphoenix/Musified
-repository: https://github.com/tinyredphoenix/Musified
-issue_tracker: https://github.com/tinyredphoenix/Musified/issues
+name: musyn
+description: iOS music player with YouTube Music, JioSaavn and offline downloads
+homepage: https://github.com/Voryn-Labs/Musyn
+repository: https://github.com/Voryn-Labs/Musyn
+issue_tracker: https://github.com/Voryn-Labs/Musyn/issues
 
 publish_to: 'none'
-version: 7.1.0+9
+version: 0.1.0+1
 
 environment:
   sdk: '>=3.12.0 <4.0.0'
@@ -49,7 +49,7 @@ flutter:
 
   assets:
     - assets/licenses/
-    - assets/icons/musify_icon.png
+    - assets/branding/
 
   fonts:
     - family: paytoneOne

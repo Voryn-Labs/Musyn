@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:musified/services/playlists_manager.dart';
+import 'package:musyn/services/playlists_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('musified-catalog-');
+    directory = await Directory.systemTemp.createTemp('musyn-catalog-');
     Hive.init(directory.path);
     for (final box in ['user', 'cache', 'settings']) {
       await Hive.openBox(box);

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/download_transfer.dart';
+import 'package:musyn/services/download_transfer.dart';
 
 void main() {
   test(
@@ -25,7 +25,7 @@ void main() {
   late Directory directory;
   late File file;
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('musified-transfer-');
+    directory = await Directory.systemTemp.createTemp('musyn-transfer-');
     file = File('${directory.path}/track.m4a');
   });
   tearDown(() => directory.delete(recursive: true));
@@ -69,12 +69,15 @@ void main() {
 
   test('successful transfer commits the exact bytes', () async {
     final bytes = List.filled(9000, 7);
+    final progress = <(int, int?)>[];
     await writeDownloadAtomically(
       destination: file,
-      bytes: Stream.value(bytes),
+      bytes: Stream.fromIterable([bytes.sublist(0, 4000), bytes.sublist(4000)]),
+      onProgress: (received, total) => progress.add((received, total)),
       expectedBytes: bytes.length,
       cancellation: DownloadCancellation(),
     );
     expect(await file.readAsBytes(), bytes);
+    expect(progress, [(4000, 9000), (9000, 9000)]);
   });
 }

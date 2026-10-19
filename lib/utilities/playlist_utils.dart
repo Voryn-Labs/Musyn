@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:musified/services/offline_playlist_registry.dart';
+import 'package:musyn/services/offline_playlist_registry.dart';
 
 class PlaylistUtils {
   static bool isArtistPlaylist(dynamic playlist) =>

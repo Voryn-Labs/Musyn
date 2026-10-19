@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 class NullArtworkWidget extends StatelessWidget {
   const NullArtworkWidget({
@@ -30,7 +30,7 @@ class NullArtworkWidget extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius),
-          color: musifiedSecondarySurface(isDark),
+          color: musynSecondarySurface(isDark),
         ),
         child: Center(
           child: Column(
@@ -41,12 +41,14 @@ class NullArtworkWidget extends StatelessWidget {
                 height: badgeSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: MusifiedStyle.appleRed.withValues(alpha: 0.15),
+                  color: CupertinoTheme.of(
+                    context,
+                  ).primaryColor.withValues(alpha: 0.08),
                 ),
                 child: Icon(
                   icon,
                   size: calculatedIconSize,
-                  color: MusifiedStyle.appleRed,
+                  color: CupertinoColors.systemGrey,
                 ),
               ),
               if (title != null) ...[
@@ -57,7 +59,7 @@ class NullArtworkWidget extends StatelessWidget {
                     title!,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       color: CupertinoColors.systemGrey,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,

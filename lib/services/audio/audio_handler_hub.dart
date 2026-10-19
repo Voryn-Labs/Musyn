@@ -1,13 +1,13 @@
-import 'package:musified/services/audio/audio_preload_cache.dart';
-import 'package:musified/services/audio/audio_preload_service.dart';
-import 'package:musified/services/audio/audio_queue_controller.dart';
-import 'package:musified/services/audio/audio_queue_state.dart';
+import 'package:musyn/services/audio/audio_preload_cache.dart';
+import 'package:musyn/services/audio/audio_preload_service.dart';
+import 'package:musyn/services/audio/audio_queue_controller.dart';
+import 'package:musyn/services/audio/audio_queue_state.dart';
 
 /// Single composition root for the audio subsystem.
 ///
 /// Leaf modules only depend on their own data ([AudioQueueState],
 /// [AudioPreloadCache]) or pure utilities. They never import each other.
-/// `MusifiedAudioHandler` orchestrates via this hub only.
+/// `MusynAudioHandler` orchestrates via this hub only.
 class AudioHandlerHub {
   AudioHandlerHub({
     this.queueLookahead = defaultQueueLookahead,

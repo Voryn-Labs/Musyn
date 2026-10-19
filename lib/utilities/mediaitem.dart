@@ -1,6 +1,6 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/utilities/app_utils.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/utilities/app_utils.dart';
 
 Map mediaItemToMap(MediaItem mediaItem) {
   final extras = mediaItem.extras;

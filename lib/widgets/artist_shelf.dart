@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/widgets/playlist_cube.dart';
-import 'package:musified/widgets/section_header.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/widgets/playlist_cube.dart';
+import 'package:musyn/widgets/section_header.dart';
 
 class ArtistShelf extends StatelessWidget {
   const ArtistShelf({
@@ -96,7 +96,7 @@ class ArtistShelf extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: circular ? TextAlign.center : TextAlign.start,
               style: TextStyle(
-                fontFamily: MusifiedStyle.uiFont,
+                fontFamily: MusynStyle.uiFont,
                 fontWeight: FontWeight.w600,
                 fontSize: _titleFontSize,
                 height: _lineHeight,
@@ -111,7 +111,7 @@ class ArtistShelf extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontFamily: MusifiedStyle.uiFont,
+                  fontFamily: MusynStyle.uiFont,
                   fontWeight: FontWeight.w500,
                   fontSize: _subtitleFontSize,
                   height: _lineHeight,

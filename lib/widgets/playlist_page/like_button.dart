@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 class PlaylistLikeButton extends StatefulWidget {
   const PlaylistLikeButton({
@@ -73,13 +73,13 @@ class _PlaylistLikeButtonState extends State<PlaylistLikeButton> {
         return CupertinoButton(
           padding: const EdgeInsets.all(10),
           color: isLiked
-              ? MusifiedStyle.appleRed
-              : musifiedSecondarySurface(isDark),
+              ? MusynStyle.appleRed
+              : musynSecondarySurface(isDark),
           borderRadius: BorderRadius.circular(22),
           onPressed: _toggleLikeStatus,
           child: Icon(
             isLiked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
-            color: isLiked ? CupertinoColors.white : MusifiedStyle.appleRed,
+            color: isLiked ? CupertinoColors.white : MusynStyle.appleRed,
             size: 20,
           ),
         );

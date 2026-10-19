@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 class PlaylistActionButtons extends StatelessWidget {
   const PlaylistActionButtons({
@@ -18,8 +18,10 @@ class PlaylistActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final secondaryBtnBg = musifiedSecondarySurface(isDark);
-    final secondaryTextColor = isDark ? CupertinoColors.white : CupertinoColors.black;
+    final secondaryBtnBg = musynSecondarySurface(isDark);
+    final secondaryTextColor = isDark
+        ? CupertinoColors.white
+        : CupertinoColors.black;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -28,8 +30,8 @@ class PlaylistActionButtons extends StatelessWidget {
           Expanded(
             child: CupertinoButton(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
-              color: MusifiedStyle.appleRed,
+              borderRadius: BorderRadius.circular(MusynStyle.radiusPill),
+              color: CupertinoTheme.of(context).primaryColor,
               onPressed: isLoading ? null : onPlay,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -37,17 +39,21 @@ class PlaylistActionButtons extends StatelessWidget {
                   if (isLoading)
                     const CupertinoActivityIndicator(radius: 9)
                   else
-                    const Icon(
+                    Icon(
                       CupertinoIcons.play_fill,
                       size: 18,
-                      color: CupertinoColors.white,
+                      color: isDark
+                          ? CupertinoColors.black
+                          : CupertinoColors.white,
                     ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Play',
                     style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
-                      color: CupertinoColors.white,
+                      fontFamily: MusynStyle.uiFont,
+                      color: isDark
+                          ? CupertinoColors.black
+                          : CupertinoColors.white,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
@@ -60,7 +66,7 @@ class PlaylistActionButtons extends StatelessWidget {
           Expanded(
             child: CupertinoButton(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
+              borderRadius: BorderRadius.circular(MusynStyle.radiusPill),
               color: secondaryBtnBg,
               onPressed: isLoading ? null : onShuffle,
               child: Row(
@@ -78,7 +84,7 @@ class PlaylistActionButtons extends StatelessWidget {
                   Text(
                     'Shuffle',
                     style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       color: secondaryTextColor,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,

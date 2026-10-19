@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/io_service.dart';
-import 'package:musified/utilities/artwork_provider.dart';
-import 'package:musified/utilities/mediaitem.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/io_service.dart';
+import 'package:musyn/utilities/artwork_provider.dart';
+import 'package:musyn/utilities/mediaitem.dart';
 
 void main() {
   test(

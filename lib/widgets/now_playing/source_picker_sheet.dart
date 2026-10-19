@@ -2,10 +2,11 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 /// Compact iOS action sheet for selecting JioSaavn, YouTube Music, or Downloaded playback.
 void showAudioSourcePicker(
@@ -25,6 +26,7 @@ void showAudioSourcePicker(
       : (resolvedSource ?? 'youtube');
   final isOffline = playingOffline;
 
+  final scroll = ScrollController();
   String? pendingSource;
   String? sourceError;
   showCupertinoModalPopup<void>(
@@ -32,9 +34,9 @@ void showAudioSourcePicker(
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, updateSheet) {
         final isDark = isAppDarkMode(ctx);
-        final sheetBg = musifiedElevatedSurface(isDark);
+        final sheetBg = musynElevatedSurface(isDark);
         final rowBg = isDark
-            ? musifiedSecondarySurface(isDark)
+            ? musynSecondarySurface(isDark)
             : CupertinoColors.white;
         final label = isDark ? CupertinoColors.white : CupertinoColors.black;
         const secondary = CupertinoColors.systemGrey;
@@ -73,7 +75,7 @@ void showAudioSourcePicker(
                           Text(
                             title,
                             style: TextStyle(
-                              fontFamily: MusifiedStyle.uiFont,
+                              fontFamily: MusynStyle.uiFont,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: label,
@@ -84,7 +86,7 @@ void showAudioSourcePicker(
                           Text(
                             subtitle,
                             style: const TextStyle(
-                              fontFamily: MusifiedStyle.uiFont,
+                              fontFamily: MusynStyle.uiFont,
                               fontSize: 13,
                               color: secondary,
                               decoration: TextDecoration.none,
@@ -131,114 +133,137 @@ void showAudioSourcePicker(
               sourceError =
                   'Could not switch source. Choose a source to retry.';
             });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (ctx.mounted && scroll.hasClients) {
+                scroll.animateTo(
+                  0,
+                  duration: MediaQuery.disableAnimationsOf(ctx)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
           }
         }
 
         return SafeArea(
           minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: sheetBg,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-                      child: Text(
-                        pendingSource != null
-                            ? 'Switching source…'
-                            : sourceError ?? 'Audio Source',
-                        style: const TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
-                          fontSize: 13,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(ctx).height * .85,
+            ),
+            child: SingleChildScrollView(
+              controller: scroll,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: sheetBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                          child: Text(
+                            pendingSource != null
+                                ? 'Switching source…'
+                                : sourceError ?? 'Audio Source',
+                            style: const TextStyle(
+                              fontFamily: MusynStyle.uiFont,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: secondary,
+                              letterSpacing: 0.2,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                          decoration: BoxDecoration(
+                            color: rowBg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              row(
+                                icon: CupertinoIcons.music_note_2,
+                                iconColor: CupertinoColors.systemGreen,
+                                title: 'JioSaavn',
+                                loading: pendingSource == 'jiosaavn',
+                                subtitle: jiosaavnEnabled.value
+                                    ? 'AAC · up to 320 kbps'
+                                    : 'Enable JioSaavn in Settings to use this source',
+                                selected: currentSource == 'jiosaavn',
+                                enabled: jiosaavnEnabled.value,
+                                onTap: () => select('jiosaavn'),
+                              ),
+                              Container(height: 0.5, color: separator),
+                              row(
+                                icon: CupertinoIcons.play_circle_fill,
+                                iconColor: const Color(0xFFFF0033),
+                                title: 'YouTube Music',
+                                loading: pendingSource == 'youtube',
+                                subtitle: '160k AAC',
+                                selected: currentSource == 'youtube',
+                                enabled: true,
+                                onTap: () => select('youtube'),
+                              ),
+                              Container(height: 0.5, color: separator),
+                              row(
+                                icon: CupertinoIcons.arrow_down_circle_fill,
+                                iconColor: CupertinoColors.systemBlue,
+                                title: 'Downloaded',
+                                loading: pendingSource == 'offline',
+                                subtitle: hasDownload
+                                    ? (isOffline
+                                          ? 'Playing from this device'
+                                          : 'Play the downloaded copy')
+                                    : 'Download this track to use offline',
+                                selected: isOffline,
+                                enabled: hasDownload && !isOffline,
+                                onTap: hasDownload
+                                    ? () => select('offline')
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      color: rowBg,
+                      borderRadius: BorderRadius.circular(14),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: secondary,
-                          letterSpacing: 0.2,
-                          decoration: TextDecoration.none,
+                          color: CupertinoColors.activeBlue,
                         ),
                       ),
                     ),
-                    Container(
-                      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                      decoration: BoxDecoration(
-                        color: rowBg,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          row(
-                            icon: CupertinoIcons.music_note_2,
-                            iconColor: CupertinoColors.systemGreen,
-                            title: 'JioSaavn',
-                            loading: pendingSource == 'jiosaavn',
-                            subtitle: 'AAC · up to 320 kbps',
-                            selected: currentSource == 'jiosaavn',
-                            enabled: true,
-                            onTap: () => select('jiosaavn'),
-                          ),
-                          Container(height: 0.5, color: separator),
-                          row(
-                            icon: CupertinoIcons.play_circle_fill,
-                            iconColor: const Color(0xFFFF0033),
-                            title: 'YouTube Music',
-                            loading: pendingSource == 'youtube',
-                            subtitle: '160k AAC',
-                            selected: currentSource == 'youtube',
-                            enabled: true,
-                            onTap: () => select('youtube'),
-                          ),
-                          Container(height: 0.5, color: separator),
-                          row(
-                            icon: CupertinoIcons.arrow_down_circle_fill,
-                            iconColor: CupertinoColors.systemBlue,
-                            title: 'Downloaded',
-                            loading: pendingSource == 'offline',
-                            subtitle: hasDownload
-                                ? (isOffline
-                                      ? 'Playing from this device'
-                                      : 'Play the downloaded copy')
-                                : 'Download this track to use offline',
-                            selected: isOffline,
-                            enabled: hasDownload && !isOffline,
-                            onTap: hasDownload ? () => select('offline') : null,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: CupertinoButton(
-                  color: rowBg,
-                  borderRadius: BorderRadius.circular(14),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: CupertinoColors.activeBlue,
-                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     ),
-  );
+  ).whenComplete(scroll.dispose);
 }
 
 bool _isPlayingOffline(Map extras) {

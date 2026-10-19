@@ -5,14 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:musified/services/youtube_music_sync_service.dart';
-import 'package:musified/services/ytdlp_client_sync_service.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/services/ytdlp_client_sync_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('musified-mutations-');
+    directory = await Directory.systemTemp.createTemp('musyn-mutations-');
     Hive.init(directory.path);
     final box = await Hive.openBox('youtube_auth');
     await Hive.openBox('settings');
@@ -51,7 +51,7 @@ INNERTUBE_CLIENTS = {
       );
       expect(result.ok, isTrue);
       expect(result.commit, '0123456');
-      expect(githubRequest?.headers['User-Agent'], 'Musified-App');
+      expect(githubRequest?.headers['User-Agent'], 'Musyn-App');
     },
   );
 

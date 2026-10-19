@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/utilities/app_utils.dart';
+import 'package:musyn/utilities/app_utils.dart';
 
 void main() {
   test('reads the true track length from a googlevideo URL', () {

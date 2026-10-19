@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 /// Visual tokens for live / synced lyrics.
 ///
@@ -11,7 +11,7 @@ class LyricsTheme {
     required this.isDark,
     required Color accent,
   }) : accent = accent == CupertinoColors.activeBlue
-      ? MusifiedStyle.appleRed
+      ? MusynStyle.appleRed
       : accent;
 
   final bool isDark;
@@ -83,7 +83,7 @@ class LyricsTheme {
   }) {
     final color = lineColor(isActive: isActive, isPast: isPast);
     return TextStyle(
-      fontFamily: MusifiedStyle.displayFont,
+      fontFamily: MusynStyle.displayFont,
       fontSize: fontSize(isActive: isActive, layout: layout),
       fontWeight: fontWeight(isActive: isActive),
       letterSpacing: letterSpacing(isActive: isActive, layout: layout),
@@ -103,7 +103,7 @@ class LyricsTheme {
   }
 
   TextStyle plainBodyStyle(LyricsLayout layout) => TextStyle(
-    fontFamily: MusifiedStyle.displayFont,
+    fontFamily: MusynStyle.displayFont,
     fontSize: layout == LyricsLayout.compact ? 15 : 22,
     fontWeight: FontWeight.w600,
     letterSpacing: -0.2,
@@ -113,7 +113,7 @@ class LyricsTheme {
   );
 
   TextStyle captionStyle() => TextStyle(
-    fontFamily: MusifiedStyle.uiFont,
+    fontFamily: MusynStyle.uiFont,
     fontSize: 11,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.6,

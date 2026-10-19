@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/database/albums.db.dart';
-import 'package:musified/database/playlists.db.dart';
+import 'package:musyn/database/albums.db.dart';
+import 'package:musyn/database/playlists.db.dart';
 
 List<Map> playlists = [...playlistsDB, ...albumsDB];
 

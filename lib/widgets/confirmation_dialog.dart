@@ -1,9 +1,9 @@
 /*
- * Always Cupertino — Musified is an iOS / LiveContainer app.
+ * Always Cupertino — Musyn is an iOS / LiveContainer app.
  */
 
 import 'package:flutter/cupertino.dart';
-import 'package:musified/extensions/l10n.dart';
+import 'package:musyn/extensions/l10n.dart';
 
 class ConfirmationDialog extends StatelessWidget {
   const ConfirmationDialog({

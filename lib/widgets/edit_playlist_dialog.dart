@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/playlist_image_picker.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/playlist_image_picker.dart';
 
 class EditPlaylistDialog extends StatefulWidget {
   const EditPlaylistDialog({super.key, required this.playlistData});
@@ -108,7 +108,7 @@ class _EditPlaylistDialogState extends State<EditPlaylistDialog> {
                   _imageBase64 != null
                       ? context.l10n.imagePicked
                       : context.l10n.pickImageFromDevice,
-                  style: const TextStyle(color: MusifiedStyle.appleRed, fontSize: 15),
+                  style: const TextStyle(color: MusynStyle.appleRed, fontSize: 15),
                 ),
               ),
               buildImagePreview(

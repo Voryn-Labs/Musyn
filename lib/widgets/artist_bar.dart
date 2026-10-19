@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/services/artist_service.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/artwork_provider.dart';
+import 'package:musyn/services/artist_service.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/artwork_provider.dart';
 
 class ArtistBar extends StatelessWidget {
   const ArtistBar({
@@ -23,7 +23,7 @@ class ArtistBar extends StatelessWidget {
       artist['title']?.toString() ?? 'Artist',
     );
     final image = normalizeArtistThumbnailUrl(artist['image']?.toString());
-    final cardBg = musifiedElevatedSurface(isDark);
+    final cardBg = musynElevatedSurface(isDark);
     final titleColor = isDark ? CupertinoColors.white : CupertinoColors.black;
 
     return Container(
@@ -49,7 +49,7 @@ class ArtistBar extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
+                        fontFamily: MusynStyle.uiFont,
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         color: titleColor,
@@ -61,7 +61,7 @@ class ArtistBar extends StatelessWidget {
                     const Text(
                       'Artist',
                       style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
+                        fontFamily: MusynStyle.uiFont,
                         color: CupertinoColors.systemGrey,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -112,13 +112,13 @@ class _ArtistArtwork extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: musifiedSecondarySurface(isDark),
+        color: musynSecondarySurface(isDark),
         shape: BoxShape.circle,
       ),
       child: const Icon(
         CupertinoIcons.person_fill,
         size: 26,
-        color: MusifiedStyle.appleRed,
+        color: MusynStyle.appleRed,
       ),
     );
   }

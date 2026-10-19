@@ -3,8 +3,8 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/services/ytdlp_client_sync_service.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/services/ytdlp_client_sync_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 void main() {

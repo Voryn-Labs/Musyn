@@ -2,15 +2,16 @@ import 'dart:ui' as ui;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/models/position_data.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/formatter.dart';
+import 'package:musyn/models/position_data.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/formatter.dart';
 import 'package:rxdart/rxdart.dart';
 
 class PositionSlider extends StatefulWidget {
-  const PositionSlider({super.key});
+  const PositionSlider({super.key, this.qualityLabel});
+  final String? qualityLabel;
 
   @override
   State<PositionSlider> createState() => _PositionSliderState();
@@ -93,7 +94,7 @@ class _PositionSliderState extends State<PositionSlider> {
               height: 24,
               child: CupertinoSlider(
                 value: currentValue.clamp(0.0, maxDuration),
-                activeColor: MusifiedStyle.appleRed,
+                activeColor: MusynStyle.appleRed,
                 thumbColor: isDark
                     ? CupertinoColors.white
                     : CupertinoColors.black,
@@ -152,6 +153,22 @@ class _PositionSliderState extends State<PositionSlider> {
               decoration: TextDecoration.none,
             ),
           ),
+          if (widget.qualityLabel != null)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  widget.qualityLabel!,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ),
+              ),
+            ),
           Text(
             remainingText,
             style: TextStyle(

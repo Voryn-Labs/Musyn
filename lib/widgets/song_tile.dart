@@ -1,11 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/mediaitem.dart';
-import 'package:musified/widgets/song_actions_sheet.dart';
-import 'package:musified/widgets/song_artwork.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/mediaitem.dart';
+import 'package:musyn/widgets/song_actions_sheet.dart';
+import 'package:musyn/widgets/song_artwork.dart';
 
 /// Clean, high-performance iOS Apple-style song row.
 class SongTile extends StatelessWidget {
@@ -67,7 +67,7 @@ class SongTile extends StatelessWidget {
             child: Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(MusifiedStyle.radiusSm),
+                  borderRadius: BorderRadius.circular(MusynStyle.radiusSm),
                   child: SizedBox(
                     width: 48,
                     height: 48,
@@ -77,7 +77,7 @@ class SongTile extends StatelessWidget {
                         SongArtworkWidget(
                           metadata: mapToMediaItem(song),
                           size: 48,
-                          borderRadius: MusifiedStyle.radiusSm,
+                          borderRadius: MusynStyle.radiusSm,
                         ),
                         if (isPlaying)
                           const ColoredBox(
@@ -103,12 +103,12 @@ class SongTile extends StatelessWidget {
                       Text(
                         title,
                         style: TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
+                          fontFamily: MusynStyle.uiFont,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           letterSpacing: -0.2,
                           color: isPlaying
-                              ? MusifiedStyle.appleRed
+                              ? MusynStyle.appleRed
                               : primaryColor,
                         ),
                         maxLines: 1,
@@ -118,7 +118,7 @@ class SongTile extends StatelessWidget {
                       Text(
                         artist,
                         style: const TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
+                          fontFamily: MusynStyle.uiFont,
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
                           color: secondaryColor,

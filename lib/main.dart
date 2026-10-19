@@ -7,38 +7,39 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/localization/app_localizations.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/audio_service.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/io_service.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/playlist_download_service.dart';
-import 'package:musified/services/playlist_sharing.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/router_service.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/source_resolver.dart';
-import 'package:musified/services/youtube_auth_service.dart';
-import 'package:musified/services/youtube_music_sync_service.dart';
-import 'package:musified/services/ytdlp_client_sync_service.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/language_utils.dart';
-import 'package:musified/utilities/playlist_utils.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/localization/app_localizations.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/audio_service.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/io_service.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/playlist_download_service.dart';
+import 'package:musyn/services/playlist_sharing.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/router_service.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/source_resolver.dart';
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/services/ytdlp_client_sync_service.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/language_utils.dart';
+import 'package:musyn/utilities/playlist_utils.dart';
+import 'package:musyn/widgets/musyn_bootstrap.dart';
 import 'package:path_provider/path_provider.dart';
 
-export 'package:musified/services/audio/audio_runtime.dart';
-export 'package:musified/services/logger_service.dart' show logger, Logger;
+export 'package:musyn/services/audio/audio_runtime.dart';
+export 'package:musyn/services/logger_service.dart' show logger, Logger;
 
 // Re-exported from logger_service for files that import main.dart.
 final appLinks = AppLinks();
 
-class MusifiedApp extends StatefulWidget {
-  const MusifiedApp({super.key});
+class MusynApp extends StatefulWidget {
+  const MusynApp({super.key});
 
   static Future<void> updateAppState(
     BuildContext context, {
@@ -47,7 +48,7 @@ class MusifiedApp extends StatefulWidget {
     Color? newAccentColor,
     bool? useSystemColor,
   }) async {
-    context.findAncestorStateOfType<_MusifiedAppState>()?.changeSettings(
+    context.findAncestorStateOfType<_MusynAppState>()?.changeSettings(
       newThemeMode: newThemeMode,
       newLocale: newLocale,
       newAccentColor: newAccentColor,
@@ -56,12 +57,12 @@ class MusifiedApp extends StatefulWidget {
   }
 
   @override
-  _MusifiedAppState createState() => _MusifiedAppState();
+  _MusynAppState createState() => _MusynAppState();
 }
 
-typedef Musify = MusifiedApp;
+typedef Musyn = MusynApp;
 
-class _MusifiedAppState extends State<MusifiedApp> with WidgetsBindingObserver {
+class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
   void changeSettings({
     ThemeMode? newThemeMode,
     Locale? newLocale,
@@ -98,7 +99,7 @@ class _MusifiedAppState extends State<MusifiedApp> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addObserver(this);
 
-    logger.log('Musified started');
+    logger.log('Musyn started');
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
@@ -177,6 +178,8 @@ class _MusifiedAppState extends State<MusifiedApp> with WidgetsBindingObserver {
             : Brightness.dark,
       ),
       child: CupertinoApp.router(
+        title: 'Musyn',
+        debugShowCheckedModeBanner: false,
         theme: buildCupertinoTheme(brightness: overlayBrightness),
         localizationsDelegates: const [
           AppLocalizations.delegate,
@@ -198,8 +201,8 @@ void main() async {
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     final canvas = usePureBlackColor.value
-        ? MusifiedStyle.oledBlack
-        : MusifiedStyle.elevated;
+        ? MusynStyle.oledBlack
+        : MusynStyle.elevated;
     return ColoredBox(
       color: canvas,
       child: SafeArea(
@@ -215,7 +218,7 @@ void main() async {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Musified Notice',
+                'Musyn Notice',
                 style: TextStyle(
                   color: CupertinoColors.white,
                   fontSize: 17,
@@ -226,7 +229,9 @@ void main() async {
               ),
               const SizedBox(height: 8),
               Text(
-                '${details.exception}\n\n${details.stack?.toString().split('\n').take(12).join('\n') ?? ''}',
+                kDebugMode
+                    ? '${details.exception}\n\n${details.stack?.toString().split('\n').take(12).join('\n') ?? ''}'
+                    : 'This view could not be displayed. Reopen Musyn to try again. Your saved music stays on this device.',
                 style: const TextStyle(
                   color: CupertinoColors.systemGrey,
                   fontSize: 11,
@@ -251,31 +256,24 @@ void main() async {
     );
   };
 
-  try {
-    // NOTE: this used to be capped at 4 seconds. On a real iOS device
-    // (especially cold-start / first launch / debug builds), opening the
-    // Hive boxes + AudioService.init() (which does real native work: audio
-    // session config, MPRemoteCommandCenter/MPNowPlayingInfoCenter setup)
-    // can legitimately take longer than that. When the old 4s timeout fired,
-    // runApp() was called while `audioHandlerInstance` was still null, so
-    // any UI built in that window (e.g. tapping play) would find the player
-    // "not ready" - looking exactly like songs silently refusing to play
-    // right after opening the app. The slow AudioService.init() call itself
-    // is now bounded (see Phase 3 below) so 12s here is just a last-resort
-    // safety net, not something we expect to actually hit.
-    await initialisation().timeout(const Duration(seconds: 12));
-    unawaited(cleanupOldCacheEntries());
-  } catch (e, st) {
-    logger.log('initialisation error or timeout: $e', stackTrace: st);
-  }
-
-  runApp(const Musify());
+  runApp(
+    MusynBootstrap(
+      initialize: (report) async {
+        await initialisation(onProgress: report);
+        if (!isAudioHandlerInitialized)
+          throw StateError('Audio initialization failed');
+        unawaited(cleanupOldCacheEntries());
+      },
+      readyBuilder: (_) => const MusynApp(),
+    ),
+  );
 }
 
-Future<void> initialisation() async {
+Future<void> initialisation({ValueChanged<String>? onProgress}) async {
   // Phase 1: Hive + settings (never let this kill the app)
   try {
-    await Hive.initFlutter();
+    onProgress?.call('Opening your library');
+    await Hive.initFlutter().timeout(const Duration(seconds: 10));
 
     await Future.wait([
       Hive.openBox('settings'),
@@ -283,7 +281,7 @@ Future<void> initialisation() async {
       Hive.openBox('userNoBackup'),
       Hive.openBox('cache'),
       Hive.openBox('youtube_auth'),
-    ]);
+    ]).timeout(const Duration(seconds: 15));
     // Restore persisted settings into ValueNotifiers + theme globals
     reloadSettingsFromStorage();
     syncThemeFromSettings();
@@ -314,7 +312,8 @@ Future<void> initialisation() async {
 
   // Phase 3: audio + saavn (isolated so router always initializes)
   try {
-    await SourceResolver().init();
+    onProgress?.call('Preparing music sources');
+    await SourceResolver().init().timeout(const Duration(seconds: 5));
   } catch (e, stackTrace) {
     logger.log('SourceResolver init error', error: e, stackTrace: stackTrace);
   }
@@ -322,10 +321,11 @@ Future<void> initialisation() async {
   try {
     // Bounded so a slow/stuck native AudioService setup can never stall the
     // whole app: if it doesn't finish in time we fall through to the plain
-    // MusifyAudioHandler() below (no system media integration, but songs
+    // MusynAudioHandler() below (no system media integration, but songs
     // still play), instead of leaving `audioHandlerInstance` null forever.
+    onProgress?.call('Starting the player');
     audioHandlerInstance = await AudioService.init(
-      builder: MusifiedAudioHandler.new,
+      builder: MusynAudioHandler.new,
       config: const AudioServiceConfig(
         artDownscaleWidth: 512,
         artDownscaleHeight: 512,
@@ -341,15 +341,15 @@ Future<void> initialisation() async {
       await AudioService.stop();
     } catch (_) {}
     try {
-      audioHandlerInstance = MusifiedAudioHandler();
-      logger.log('Created fallback MusifiedAudioHandler without AudioService');
+      audioHandlerInstance = MusynAudioHandler();
+      logger.log('Created fallback MusynAudioHandler without AudioService');
     } catch (e2, st2) {
       logger.log('Fallback handler also failed', error: e2, stackTrace: st2);
     }
   }
   if (audioHandlerInstance == null) {
     try {
-      audioHandlerInstance = MusifiedAudioHandler();
+      audioHandlerInstance = MusynAudioHandler();
     } catch (e, st) {
       logger.log('Last-resort handler failed', error: e, stackTrace: st);
     }
@@ -365,7 +365,9 @@ Future<void> initialisation() async {
 
   // Phase 5: deep links
   try {
-    final initialUri = await appLinks.getInitialLink();
+    final initialUri = await appLinks.getInitialLink().timeout(
+      const Duration(seconds: 3),
+    );
     if (initialUri != null) {
       unawaited(handleIncomingLink(initialUri));
     }
@@ -383,10 +385,7 @@ Future<void> initialisation() async {
 }
 
 Future<void> handleIncomingLink(Uri? uri) async {
-  if (uri == null ||
-      (uri.scheme != 'musified' && uri.scheme != 'musify') ||
-      uri.host != 'playlist')
-    return;
+  if (uri == null || uri.scheme != 'musyn' || uri.host != 'playlist') return;
 
   if (uri.pathSegments.length < 2 || uri.pathSegments[0] != 'custom') return;
 

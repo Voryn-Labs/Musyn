@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/youtube_client.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/formatter.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/youtube_client.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/formatter.dart';
 
 class PlaylistSharingService {
   static const int _maxExpandConcurrency = 5;

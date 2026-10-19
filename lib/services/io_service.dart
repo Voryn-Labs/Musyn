@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:musified/utilities/app_utils.dart';
+import 'package:musyn/utilities/app_utils.dart';
 
 String applicationDirPath = '';
 

@@ -4,28 +4,29 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/constants/clients.dart';
-import 'package:musified/services/artist_service.dart' show ytMusicClient;
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/download_transfer.dart';
-import 'package:musified/services/io_service.dart';
-import 'package:musified/services/library_state.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/lyrics_manager.dart';
-import 'package:musified/services/offline_song_registry.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/source_resolver.dart';
-import 'package:musified/services/youtube_auth_service.dart';
-import 'package:musified/services/youtube_client.dart';
-import 'package:musified/services/youtube_music_sync_service.dart';
-import 'package:musified/services/ytdlp_client_sync_service.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/async_operation_queue.dart';
-import 'package:musified/utilities/formatter.dart';
-import 'package:musified/utilities/track_matcher.dart';
+import 'package:musyn/constants/clients.dart';
+import 'package:musyn/services/artist_service.dart' show ytMusicClient;
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/download_activity.dart';
+import 'package:musyn/services/download_transfer.dart';
+import 'package:musyn/services/io_service.dart';
+import 'package:musyn/services/library_state.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/lyrics_manager.dart';
+import 'package:musyn/services/offline_song_registry.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/source_resolver.dart';
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_client.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/services/ytdlp_client_sync_service.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/async_operation_queue.dart';
+import 'package:musyn/utilities/formatter.dart';
+import 'package:musyn/utilities/track_matcher.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
-export 'package:musified/services/library_state.dart';
+export 'package:musyn/services/library_state.dart';
 
 final Set<String> _likedSongIdsSet = {
   ...userLikedSongsList.value
@@ -680,7 +681,7 @@ Future<List<String>> getSearchSuggestions(String query) async {
   return suggestions;
 }
 
-Future<void> getSimilarSong(String songYtId) async {
+Future<Map?> getSimilarSong(String songYtId) async {
   try {
     // Prefer YouTube Music /next radio (WEB_REMIX) over watch-page HTML parsing.
     // related_videos_client.dart HTML remains a brittle fallback risk.
@@ -688,8 +689,8 @@ Future<void> getSimilarSong(String songYtId) async {
       songYtId,
     );
     if (fromMusic != null) {
-      nextRecommendedSong = fromMusic;
-      return;
+      return Map<String, dynamic>.from(fromMusic)
+        ..['source'] = 'youtube-recommended';
     }
 
     final song = await ytClient.videos.get(songYtId);
@@ -698,7 +699,7 @@ Future<void> getSimilarSong(String songYtId) async {
     if (relatedSongs.isNotEmpty) {
       final layout = returnSongLayout(0, relatedSongs[0]);
       layout['source'] = 'youtube-recommended';
-      nextRecommendedSong = layout;
+      return layout;
     } else {
       logger.log('No related songs found for $songYtId');
     }
@@ -709,6 +710,7 @@ Future<void> getSimilarSong(String songYtId) async {
       stackTrace: stackTrace,
     );
   }
+  return null;
 }
 
 /// In-memory cache of the audio stream picked for a song at the current
@@ -977,7 +979,10 @@ Future<String?> fetchSongStreamUrl(
       if (metadata is Map && metadata['source'] == cachePreference) {
         final isBadHeAac =
             cachePreference == 'youtube' && _isCachedHeAacYoutube(metadata);
-        if (!isBadHeAac) {
+        final isWrongSaavnQuality =
+            cachePreference == 'jiosaavn' &&
+            '${metadata['bitrate']}' != jiosaavnQuality.value;
+        if (!isBadHeAac && !isWrongSaavnQuality) {
           song['resolvedSource'] = cachePreference;
           song['resolvedBitrate'] = metadata['bitrate'];
           song['resolvedFormat'] = metadata['format'];
@@ -1232,15 +1237,31 @@ Future<bool> makeSongOffline(
   final id = song is Map ? song['ytid']?.toString() : null;
   if (id == null || id.isEmpty) return false;
   final token = cancellation ?? DownloadCancellation();
-  return _runOfflineAssetOperation(id, () async {
-    if (token.isCancelled) return false;
-    return _makeSongOffline(
-      song,
-      source: source,
-      quality: quality,
-      cancellation: token,
-    );
-  });
+  final job = downloadActivity.begin(
+    song as Map,
+    token,
+    source: source,
+    quality: quality,
+    canCancel: cancellation == null,
+  );
+  var success = false;
+  try {
+    success = await _runOfflineAssetOperation(id, () async {
+      if (token.isCancelled) return false;
+      downloadActivity.start(job);
+      return _makeSongOffline(
+        song,
+        source: source,
+        quality: quality,
+        cancellation: token,
+        onProgress: (received, total) =>
+            downloadActivity.progress(job, received, total),
+      );
+    });
+    return success;
+  } finally {
+    downloadActivity.finish(job, success);
+  }
 }
 
 Future<bool> _runOfflineAssetOperation(
@@ -1267,6 +1288,7 @@ Future<bool> _makeSongOffline(
   String? source,
   String? quality,
   required DownloadCancellation cancellation,
+  void Function(int received, int? total)? onProgress,
 }) async {
   try {
     final normalizedSource = source == 'jiosaavn'
@@ -1368,6 +1390,7 @@ Future<bool> _makeSongOffline(
             bytes: response.stream,
             cancellation: cancellation,
             expectedBytes: response.contentLength,
+            onProgress: onProgress,
           );
         } finally {
           client.close();
@@ -1414,6 +1437,7 @@ Future<bool> _makeSongOffline(
           bytes: stream,
           cancellation: cancellation,
           expectedBytes: audioManifest.size.totalBytes,
+          onProgress: onProgress,
         );
       }
     } catch (e, stackTrace) {

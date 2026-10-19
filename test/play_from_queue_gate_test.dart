@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/audio/audio_completion_coordinator.dart';
-import 'package:musified/services/audio/audio_queue_state.dart';
+import 'package:musyn/services/audio/audio_completion_coordinator.dart';
+import 'package:musyn/services/audio/audio_queue_state.dart';
 
 void main() {
   test('a repeat tap on the loading song is still skipped', () {

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/services/device_log_upload.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/services/device_log_upload.dart';
 
 /// App-wide log sink (settings → copy logs). Defined here so services can log
 /// without importing `main.dart`.

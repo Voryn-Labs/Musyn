@@ -1,32 +1,49 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:musified/constants/browse_categories.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/navigation_paths.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/widgets/artist_bar.dart';
-import 'package:musified/widgets/mini_player_bottom_space.dart';
-import 'package:musified/widgets/playlist_bar.dart';
-import 'package:musified/widgets/section_header.dart';
-import 'package:musified/widgets/song_actions_sheet.dart';
-import 'package:musified/widgets/song_tile.dart';
+import 'package:musyn/services/app_navigation_state.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/discovery_state.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/navigation_paths.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/widgets/account_button.dart';
+import 'package:musyn/widgets/artist_bar.dart';
+import 'package:musyn/widgets/catalogue_artwork.dart';
+import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/discovery_links.dart';
+import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/playlist_bar.dart';
+import 'package:musyn/widgets/section_header.dart';
+import 'package:musyn/widgets/song_actions_sheet.dart';
+import 'package:musyn/widgets/song_tile.dart';
 
-final ValueNotifier<List> searchHistoryNotifier = ValueNotifier<List>([]);
+export 'package:musyn/services/discovery_state.dart'
+    show searchHistoryNotifier;
 
 enum _SearchFilter { all, songs, artists, playlists }
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({
+    super.key,
+    this.initialQuery,
+    this.loadSongs,
+    this.loadArtists,
+    this.loadPlaylists,
+    this.loadSuggestions,
+  });
+  final Future<List> Function(String)? loadSongs;
+  final Future<List<Map<String, dynamic>>> Function(String)? loadArtists;
+  final Future<List> Function(String)? loadPlaylists;
+  final Future<List<String>> Function(String)? loadSuggestions;
+  final String? initialQuery;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -36,6 +53,8 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchBar = TextEditingController();
   final FocusNode _inputNode = FocusNode();
   bool _isSearching = false;
+  bool _submitted = false;
+  final Set<String> _failedSections = {};
   _SearchFilter _currentFilter = _SearchFilter.all;
   List<dynamic> _songsSearchResult = [];
   List<Map<String, dynamic>> _artistsSearchResult = [];
@@ -47,7 +66,14 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
-    if (searchHistoryNotifier.value.isEmpty) {
+    searchTabActivation.addListener(_activateSearch);
+    if (widget.initialQuery != null) {
+      _searchBar.text = widget.initialQuery!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_submitSearch());
+      });
+    }
+    if (searchHistoryNotifier.value.isEmpty && Hive.isBoxOpen('user')) {
       searchHistoryNotifier.value = Hive.box(
         'user',
       ).get('searchHistory', defaultValue: <dynamic>[]);
@@ -55,7 +81,18 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   @override
+  void didUpdateWidget(covariant SearchPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialQuery != oldWidget.initialQuery &&
+        widget.initialQuery != null) {
+      _searchBar.text = widget.initialQuery!;
+      unawaited(_submitSearch());
+    }
+  }
+
+  @override
   void dispose() {
+    searchTabActivation.removeListener(_activateSearch);
     _searchBar.dispose();
     _inputNode.dispose();
     _debounce?.cancel();
@@ -87,6 +124,8 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     setState(() {
+      _submitted = true;
+      _failedSections.clear();
       _isSearching = true;
       _songsSearchResult = [];
       _artistsSearchResult = [];
@@ -105,6 +144,7 @@ class _SearchPageState extends State<SearchPage> {
       }
 
       Future<void> load(
+        String section,
         Future<dynamic> Function() fetch,
         void Function(dynamic) publish,
       ) async {
@@ -115,22 +155,27 @@ class _SearchPageState extends State<SearchPage> {
           }
         } catch (e) {
           logger.log('Search section failed: $e');
+          if (mounted && requestId == _latestSearchRequest)
+            setState(() => _failedSections.add(section));
         }
       }
 
       await Future.wait([
         load(
-          () => fetchSongsList(query),
+          'Songs',
+          () => (widget.loadSongs ?? fetchSongsList)(query),
           (value) => _songsSearchResult = value as List,
         ),
         load(
-          () => searchArtists(query),
+          'Artists',
+          () => (widget.loadArtists ?? searchArtists)(query),
           (value) => _artistsSearchResult = List<Map<String, dynamic>>.from(
             value as List,
           ),
         ),
         load(
-          () => getPlaylists(query: query),
+          'Playlists',
+          () => widget.loadPlaylists?.call(query) ?? getPlaylists(query: query),
           (value) => _playlistsSearchResult = value as List,
         ),
       ]);
@@ -139,6 +184,8 @@ class _SearchPageState extends State<SearchPage> {
       }
     } catch (e) {
       logger.log('Search error: $e');
+      if (mounted && requestId == _latestSearchRequest)
+        _failedSections.add('Search');
       if (mounted && requestId == _latestSearchRequest) {
         setState(() {
           _isSearching = false;
@@ -147,9 +194,25 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  void _activateSearch() {
+    _searchBar.clear();
+    _onQueryChanged('');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _inputNode.requestFocus();
+    });
+  }
+
   void _onQueryChanged(String query) {
     ++_latestSearchRequest;
-    _isSearching = false;
+    setState(() {
+      _submitted = false;
+      _failedSections.clear();
+      _isSearching = false;
+      _suggestionsList = [];
+      _songsSearchResult = [];
+      _artistsSearchResult = [];
+      _playlistsSearchResult = [];
+    });
     _debounce?.cancel();
     if (query.trim().isEmpty) {
       setState(() {
@@ -162,13 +225,19 @@ class _SearchPageState extends State<SearchPage> {
       return;
     }
 
+    final request = _latestSearchRequest;
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (!mounted) return;
       final trimmed = _searchBar.text.trim();
       if (trimmed.isEmpty) return;
       try {
-        final suggestions = await getSearchSuggestions(trimmed);
-        if (!mounted || _searchBar.text.trim() != trimmed) return;
+        final suggestions =
+            await (widget.loadSuggestions ?? getSearchSuggestions)(trimmed);
+        if (!mounted ||
+            request != _latestSearchRequest ||
+            _submitted ||
+            _searchBar.text.trim() != trimmed)
+          return;
         setState(() {
           _suggestionsList = suggestions.take(8).toList();
         });
@@ -188,123 +257,147 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    final navBarColor = isDark
-        ? const Color(0xB3121214)
-        : const Color(0xB3FFFFFF);
     final hasResults =
         _songsSearchResult.isNotEmpty ||
         _artistsSearchResult.isNotEmpty ||
         _playlistsSearchResult.isNotEmpty;
 
     return CupertinoPageScaffold(
-      backgroundColor: musifiedCanvas(isDark),
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: const Text(
-              'Search',
-              style: TextStyle(
-                fontFamily: MusifiedStyle.displayFont,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.5,
+      backgroundColor: musynCanvas(isDark),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Search',
+                      style: MusynStyle.largeTitle(
+                        CupertinoTheme.of(context).textTheme.textStyle.color!,
+                      ),
+                    ),
+                  ),
+                  const AccountButton(),
+                ],
               ),
             ),
-            backgroundColor: navBarColor,
-            border: Border(
-              bottom: BorderSide(
-                color: isDark
-                    ? const Color(0x26FFFFFF)
-                    : const Color(0x1F000000),
-                width: 0.5,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: CupertinoSearchTextField(
                 controller: _searchBar,
                 focusNode: _inputNode,
                 placeholder: 'Artists, songs, or playlists',
                 onChanged: _onQueryChanged,
                 onSubmitted: _submitSearch,
-                style: TextStyle(
-                  fontFamily: MusifiedStyle.uiFont,
-                  color: isDark ? CupertinoColors.white : CupertinoColors.black,
+              ),
+            ),
+            if (hasResults && _suggestionsList.isEmpty)
+              _buildFilterTabs(isDark),
+            Expanded(
+              child: CustomScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
                 ),
+                slivers: [
+                  if (_failedSections.isNotEmpty && hasResults)
+                    SliverToBoxAdapter(
+                      child: ContentState(
+                        title: 'Some results could not load',
+                        message:
+                            '${_failedSections.join(', ')} could not be refreshed. Your available results are below.',
+                        actionLabel: 'Retry search',
+                        onAction: _submitSearch,
+                      ),
+                    ),
+                  if (_isSearching && !hasResults)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
+                          child: CupertinoActivityIndicator(radius: 12),
+                        ),
+                      ),
+                    )
+                  else if (_suggestionsList.isNotEmpty)
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final suggestion = _suggestionsList[index];
+                        return CupertinoListTile(
+                          leading: const Icon(
+                            CupertinoIcons.search,
+                            size: 18,
+                            color: CupertinoColors.systemGrey,
+                          ),
+                          title: Text(
+                            suggestion,
+                            style: TextStyle(
+                              fontFamily: MusynStyle.uiFont,
+                              color: isDark
+                                  ? CupertinoColors.white
+                                  : CupertinoColors.black,
+                            ),
+                          ),
+                          trailing: CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              _searchBar.text = suggestion;
+                              _onQueryChanged(suggestion);
+                            },
+                            child: const Icon(
+                              CupertinoIcons.arrow_up_left,
+                              size: 16,
+                              color: CupertinoColors.systemGrey,
+                            ),
+                          ),
+                          onTap: () => _submitSearch(suggestion),
+                        );
+                      }, childCount: _suggestionsList.length),
+                    )
+                  else if (!hasResults && _searchBar.text.isEmpty)
+                    _buildEmptyQueryContent(isDark)
+                  else if (hasResults)
+                    _buildFilteredResults(isDark)
+                  else
+                    SliverToBoxAdapter(
+                      child: ContentState(
+                        icon: _failedSections.isEmpty
+                            ? CupertinoIcons.search
+                            : CupertinoIcons.wifi_exclamationmark,
+                        title: !_submitted
+                            ? 'Ready to search'
+                            : _failedSections.isNotEmpty
+                            ? 'Search is unavailable'
+                            : 'No matches found',
+                        message: !_submitted
+                            ? 'Press Search to find songs, artists and playlists for “${_searchBar.text.trim()}”.'
+                            : _failedSections.isNotEmpty
+                            ? 'Check your connection and try this search again.'
+                            : 'Try a different title, artist or spelling.',
+                        actionLabel: !_submitted
+                            ? 'Search now'
+                            : _failedSections.isNotEmpty
+                            ? 'Retry search'
+                            : 'Clear search',
+                        onAction: !_submitted || _failedSections.isNotEmpty
+                            ? _submitSearch
+                            : () {
+                                _searchBar.clear();
+                                _onQueryChanged('');
+                                _inputNode.requestFocus();
+                              },
+                      ),
+                    ),
+                  const SliverMiniPlayerBottomSpace(),
+                ],
               ),
             ),
-          ),
-          if (hasResults && !_isSearching)
-            SliverToBoxAdapter(
-              child: _buildFilterTabs(isDark),
-            ),
-          if (_isSearching && !hasResults)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: Center(child: CupertinoActivityIndicator(radius: 12)),
-              ),
-            )
-          else if (_suggestionsList.isNotEmpty)
-            SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final suggestion = _suggestionsList[index];
-                return CupertinoListTile(
-                  leading: const Icon(
-                    CupertinoIcons.search,
-                    size: 18,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                  title: Text(
-                    suggestion,
-                    style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
-                      color: isDark
-                          ? CupertinoColors.white
-                          : CupertinoColors.black,
-                    ),
-                  ),
-                  trailing: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      _searchBar.text = suggestion;
-                      _onQueryChanged(suggestion);
-                    },
-                    child: const Icon(
-                      CupertinoIcons.arrow_up_left,
-                      size: 16,
-                      color: CupertinoColors.systemGrey,
-                    ),
-                  ),
-                  onTap: () => _submitSearch(suggestion),
-                );
-              }, childCount: _suggestionsList.length),
-            )
-          else if (!hasResults && _searchBar.text.isEmpty)
-            _buildEmptyQueryContent(isDark)
-          else if (hasResults)
-            _buildFilteredResults(isDark)
-          else
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 60),
-                child: Center(
-                  child: Text(
-                    'No results found',
-                    style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
-                      fontSize: 16,
-                      color: CupertinoColors.systemGrey,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -343,12 +436,12 @@ class _SearchPageState extends State<SearchPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? MusifiedStyle.appleRed
-              : musifiedElevatedSurface(isDark),
+              ? (isDark ? CupertinoColors.white : CupertinoColors.black)
+              : musynElevatedSurface(isDark),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? MusifiedStyle.appleRed
+                ? (isDark ? CupertinoColors.white : CupertinoColors.black)
                 : (isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000)),
             width: 0.5,
           ),
@@ -357,11 +450,11 @@ class _SearchPageState extends State<SearchPage> {
         child: Text(
           label,
           style: TextStyle(
-            fontFamily: MusifiedStyle.uiFont,
+            fontFamily: MusynStyle.uiFont,
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             color: isSelected
-                ? CupertinoColors.white
+                ? (isDark ? CupertinoColors.black : CupertinoColors.white)
                 : (isDark ? CupertinoColors.white : CupertinoColors.black),
           ),
         ),
@@ -377,47 +470,13 @@ class _SearchPageState extends State<SearchPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSearchHistory(isDark),
-            const SizedBox(height: 18),
-            const Text(
-              'Explore Categories',
-              style: TextStyle(
-                fontFamily: MusifiedStyle.displayFont,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
-              ),
+            const ContentState(
+              icon: CupertinoIcons.search,
+              title: 'Find your next favorite',
+              message:
+                  'Search for a song, artist or playlist, or browse the catalogues below.',
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Browse songs, charts, moods, and genres',
-              style: TextStyle(
-                fontFamily: MusifiedStyle.uiFont,
-                fontSize: 13,
-                color: CupertinoColors.systemGrey,
-              ),
-            ),
-            const SizedBox(height: 14),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.85,
-              ),
-              itemCount: defaultBrowseCategories.length,
-              itemBuilder: (context, index) {
-                final category = defaultBrowseCategories[index];
-                return _BrowseCategoryCard(
-                  category: category,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    _submitSearch(category.searchQuery);
-                  },
-                );
-              },
-            ),
+            const DiscoveryLinks(),
             const MiniPlayerBottomSpace(),
           ],
         ),
@@ -440,7 +499,7 @@ class _SearchPageState extends State<SearchPage> {
                 const Text(
                   'Recent Searches',
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.displayFont,
+                    fontFamily: MusynStyle.displayFont,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
@@ -456,7 +515,7 @@ class _SearchPageState extends State<SearchPage> {
                     'Clear All',
                     style: TextStyle(
                       fontSize: 14,
-                      color: MusifiedStyle.appleRed,
+                      color: MusynStyle.appleRed,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -469,9 +528,14 @@ class _SearchPageState extends State<SearchPage> {
               runSpacing: 8,
               children: history.map<Widget>((query) {
                 return Container(
-                  padding: const EdgeInsets.only(left: 12, right: 6, top: 4, bottom: 4),
+                  padding: const EdgeInsets.only(
+                    left: 12,
+                    right: 6,
+                    top: 4,
+                    bottom: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: musifiedElevatedSurface(isDark),
+                    color: musynElevatedSurface(isDark),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isDark
@@ -500,7 +564,7 @@ class _SearchPageState extends State<SearchPage> {
                             Text(
                               query.toString(),
                               style: TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
+                                fontFamily: MusynStyle.uiFont,
                                 fontSize: 13,
                                 color: isDark
                                     ? CupertinoColors.white
@@ -532,129 +596,118 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildTopResultCard(Map song, bool isDark) {
-    final title = song['title']?.toString() ?? 'Track';
-    final artist = song['artist']?.toString() ?? 'Artist';
-    final image = song['highResImage'] ?? song['image'] ?? song['lowResImage'] ?? '';
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: musifiedElevatedSurface(isDark),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
-          width: 0.5,
+  Widget _buildTopResultCard(Map song, bool isDark) => Container(
+    margin: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: musynElevatedSurface(isDark),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Top result',
+          style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey),
         ),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 72,
-              height: 72,
-              child: image.toString().isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: image.toString(),
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => ColoredBox(
-                        color: musifiedSecondarySurface(isDark),
-                        child: const Icon(CupertinoIcons.music_note, color: CupertinoColors.systemGrey),
-                      ),
-                    )
-                  : ColoredBox(
-                      color: musifiedSecondarySurface(isDark),
-                      child: const Icon(CupertinoIcons.music_note, color: CupertinoColors.systemGrey),
-                    ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 64,
+                height: 64,
+                child: CatalogueArtwork(
+                  imageUrl: (song['highResImage'] ?? song['image'] ?? '')
+                      .toString(),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: MusifiedStyle.appleRed.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'TOP RESULT',
-                    style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: MusifiedStyle.appleRed,
-                      letterSpacing: 0.5,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    song['title']?.toString() ?? 'Track',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: MusynStyle.songTitle(
+                      CupertinoTheme.of(context).textTheme.textStyle.color!,
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                  const SizedBox(height: 4),
+                  Text(
+                    song['artist']?.toString() ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: CupertinoColors.systemGrey,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
-                    fontSize: 13,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          CupertinoButton(
-            padding: const EdgeInsets.all(10),
-            color: MusifiedStyle.appleRed,
-            borderRadius: BorderRadius.circular(24),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              audioHandler.playSingleSong(song);
-            },
-            child: const Icon(
-              CupertinoIcons.play_fill,
-              size: 20,
-              color: CupertinoColors.white,
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: CupertinoButton.filled(
+                onPressed: () => audioHandler.playSingleSong(song),
+                child: const Text('Play'),
+              ),
             ),
-          ),
-          CupertinoButton(
-            padding: const EdgeInsets.all(8),
-            onPressed: () => showSongActionsSheet(context, song: song),
-            child: const Icon(
-              CupertinoIcons.ellipsis,
-              size: 20,
-              color: CupertinoColors.systemGrey,
+            const SizedBox(width: 12),
+            CupertinoButton(
+              minimumSize: const Size(44, 44),
+              padding: const EdgeInsets.all(10),
+              onPressed: () => showSongActionsSheet(context, song: song),
+              child: Icon(
+                CupertinoIcons.ellipsis,
+                semanticLabel: 'Track options',
+                color: CupertinoTheme.of(context).primaryColor,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      ],
+    ),
+  );
 
   Widget _buildFilteredResults(bool isDark) {
-    final showSongs = _currentFilter == _SearchFilter.all || _currentFilter == _SearchFilter.songs;
-    final showArtists = _currentFilter == _SearchFilter.all || _currentFilter == _SearchFilter.artists;
-    final showPlaylists = _currentFilter == _SearchFilter.all || _currentFilter == _SearchFilter.playlists;
+    final showSongs =
+        _currentFilter == _SearchFilter.all ||
+        _currentFilter == _SearchFilter.songs;
+    final showArtists =
+        _currentFilter == _SearchFilter.all ||
+        _currentFilter == _SearchFilter.artists;
+    final showPlaylists =
+        _currentFilter == _SearchFilter.all ||
+        _currentFilter == _SearchFilter.playlists;
 
-    final topSong = _currentFilter == _SearchFilter.all && _songsSearchResult.isNotEmpty
-        ? (_songsSearchResult.first is Map ? _songsSearchResult.first as Map : null)
+    final visible =
+        (showSongs ? _songsSearchResult.length : 0) +
+        (showArtists ? _artistsSearchResult.length : 0) +
+        (showPlaylists ? _playlistsSearchResult.length : 0);
+    if (visible == 0)
+      return SliverToBoxAdapter(
+        child: ContentState(
+          title: 'No ${_currentFilter.name} in these results',
+          message: 'Try All to see the other matches, or change your search.',
+          actionLabel: 'Show all results',
+          onAction: () => setState(() => _currentFilter = _SearchFilter.all),
+        ),
+      );
+
+    final topSong =
+        _currentFilter == _SearchFilter.all && _songsSearchResult.isNotEmpty
+        ? (_songsSearchResult.first is Map
+              ? _songsSearchResult.first as Map
+              : null)
         : null;
 
     final regularSongs = topSong != null
@@ -670,10 +723,7 @@ class _SearchPageState extends State<SearchPage> {
             if (topSong != null) _buildTopResultCard(topSong, isDark),
             if (showSongs && regularSongs.isNotEmpty) ...[
               const Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: SectionHeader(
                   title: 'Songs',
                   icon: CupertinoIcons.music_note_list,
@@ -691,10 +741,7 @@ class _SearchPageState extends State<SearchPage> {
             ],
             if (showArtists && _artistsSearchResult.isNotEmpty) ...[
               const Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: SectionHeader(
                   title: 'Artists',
                   icon: CupertinoIcons.person_2_fill,
@@ -719,10 +766,7 @@ class _SearchPageState extends State<SearchPage> {
             ],
             if (showPlaylists && _playlistsSearchResult.isNotEmpty) ...[
               const Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: SectionHeader(
                   title: 'Playlists',
                   icon: CupertinoIcons.music_albums_fill,
@@ -736,69 +780,6 @@ class _SearchPageState extends State<SearchPage> {
               ),
             ],
             const MiniPlayerBottomSpace(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BrowseCategoryCard extends StatelessWidget {
-  const _BrowseCategoryCard({
-    required this.category,
-    required this.onTap,
-  });
-
-  final BrowseCategory category;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(
-            colors: category.gradientColors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: category.gradientColors.first.withValues(alpha: 0.28),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -6,
-              bottom: -6,
-              child: Icon(
-                category.icon,
-                size: 40,
-                color: CupertinoColors.white.withValues(alpha: 0.22),
-              ),
-            ),
-            Align(
-              alignment: Alignment.topLeft,
-              child: Text(
-                category.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: MusifiedStyle.displayFont,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                  color: CupertinoColors.white,
-                ),
-              ),
-            ),
           ],
         ),
       ),

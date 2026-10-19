@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/audio/audio_preload_cache.dart';
-import 'package:musified/services/audio/audio_preload_service.dart';
+import 'package:musyn/services/audio/audio_preload_cache.dart';
+import 'package:musyn/services/audio/audio_preload_service.dart';
 
 void main() {
   test(
@@ -71,4 +71,40 @@ void main() {
       },
     );
   }
+  test(
+    'preload isolates active metadata but retains the URL descriptor',
+    () async {
+      final cache = AudioPreloadCache();
+      final song = <String, dynamic>{
+        'ytid': 'abcdefghijk',
+        'resolvedSource': 'jiosaavn',
+      };
+      final service = AudioPreloadService(
+        cache: cache,
+        fetchUrl: (copy) async {
+          copy['resolvedSource'] = 'youtube';
+          copy['resolvedUserAgent'] = 'resolver-agent';
+          copy['resolvedItag'] = 140;
+          return 'https://rr1.googlevideo.com/videoplayback?expire=9999999999';
+        },
+      );
+      await service.preloadSingle(
+        song,
+        offlineModeEnabled: false,
+        isLoadInProgress: () => false,
+      );
+      expect(song['resolvedSource'], 'jiosaavn');
+      expect(song['resolvedUserAgent'], isNull);
+      expect(
+        cache.streamMetadata['abcdefghijk']!['resolvedUserAgent'],
+        'resolver-agent',
+      );
+      expect(
+        (song['_preloadedStreamMetadata'] as Map)['resolvedSource'],
+        'youtube',
+      );
+      cache.drop('abcdefghijk');
+      expect(cache.streamMetadata, isEmpty);
+    },
+  );
 }

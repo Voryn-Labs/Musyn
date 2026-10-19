@@ -1,1 +1,1 @@
-const double miniPlayerHeight = 64;
+const double miniPlayerHeight = 56;

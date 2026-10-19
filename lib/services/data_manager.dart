@@ -3,8 +3,8 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/utilities/artwork_provider.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/utilities/artwork_provider.dart';
 
 // Cache durations for different types of data
 const Duration songCacheDuration = Duration(hours: 1, minutes: 30);
@@ -256,7 +256,7 @@ Future<Box> _openBox(String category) async {
   }
 }
 
-Future<void> clearAllCache() async {
+Future<bool> clearAllCache() async {
   try {
     _memoryCache.clear();
     final box = await _openBox('cache');
@@ -265,7 +265,9 @@ Future<void> clearAllCache() async {
         ? Hive.box('saavn_match_cache')
         : await Hive.openBox('saavn_match_cache');
     await saavnBox.clear();
+    return true;
   } catch (e) {
     logger.log('Error clearing cache', error: e);
+    return false;
   }
 }

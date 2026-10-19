@@ -4,11 +4,12 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/widgets/confirmation_dialog.dart';
-import 'package:musified/widgets/no_artwork_cube.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/widgets/confirmation_dialog.dart';
+import 'package:musyn/widgets/no_artwork_cube.dart';
 
 class QueueWidget extends StatefulWidget {
   const QueueWidget({super.key, this.isBottomSheet = false});
@@ -138,12 +139,12 @@ class _QueueWidgetState extends State<QueueWidget> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: MusifiedStyle.appleRed.withValues(alpha: 0.15),
+              color: MusynStyle.appleRed.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               CupertinoIcons.list_bullet,
-              color: MusifiedStyle.appleRed,
+              color: MusynStyle.appleRed,
               size: 20,
             ),
           ),
@@ -156,7 +157,7 @@ class _QueueWidgetState extends State<QueueWidget> {
                 Text(
                   'Playing Next',
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.displayFont,
+                    fontFamily: MusynStyle.displayFont,
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
                     color: titleColor,
@@ -166,7 +167,7 @@ class _QueueWidgetState extends State<QueueWidget> {
                 Text(
                   '${_queue.length} songs',
                   style: const TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 12,
                     color: CupertinoColors.systemGrey,
                     decoration: TextDecoration.none,
@@ -204,7 +205,7 @@ class _QueueWidgetState extends State<QueueWidget> {
         child: Text(
           'Queue is empty',
           style: TextStyle(
-            fontFamily: MusifiedStyle.uiFont,
+            fontFamily: MusynStyle.uiFont,
             color: CupertinoColors.systemGrey,
             fontSize: 14,
             decoration: TextDecoration.none,
@@ -228,7 +229,7 @@ class _QueueWidgetState extends State<QueueWidget> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: musifiedSecondarySurface(isDark),
+                color: musynSecondarySurface(isDark),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -241,7 +242,7 @@ class _QueueWidgetState extends State<QueueWidget> {
             const Text(
               'No upcoming tracks in queue',
               style: TextStyle(
-                fontFamily: MusifiedStyle.uiFont,
+                fontFamily: MusynStyle.uiFont,
                 color: CupertinoColors.systemGrey,
                 fontSize: 15,
                 decoration: TextDecoration.none,
@@ -301,7 +302,9 @@ class _QueueWidgetState extends State<QueueWidget> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-              child: _buildSectionLabel('NEXT IN QUEUE • ${upcomingSongs.length}'),
+              child: _buildSectionLabel(
+                'NEXT IN QUEUE • ${upcomingSongs.length}',
+              ),
             ),
           ),
           SliverPadding(
@@ -342,7 +345,12 @@ class _QueueWidgetState extends State<QueueWidget> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-            child: _buildAutoplayCard(isDark),
+            child: ValueListenableBuilder(
+              valueListenable: playNextSongAutomatically,
+              builder: (_, enabled, _) => enabled
+                  ? _buildAutoplayCard(isDark)
+                  : const SizedBox.shrink(),
+            ),
           ),
         ),
       ],
@@ -353,7 +361,7 @@ class _QueueWidgetState extends State<QueueWidget> {
     return Text(
       label,
       style: const TextStyle(
-        fontFamily: MusifiedStyle.uiFont,
+        fontFamily: MusynStyle.uiFont,
         fontSize: 11,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.8,
@@ -367,7 +375,7 @@ class _QueueWidgetState extends State<QueueWidget> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: musifiedElevatedSurface(isDark),
+        color: musynElevatedSurface(isDark),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
@@ -378,7 +386,7 @@ class _QueueWidgetState extends State<QueueWidget> {
         children: [
           Icon(
             CupertinoIcons.infinite,
-            color: MusifiedStyle.appleRed,
+            color: MusynStyle.appleRed,
             size: 22,
           ),
           SizedBox(width: 12),
@@ -390,7 +398,7 @@ class _QueueWidgetState extends State<QueueWidget> {
                 Text(
                   'Continuous Autoplay Active',
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.none,
@@ -400,7 +408,7 @@ class _QueueWidgetState extends State<QueueWidget> {
                 Text(
                   'Similar tracks keep playing when your queue finishes.',
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 11,
                     color: CupertinoColors.systemGrey,
                     decoration: TextDecoration.none,
@@ -442,7 +450,7 @@ class _QueueTile extends StatelessWidget {
     final image =
         song['image']?.toString() ?? song['lowResImage']?.toString() ?? '';
     final isLocalFile = image.startsWith('/') || image.startsWith('file://');
-    const activeColor = MusifiedStyle.appleRed;
+    const activeColor = MusynStyle.appleRed;
     final titleColor = isCurrentSong
         ? activeColor
         : (isDark ? CupertinoColors.white : CupertinoColors.black);
@@ -452,7 +460,7 @@ class _QueueTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: isCurrentSong
             ? activeColor.withValues(alpha: 0.12)
-            : musifiedElevatedSurface(isDark),
+            : musynElevatedSurface(isDark),
         borderRadius: BorderRadius.circular(10),
         border: isCurrentSong
             ? Border.all(color: activeColor.withValues(alpha: 0.35), width: 0.8)
@@ -478,7 +486,10 @@ class _QueueTile extends StatelessWidget {
                                 File(image.replaceFirst('file://', '')),
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) =>
-                                    const NullArtworkWidget(iconSize: 18, size: 44),
+                                    const NullArtworkWidget(
+                                      iconSize: 18,
+                                      size: 44,
+                                    ),
                               )
                             : image.isNotEmpty
                             ? CachedNetworkImage(
@@ -487,7 +498,10 @@ class _QueueTile extends StatelessWidget {
                                 memCacheWidth: 88,
                                 memCacheHeight: 88,
                                 errorWidget: (_, __, ___) =>
-                                    const NullArtworkWidget(iconSize: 18, size: 44),
+                                    const NullArtworkWidget(
+                                      iconSize: 18,
+                                      size: 44,
+                                    ),
                               )
                             : const NullArtworkWidget(iconSize: 18, size: 44),
                       ),
@@ -515,7 +529,7 @@ class _QueueTile extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
+                        fontFamily: MusynStyle.uiFont,
                         fontSize: 14,
                         fontWeight: isCurrentSong
                             ? FontWeight.w700
@@ -530,7 +544,7 @@ class _QueueTile extends StatelessWidget {
                     Text(
                       artist,
                       style: const TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
+                        fontFamily: MusynStyle.uiFont,
                         fontSize: 12,
                         color: CupertinoColors.systemGrey,
                         decoration: TextDecoration.none,

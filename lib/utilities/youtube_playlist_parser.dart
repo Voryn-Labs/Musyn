@@ -75,6 +75,31 @@ class YouTubePlaylistParser {
     return result;
   }
 
+  static List<Map<String, dynamic>> moodCategories(
+    Map<String, dynamic> response,
+  ) {
+    final categories = <String, Map<String, dynamic>>{};
+    for (final item in renderers(response, 'musicNavigationButtonRenderer')) {
+      final command = item['clickCommand'] ?? item['navigationEndpoint'];
+      final endpoint = command is Map ? command['browseEndpoint'] : null;
+      if (endpoint is! Map) continue;
+      final id = endpoint['browseId']?.toString();
+      final label = text(item['buttonText']).trim();
+      if (id == null || id.isEmpty || label.isEmpty) continue;
+      final solid = item['solid'];
+      final stripe = solid is Map
+          ? int.tryParse('${solid['leftStripeColor']}')
+          : null;
+      categories['$id:${endpoint['params'] ?? ''}'] = {
+        'title': label,
+        'browseId': id,
+        if (endpoint['params'] != null) 'params': endpoint['params'],
+        if (stripe != null) 'stripeColor': stripe,
+      };
+    }
+    return categories.values.toList();
+  }
+
   static String? topSongsId(List<Map<String, dynamic>> charts) {
     for (final chart in charts) {
       final title = chart['title']?.toString().toLowerCase() ?? '';

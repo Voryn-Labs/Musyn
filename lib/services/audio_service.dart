@@ -1,1 +1,1 @@
-export 'audio/musified_audio_handler.dart';
+export 'audio/musyn_audio_handler.dart';

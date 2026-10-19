@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/utilities/queue_entry_utils.dart';
+import 'package:musyn/utilities/queue_entry_utils.dart';
 
 void main() {
   test('createSong always assigns a fresh queue entry id', () {

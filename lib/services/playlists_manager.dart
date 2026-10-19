@@ -2,23 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/services/artist_service.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/jiosaavn_service.dart';
-import 'package:musified/services/library_state.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/offline_playlist_registry.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/youtube_client.dart';
-import 'package:musified/services/youtube_music_sync_service.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/formatter.dart';
-import 'package:musified/utilities/playlist_utils.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/services/artist_service.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/jiosaavn_service.dart';
+import 'package:musyn/services/library_state.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/offline_playlist_registry.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/youtube_client.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/formatter.dart';
+import 'package:musyn/utilities/playlist_utils.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
-export 'package:musified/services/library_state.dart';
+export 'package:musyn/services/library_state.dart';
 
 const _maxOnlinePlaylistsCache = 200;
 
@@ -185,7 +184,9 @@ Future<String> addUserPlaylist(String input, BuildContext context) async {
       return '${context.l10n.playlistAlreadyExists}!';
     }
 
-    final playlist = await ytClient.playlists.get(playlistId);
+    final playlist = await ytClient.playlists
+        .get(playlistId)
+        .timeout(const Duration(seconds: 20));
     if (playlist.title.isEmpty) {
       return '${context.l10n.invalidYouTubePlaylist}!';
     }
@@ -1046,15 +1047,6 @@ bool playlistExistsAnywhere(String playlistId) {
   return false;
 }
 
-int findPlaylistIndexByYtId(String ytid) {
-  for (var i = 0; i < playlists.length; i++) {
-    if (playlists[i]['ytid'] == ytid) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 Future<Map?> getPlaylistInfoForWidget(
   dynamic id, {
   bool isArtist = false,
@@ -1281,8 +1273,13 @@ Future<List> _loadSongsForPlaylist(Map playlist) async {
 Future<List> getSongsFromPlaylist(
   dynamic playlistId, {
   String? playlistImage,
+  bool forceRefresh = false,
 }) async {
-  final songList = await getData('cache', 'playlistSongs$playlistId') ?? [];
+  final songList = forceRefresh
+      ? <dynamic>[]
+      : List<dynamic>.from(
+          await getData('cache', 'playlistSongs$playlistId') ?? [],
+        );
 
   if (songList.isEmpty) {
     {
@@ -1322,48 +1319,6 @@ Future<List> getSongsFromPlaylist(
   }
 
   return songList;
-}
-
-Future updatePlaylistList(BuildContext context, String playlistId) async {
-  final normalizedId = _playlistId(playlistId);
-  if (normalizedId == null) return null;
-
-  final index = findPlaylistIndexByYtId(normalizedId);
-  Map? playlist;
-  if (index != -1) {
-    playlist = playlists[index];
-  } else {
-    playlist = _searchAppPlaylistsById(normalizedId);
-    if (playlist == null && userPlaylists.value.contains(normalizedId)) {
-      playlist = await _fetchYouTubePlaylist(normalizedId);
-    }
-  }
-
-  if (playlist == null) {
-    logger.log('Playlist with id $playlistId not found for update');
-    return null;
-  }
-
-  try {
-    final songList = [];
-    await for (final song in ytClient.playlists.getVideos(normalizedId)) {
-      songList.add(returnSongLayout(songList.length, song));
-    }
-
-    playlist['list'] = songList;
-    unawaited(
-      addOrUpdateData<List>('cache', 'playlistSongs$normalizedId', songList),
-    );
-    showToast(context, context.l10n.playlistUpdated);
-    return playlist;
-  } catch (e, stackTrace) {
-    logger.log(
-      'Error updating playlist list for $playlistId',
-      error: e,
-      stackTrace: stackTrace,
-    );
-    return null;
-  }
 }
 
 Future<void> renameSongInPlaylist(

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/utilities/async_operation_queue.dart';
+import 'package:musyn/utilities/async_operation_queue.dart';
 
 void main() {
   test(

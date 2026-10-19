@@ -1,78 +1,52 @@
-# Musified (v5.0)
+<p align="center"><img src="assets/branding/musyn-icon.png" width="128" height="128" alt="Musyn folded music mark"></p>
+<h1 align="center">Musyn</h1>
+<p align="center"><strong>Music, in your rhythm.</strong><br>An iPhone music player by <a href="https://voryn-labs.github.io/">Voryn Labs</a>.</p>
+<p align="center">
+<a href="https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.0"><img alt="Version 0.1 preview" src="https://img.shields.io/badge/version-0.1_preview-FFC5A7?style=flat-square"></a>
+<a href="https://github.com/Voryn-Labs/Musyn/actions/workflows/build-ios.yml"><img alt="iOS build" src="https://github.com/Voryn-Labs/Musyn/actions/workflows/build-ios.yml/badge.svg"></a>
+<a href="https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.0"><img alt="0.1 IPA downloads" src="https://img.shields.io/github/downloads/Voryn-Labs/Musyn/v0.1.0/Musyn.ipa?label=IPA%20downloads&style=flat-square"></a>
+<img alt="GPL 3.0" src="https://img.shields.io/badge/license-GPL--3.0-222222?style=flat-square">
+</p>
+<p align="center"><a href="https://voryn-labs.github.io/musyn.html">Meet Musyn</a> · <a href="https://github.com/Voryn-Labs/Musyn/releases/download/v0.1.0/Musyn.ipa">Download unsigned IPA</a> · <a href="https://raw.githubusercontent.com/Voryn-Labs/Musyn/main/source.json">Installer source</a> · <a href="https://voryn-labs.github.io/musyn-privacy.html">Privacy</a></p>
 
-<div align="center">
+## A player that keeps the music in view
 
-**A lightweight, native-feeling music streaming application crafted for iOS & LiveContainer.**  
-*Seamless dual-source streaming (320kbps Lossless JioSaavn + YouTube Music), YouTube cloud sync, real-time karaoke lyrics, and pure Apple Music aesthetic.*
+| Listen | Organize | Take it with you |
+| --- | --- | --- |
+| YouTube Music and JioSaavn AAC, with explicit source selection | Queue, favorites, folders and your own playlists | Offline tracks and playlist downloads |
+| Synced lyrics and a focused full player | Home, moods/genres, search and actual chart playlists | Progress, cancellation, retry and saved-track search |
+| Highest/balanced/data-saver YouTube options and JioSaavn 160/320 kbps | Optional YouTube Music account sync | Dark/light appearance and a branded launch experience |
 
-[![Version](https://img.shields.io/badge/version-5.0.0-blue.svg?style=flat-square)](https://github.com/tinyredphoenix/Musified/releases)
-[![License](https://img.shields.io/badge/license-GPLv3-green.svg?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20LiveContainer-black.svg?style=flat-square)](https://github.com/tinyredphoenix/Musified)
+AAC is compressed audio; 320 kbps is **not lossless**. Provider availability and catalogue results can vary. No addon integration is included.
 
-</div>
+## A look inside
 
----
+<p><img src="docs/ui-review/home-dark.png" width="210" alt="Musyn Home"><img src="docs/ui-review/player-dark.png" width="210" alt="Musyn player"><img src="docs/ui-review/downloads-dark.png" width="210" alt="Musyn download manager"></p>
 
-## ✨ Features
+These are automated Flutter renders with fictional sample tracks and placeholder artwork. They show layout, not a device playback test. [More previews](docs/ui-review/README.md).
 
-### 🎵 Dual-Source Audio Engine
-- **JioSaavn 320kbps Lossless AAC**: Primary high-fidelity audio stream with CD-quality clarity.
-- **YouTube Music Automatic Fallback**: Seamless $< 1$s parallel resolution fallback whenever tracks are exclusive to YouTube.
-- **100% Stream Reliability**: Filtered AAC-LC (`mp4a.40.2`) streams prevent iOS CoreAudio timescale bugs and duration doubling.
-- **Download Quality Transparency**: Download songs in 320kbps AAC or YouTube AAC with full metadata and detailed audio info modals.
+## Install the 0.1 preview
 
-### ☁️ YouTube Music Cloud Synchronization
-- **Native Cookie Sign-in**: Secure WebView sign-in using official Innertube endpoints.
-- **Bi-directional Like Sync**: Liking a track immediately syncs with your official YouTube Music account.
-- **Playlists & Mixes**: Automatic background loading of your YouTube Music playlists and personalized carousels (*My Supermix*, *Discover Mix*).
-- **Play History Reporting**: Background play history logging directly into YouTube Music.
+Requires **iOS 15+**. Download `Musyn.ipa` and its SHA-256 checksum from the [0.1 release](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.0). The IPA is **unsigned**. Use your own signing identity with a compatible installer, or import it into a compatible LiveContainer version. AltStore PAL cannot install this unsigned build. Installer and host restrictions still apply.
 
-### 🎤 Real-Time Karaoke Synced Lyrics
-- **Live Synced LRC Lyrics**: Timestamp-synced glowing karaoke lines powered by LrcLib.
-- **Interactive Seeking**: Tap any line in the lyrics view to instantly jump the audio playback to that exact second.
-- **Zero-CPU Idle Architecture**: Lyrics stream listeners are completely suspended when the artwork is visible, conserving 100% CPU.
+Source URL: `https://raw.githubusercontent.com/Voryn-Labs/Musyn/main/source.json`
 
-### 🎨 Apple Music Cupertino Design
-- **True OLED Black**: Consistent `#000000` dark theme across every tab, dialog, and player sheet.
-- **Minimalist Full-Screen Player**: Apple Music-inspired typography, large circular play controls, fluid swipe-to-dismiss gestures, and clean frosted glass tab bars.
-- **Single-Source Crystal-Clear Artwork Engine**: Dynamically upscales album art to pristine 800px / 500px / maxres resolution without duplicate network fetches or RAM bloat.
+Identity: `com.vorynlabs.musyn` · version `0.1.0 (1)` · publisher **Voryn Labs**. This is a fresh identity with no legacy migration. The download badge measures release asset requests, not unique users or installations.
 
-### ⚡ Built for iOS & LiveContainer
-- **Zero Memory Leaks**: Stream subscriptions, controllers, and socket pools are strictly managed and disposed.
-- **$O(1)$ Hash Set Operations**: Instant offline checks and liked-song lookups eliminate UI frame drops on 1,000+ song playlists.
-- **Automated Cache Pruning**: Strict 2-day cache retention keeps LiveContainer app storage ultra-lean and snappy.
+## Build and contribute
 
----
-
-## 🛠️ Tech Stack & Architecture
-
-- **Framework**: Flutter 3.x (Dart 3.x)
-- **Audio Pipeline**: `just_audio` + `audio_service` (iOS AVPlayer integration)
-- **State & Storage**: ValueNotifiers, Hive NoSQL Storage (pruned cache & user library)
-- **Networking**: `youtube_explode_dart`, `http`, native Innertube REST API
-- **Design System**: iOS Cupertino HIG + Custom Apple Music Theme
-
----
-
-## 📦 Installation & Sideloading
-
-Musified is designed to run natively on iOS devices through sideloading tools.
-
-### 1. Automated GitHub Actions IPA
-Every push to `main` automatically compiles and packages a signed IPA via GitHub Actions.
-1. Go to the [Actions tab](https://github.com/tinyredphoenix/Musified/actions).
-2. Download the latest `Musified.ipa` artifact.
-
-### 2. Install on Device
-- **LiveContainer**: Import the `.ipa` directly into LiveContainer without consuming an App ID.
-- **TrollStore** *(iOS 14.0 - 17.0)*: Open `.ipa` with TrollStore for permanent signing with JIT.
-- **AltStore / Sideloadly**: Sideload standard IPA with your Apple ID.
-
----
-
-## 📄 License & Disclaimer
-
+```sh
+flutter pub get
+flutter analyze
+flutter test
+python3 scripts/verify_branding.py
+flutter build ios --release --no-codesign
 ```
-Musified is free software licensed under GNU General Public License v3.0.
-All trademarks, logos, audio streams, and artwork belong to their respective copyright holders.
-```
+
+Pinned CI toolchain: Flutter 3.47.7 / Dart 3.13.5. iOS builds require full Xcode and CocoaPods. GitHub Actions builds and verifies the IPA, generates its source feed from the actual binary, and publishes a preview only when requested. Existing releases are never silently replaced. See [build/release notes](docs/BUILD.md), [flow map](UI-FLOW-MAP.md) and [verification](VERIFICATION.md).
+
+Automated tests cover playback coordination and UI flows. Physical iPhone lock-screen playback, interruptions, real provider availability and installer behavior still require acceptance; no universal reliability claim is made.
+
+## Credits and license
+
+Maintained by **Voryn Labs** under [GPL-3.0](LICENSE). Developed from the Musified/Musify lineage; the interface work references BitChord. Upstream authors, vendored libraries and providers retain their credits and rights. [Full credits](docs/CREDITS.md). Music and artwork remain the property of their respective owners.

@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 const recommendedCubesNumber = 8;
 
-const commonSingleChildScrollViewPadding = EdgeInsets.symmetric(horizontal: 10);
+const commonSingleChildScrollViewPadding = EdgeInsets.symmetric(horizontal: 20);
 var commonBarRadius = BorderRadius.circular(16);
 var commonBarTitleStyle = const TextStyle(
   fontSize: 15,

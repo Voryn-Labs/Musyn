@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
-import 'package:musified/constants/app_constants.dart';
-import 'package:musified/services/settings_manager.dart';
+import 'package:musyn/constants/app_constants.dart';
+import 'package:musyn/services/settings_manager.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 BorderRadius getItemBorderRadius(
@@ -89,8 +89,9 @@ String formatMonthPeriodLabel(Locale locale, String monthKey) {
   final month = int.tryParse(parts[1]);
   if (year == null || month == null) return monthKey;
 
-  final label = DateFormat.yMMMM(locale.toString())
-      .format(DateTime(year, month));
+  final label = DateFormat.yMMMM(
+    locale.toString(),
+  ).format(DateTime(year, month));
   return label.isEmpty
       ? monthKey
       : '${label[0].toUpperCase()}${label.substring(1)}';
@@ -243,40 +244,45 @@ String preferredStreamSourceForSong(Map song) {
   if (force == 'jiosaavn' || force == 'saavn') return 'jiosaavn';
   final resolved = song['resolvedSource']?.toString();
   if (resolved == 'youtube' || resolved == 'jiosaavn') return resolved!;
-  if (songIsYoutubeCatalog(song)) return 'youtube';
   final pref = preferredSource.value;
   if (pref == 'youtube') return 'youtube';
   if (pref == 'jiosaavn' || pref == 'saavn') return 'jiosaavn';
+  if (songIsYoutubeCatalog(song) && song['source'] != 'youtube-recommended')
+    return 'youtube';
   return 'auto';
 }
 
+/// A default-provider change invalidates prepared audio, not catalogue identity.
+void clearSongStreamSelection(Map song) {
+  clearSongPreparedStreams(song);
+  song.remove('forceSource');
+}
+
+/// Invalidate temporary audio descriptors while keeping a per-track source pin.
+void clearSongPreparedStreams(Map song) {
+  song
+    ..removeWhere((key, _) => key.toString().startsWith('resolved'))
+    ..remove('_preloadedStreamUrl')
+    ..remove('_preloadedStreamMetadata');
+}
+
 bool streamUrlMatchesPreferredSource(String url, Map song) {
-  final force = song['forceSource']?.toString();
-  if (force == 'youtube') return isUsableYoutubePlaybackUrl(url);
-  if (force == 'jiosaavn' || force == 'saavn') {
-    return isUsableJiosaavnPlaybackUrl(url);
+  switch (preferredStreamSourceForSong(song)) {
+    case 'youtube':
+      return isUsableYoutubePlaybackUrl(url);
+    case 'jiosaavn':
+      return isUsableJiosaavnPlaybackUrl(url);
+    default:
+      return isUsableYoutubePlaybackUrl(url) ||
+          isUsableJiosaavnPlaybackUrl(url);
   }
-  // No per-song pin. A warm YouTube URL must survive a later JioSaavn cache
-  // hit (and the reverse). Dropping it forces a cold fetch in the silence
-  // between tracks, and iOS suspends lock-screen audio during that gap.
-  final preferred = preferredStreamSourceForSong(song);
-  if (preferred == 'youtube' && preferredSource.value == 'youtube') {
-    return isUsableYoutubePlaybackUrl(url);
-  }
-  if ((preferred == 'jiosaavn') &&
-      (preferredSource.value == 'jiosaavn' ||
-          preferredSource.value == 'saavn') &&
-      song['resolvedSource'] == null) {
-    return isUsableJiosaavnPlaybackUrl(url);
-  }
-  return isUsableYoutubePlaybackUrl(url) || isUsableJiosaavnPlaybackUrl(url);
 }
 
 /// Whether the playback path should go straight to YouTube (no Saavn search).
 ///
-/// iOS suspends the process during any silence gap between tracks. A Saavn
-/// title/artist search on the critical path is unacceptable — especially while
-/// locked. Return true for `auto` and YouTube so we start audio immediately;
+/// Avoid putting a title/artist search on every transition. Network gaps are
+/// especially fragile during background playback. Prefer the YouTube resolver
+/// for `auto`, while retaining an already prepared Saavn result;
 /// Saavn search belongs only when the user pinned JioSaavn, or a prior strict
 /// match is already cached on the song (`resolvedSource` / Hive).
 /// Explicit `forceSource` always wins over catalog metadata.
@@ -286,7 +292,6 @@ bool songShouldResolveYoutube(Map song) {
   if (force == 'jiosaavn' || force == 'saavn') return false;
   // Already-matched Saavn: use the cached URL path, never re-search.
   if (song['resolvedSource']?.toString() == 'jiosaavn') return false;
-  if (songIsYoutubeCatalog(song)) return true;
   if (song['resolvedSource']?.toString() == 'youtube') return true;
   final pref = preferredSource.value;
   if (pref == 'jiosaavn' || pref == 'saavn') return false;
@@ -348,9 +353,7 @@ AudioOnlyStreamInfo selectAudioOnlyStreamForQuality(
       .where((stream) => isAacFamily(stream) && isHeAacStream(stream))
       .toList();
 
-  final opusFallback = audioOnly
-      .where(isOpusFamily)
-      .toList();
+  final opusFallback = audioOnly.where(isOpusFamily).toList();
 
   final selectionPool = aacLcSources.isNotEmpty
       ? aacLcSources

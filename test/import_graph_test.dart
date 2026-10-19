@@ -25,11 +25,11 @@ void main() {
       for (final match in directives.allMatches(entry.value)) {
         final uri = match[1]!;
         String? target;
-        if (uri.startsWith('package:musified/')) {
+        if (uri.startsWith('package:musyn/')) {
           target = path.join(
             root,
             'lib',
-            uri.substring('package:musified/'.length),
+            uri.substring('package:musyn/'.length),
           );
         } else if (!uri.contains(':')) {
           target = path.join(path.dirname(entry.key), uri);

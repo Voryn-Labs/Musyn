@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 typedef SortTypeToStringConverter<T> = String Function(T type);
 typedef OnSortTypeSelected<T> = void Function(T type);
@@ -22,8 +22,8 @@ class SortChips<T extends Enum> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = isAppDarkMode(context);
-    const activeBg = MusifiedStyle.appleRed;
-    final inactiveBg = musifiedSecondarySurface(isDark);
+    final activeBg = CupertinoTheme.of(context).primaryColor;
+    final inactiveBg = musynSecondarySurface(isDark);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -41,7 +41,10 @@ class SortChips<T extends Enum> extends StatelessWidget {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? activeBg : inactiveBg,
                   borderRadius: BorderRadius.circular(16),
@@ -49,10 +52,14 @@ class SortChips<T extends Enum> extends StatelessWidget {
                 child: Text(
                   sortTypeToString(type),
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 13,
-                    color: isSelected ? CupertinoColors.white : (isDark ? CupertinoColors.white : CupertinoColors.black),
+                    color: isSelected
+                        ? CupertinoTheme.of(context).primaryContrastingColor
+                        : (isDark
+                              ? CupertinoColors.white
+                              : CupertinoColors.black),
                     decoration: TextDecoration.none,
                   ),
                 ),

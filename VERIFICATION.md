@@ -33,3 +33,86 @@ Full Xcode and an iOS simulator are not installed on this host. Automated tests 
 6. Check the source and download sheets on small/large iPhones, light/dark mode, larger text and reduced motion. Review the larger player/download visual redesign after these functional checks.
 
 Addon integration and lossless are outside the agreed scope. Durable OS-managed background download jobs and a wholesale player redesign are not implemented by this change; this pass fixes the existing app's coordination and transfer paths.
+
+## 19 October 2026 — audit review and mobile UI parity
+
+See `AUDIT-AND-UI-REVIEW.md` for the supplied reports' claim-by-claim review,
+reference commit, implemented changes, and remaining fidelity/device limits.
+
+Local toolchain: Flutter 3.47.7 / Dart 3.13.5 in
+`/private/tmp/musified-flutter-sdk`; pub cache `/private/tmp/musified-pub-cache`.
+
+Commands (run from this repository):
+
+```sh
+CI=true FLUTTER_SUPPRESS_ANALYTICS=true \
+XDG_CONFIG_HOME=/private/tmp/musified-flutter-config \
+PUB_CACHE=/private/tmp/musified-pub-cache \
+/private/tmp/musified-flutter-sdk/bin/flutter analyze --no-pub
+
+CI=true FLUTTER_SUPPRESS_ANALYTICS=true \
+XDG_CONFIG_HOME=/private/tmp/musified-flutter-config \
+PUB_CACHE=/private/tmp/musified-pub-cache \
+/private/tmp/musified-flutter-sdk/bin/flutter test --no-pub
+```
+
+For optional fixture renders, run the UI test with
+`--dart-define=MUSIFIED_RENDER_UI=true test/bitchord_ui_test.dart`.
+These renders do not prove native iOS audio, lock-screen reliability, AirPlay,
+or frame pacing. Tests mock playback/native services and do not download music.
+
+Final results for this pass:
+
+- `flutter analyze --no-pub`: **No issues found**.
+- `flutter test --no-pub`: **106 tests passed**.
+- UI subset: **14 tests passed**, including a real pointer-held mini-player
+  pull, route handoff, inline queue/menu behavior and responsive layouts.
+- An isolated Home render also passed after checking the saved preview visually.
+- `git diff --check`: passed.
+- No full Xcode installation, iOS simulator, connected iPhone or Android reference
+  device was available. No native build, real-stream audio or lock-screen signoff
+  is claimed.
+
+Working branch: `codex/bitchord-ui-parity`. This pass remains local and reviewable;
+it has not been committed or pushed. The earlier reliability push is separate.
+
+## 19 October 2026 — completed flow/recovery continuation
+
+The latest continuation supersedes the earlier 106-test/14-UI-test counts above.
+See `UI-FLOW-MAP.md` for registered destinations, real control actions, recovery
+states and scope boundaries, and `docs/ui-review/README.md` for previews.
+
+- Complete `flutter test --no-pub`: **149 tests passed**.
+- UI coverage: **53 tests**, including failed-load retries, search navigation and
+  stale suggestions, chart providers, playlist refresh preserving previous data,
+  transfer progress, individual/batch cancellation, collection pin/delete,
+  playlist creation inside a folder, settings choices and responsive layouts.
+- Renders regenerated with `flutter test --no-pub
+  --dart-define=MUSIFIED_RENDER_UI=true`; render fixtures are local/test data.
+- `flutter analyze --no-pub`: **No issues found**.
+- `git diff --check`: passed. Import/export reachability traced from `main.dart`:
+  no unreachable handwritten app modules after removing twelve obsolete files.
+  The import-cycle regression test passes too.
+- Small-phone coverage expanded to **320×568 at 1.8× text**, light/dark, across
+  Home, Search, Explore, Charts, Library, Playlist, Settings and Downloads.
+  Source/download sheets and playlist cancellation were also checked at that
+  size. This exposed and fixed clipped Explore labels in addition to the actual
+  overflow failures reported earlier.
+
+Final refresh behavior: network refreshes are bounded, failure preserves the
+previous playlist, retry calls the loader again, and YouTube refresh bypasses its
+track-list cache. Remote zero-track/unavailable responses no longer masquerade
+as empty personal playlists; genuinely empty custom playlists remain local.
+Folder candidates advertise loading and fall back to available local choices.
+Streaming quality clears prepared data while retaining provider pins, and cached
+JioSaavn stream metadata must match the requested bitrate.
+
+The suite's intentional failure cases may print diagnostic errors and missing
+native logging-plugin messages; the runner finishes successfully. These tests
+still do **not** validate AVPlayer, iOS background suspension, real provider
+availability or exact BitChord native choreography. Full Xcode, simulator and
+physical-device acceptance remain unavailable here. Transfer activity is
+session-only; durable OS-managed background downloads were not added.
+
+Changes remain local on `codex/bitchord-ui-parity`; no commit or push was made in
+this continuation.

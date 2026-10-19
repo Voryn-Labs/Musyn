@@ -9,10 +9,13 @@ class AudioPreloadCache {
   final Set<String> preloadedYtIds = <String>{};
   final Map<String, String> streamUrls = <String, String>{};
 
+  final Map<String, Map<String, dynamic>> streamMetadata = {};
+
   void reset() {
     _discarded.addAll(_inFlight.values);
     preloadedYtIds.clear();
     streamUrls.clear();
+    streamMetadata.clear();
   }
 
   void drop(String ytid) {
@@ -20,6 +23,7 @@ class AudioPreloadCache {
     if (pending != null) _discarded.add(pending);
     preloadedYtIds.remove(ytid);
     streamUrls.remove(ytid);
+    streamMetadata.remove(ytid);
   }
 
   Object? begin(String ytid, {required int maxConcurrent}) {

@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/playlist_dialogs.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/playlist_dialogs.dart';
 
 class PlaylistAddToPlaylistButton extends StatefulWidget {
   const PlaylistAddToPlaylistButton({super.key, required this.resolvePlaylist});
@@ -32,13 +31,13 @@ class _PlaylistAddToPlaylistButtonState
 
     return CupertinoButton(
       padding: const EdgeInsets.all(10),
-      color: musifiedSecondarySurface(isDark),
+      color: musynSecondarySurface(isDark),
       borderRadius: BorderRadius.circular(22),
       onPressed: _resolveAndAdd,
-      child: const Icon(
+      child: Icon(
         CupertinoIcons.plus,
         size: 20,
-        color: MusifiedStyle.appleRed,
+        color: CupertinoTheme.of(context).primaryColor,
       ),
     );
   }

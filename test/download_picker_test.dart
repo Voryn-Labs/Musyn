@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/widgets/download_picker_sheet.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/widgets/download_picker_sheet.dart';
 
 void main() {
   testWidgets(

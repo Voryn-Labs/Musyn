@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/utilities/track_matcher.dart';
+import 'package:musyn/utilities/track_matcher.dart';
 
 void main() {
   test('source substitution preserves studio/live/remix recording choices', () {

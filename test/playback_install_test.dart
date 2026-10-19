@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/services/audio/audio_playback_coordinator.dart';
+import 'package:musyn/services/audio/audio_playback_coordinator.dart';
 
 class ControlledPlayer extends AudioPlayer {
   ControlledPlayer()

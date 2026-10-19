@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.title, this.primaryColor, {super.key, this.icon});
@@ -18,7 +18,11 @@ class SectionTitle extends StatelessWidget {
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 18, color: primaryColor),
+            Icon(
+              icon,
+              size: 18,
+              color: CupertinoDynamicColor.resolve(primaryColor, context),
+            ),
             const SizedBox(width: 8),
           ],
           Expanded(
@@ -27,7 +31,7 @@ class SectionTitle extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: MusifiedStyle.displayFont,
+                fontFamily: MusynStyle.displayFont,
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: textColor,

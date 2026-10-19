@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/widgets/playlist_artwork.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/widgets/playlist_artwork.dart';
 
 class PlaylistCube extends StatelessWidget {
   const PlaylistCube(
@@ -55,7 +55,7 @@ class PlaylistCube extends StatelessWidget {
       child: Text(
         isAlbum ? 'Album' : 'Playlist',
         style: const TextStyle(
-          fontFamily: MusifiedStyle.uiFont,
+          fontFamily: MusynStyle.uiFont,
           color: CupertinoColors.white,
           fontSize: 10,
           fontWeight: FontWeight.w700,

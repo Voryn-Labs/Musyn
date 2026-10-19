@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/services/audio/musified_audio_handler.dart';
-import 'package:musified/services/settings_manager.dart';
+import 'package:musyn/services/audio/musyn_audio_handler.dart';
+import 'package:musyn/services/settings_manager.dart';
 
 class QuietPlayer extends AudioPlayer {
   QuietPlayer()
@@ -17,7 +17,7 @@ class QuietPlayer extends AudioPlayer {
   Future<void> setShuffleModeEnabled(bool enabled) async {}
 }
 
-class RecordingHandler extends MusifiedAudioHandler {
+class RecordingHandler extends MusynAudioHandler {
   RecordingHandler() : super(player: QuietPlayer());
   final played = <String>[];
   @override
@@ -44,7 +44,7 @@ void main() {
   late Directory directory;
   late RecordingHandler handler;
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('musified-nav-');
+    directory = await Directory.systemTemp.createTemp('musyn-nav-');
     Hive.init(directory.path);
     await Hive.openBox('settings');
     offlineMode.value = true;

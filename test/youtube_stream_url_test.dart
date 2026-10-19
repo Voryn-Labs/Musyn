@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/utilities/app_utils.dart';
+import 'package:musyn/utilities/app_utils.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 void main() {

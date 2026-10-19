@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/audio/audio_browse_catalog.dart';
-import 'package:musified/services/audio/audio_queue_controller.dart';
-import 'package:musified/services/audio/audio_queue_state.dart';
+import 'package:musyn/services/audio/audio_browse_catalog.dart';
+import 'package:musyn/services/audio/audio_queue_controller.dart';
+import 'package:musyn/services/audio/audio_queue_state.dart';
 
 void main() {
   test('AudioBrowseCatalog finds song across libraries', () {

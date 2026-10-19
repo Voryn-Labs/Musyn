@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/lyrics_manager.dart';
-import 'package:musified/widgets/now_playing/lyrics/compact_lyrics_panel.dart';
-import 'package:musified/widgets/now_playing/lyrics/lyrics_theme.dart';
+import 'package:musyn/services/lyrics_manager.dart';
+import 'package:musyn/widgets/now_playing/lyrics/compact_lyrics_panel.dart';
+import 'package:musyn/widgets/now_playing/lyrics/lyrics_theme.dart';
 
 void main() {
   test('title cleaning removes quality labels without damaging words', () {

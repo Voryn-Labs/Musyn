@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/widgets/now_playing/lyrics/lyrics_theme.dart';
+import 'package:musyn/widgets/now_playing/lyrics/lyrics_theme.dart';
 
 /// Scrollable plain-text lyrics (no LRC timestamps).
 class PlainLyricsReader extends StatelessWidget {

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/widgets/now_playing/lyrics/lrc_parser.dart';
-import 'package:musified/widgets/now_playing/lyrics/lyrics_theme.dart';
+import 'package:musyn/widgets/now_playing/lyrics/lrc_parser.dart';
+import 'package:musyn/widgets/now_playing/lyrics/lyrics_theme.dart';
 
 /// Full-screen synced lyrics with center-aligned active line,
 /// pink accent highlight, auto-scrolling, and smooth transitions.

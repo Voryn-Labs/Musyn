@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 Future<String?> pickImage() async {
   final file = await FilePicker.pickFile(type: FileType.image);
@@ -99,7 +99,7 @@ Widget buildImagePickerRow(
   return SizedBox(
     width: double.infinity,
     child: CupertinoButton(
-      color: musifiedSecondarySurface(isDark),
+      color: musynSecondarySurface(isDark),
       borderRadius: BorderRadius.circular(12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       onPressed: onPickImage,
@@ -111,7 +111,7 @@ Widget buildImagePickerRow(
                 ? CupertinoIcons.checkmark_circle_fill
                 : CupertinoIcons.photo_on_rectangle,
             size: 20,
-            color: MusifiedStyle.appleRed,
+            color: MusynStyle.appleRed,
           ),
           const SizedBox(width: 8),
           Text(

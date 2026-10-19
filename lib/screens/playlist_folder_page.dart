@@ -1,17 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
-import 'package:musified/constants/app_constants.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/musified_picker_sheet.dart';
-import 'package:musified/utilities/playlist_utils.dart';
-import 'package:musified/widgets/confirmation_dialog.dart';
-import 'package:musified/widgets/mini_player_bottom_space.dart';
-import 'package:musified/widgets/playlist_bar.dart';
+import 'package:go_router/go_router.dart';
+import 'package:musyn/constants/app_constants.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/musyn_picker_sheet.dart';
+import 'package:musyn/utilities/playlist_dialogs.dart';
+import 'package:musyn/utilities/playlist_utils.dart';
+import 'package:musyn/widgets/confirmation_dialog.dart';
+import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/playlist_bar.dart';
 
 class PlaylistFolderPage extends StatefulWidget {
   const PlaylistFolderPage({
@@ -29,6 +33,7 @@ class PlaylistFolderPage extends StatefulWidget {
 
 class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
   late String _folderName;
+  bool _loadingCandidates = false;
 
   @override
   void initState() {
@@ -109,6 +114,26 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
     return ValueListenableBuilder<List>(
       valueListenable: userPlaylistFolders,
       builder: (context, _, __) {
+        if (!userPlaylistFolders.value.whereType<Map>().any(
+          (folder) => folder['id'] == widget.folderId,
+        )) {
+          return CupertinoPageScaffold(
+            navigationBar: const CupertinoNavigationBar(
+              middle: Text('Folder unavailable'),
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                child: ContentState(
+                  title: 'This folder is no longer available',
+                  message:
+                      'Choose another folder or create one in your library.',
+                  actionLabel: 'Open library',
+                  onAction: () => context.go('/library'),
+                ),
+              ),
+            ),
+          );
+        }
         final isOffline = offlineMode.value;
         final playlists = isOffline
             ? getPlaylistsInFolder(
@@ -124,16 +149,18 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
             middle: Text(
               _folderName,
               style: const TextStyle(
-                fontFamily: MusifiedStyle.displayFont,
+                fontFamily: MusynStyle.displayFont,
                 fontWeight: FontWeight.w700,
               ),
             ),
             backgroundColor: navBarColor,
-            trailing: CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: _showFolderActions,
-              child: const Icon(CupertinoIcons.ellipsis, size: 22),
-            ),
+            trailing: _loadingCandidates
+                ? const CupertinoActivityIndicator()
+                : CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: _showFolderActions,
+                    child: const Icon(CupertinoIcons.ellipsis, size: 22),
+                  ),
             border: Border(
               bottom: BorderSide(
                 color: isDark
@@ -160,20 +187,20 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
                             width: 100,
                             height: 100,
                             decoration: BoxDecoration(
-                              color: musifiedSecondarySurface(isDark),
+                              color: musynSecondarySurface(isDark),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Icon(
                               CupertinoIcons.folder_fill,
                               size: 48,
-                              color: MusifiedStyle.appleRed,
+                              color: MusynStyle.appleRed,
                             ),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             '${playlists.length} playlists',
                             style: const TextStyle(
-                              fontFamily: MusifiedStyle.uiFont,
+                              fontFamily: MusynStyle.uiFont,
                               fontSize: 14,
                               color: CupertinoColors.systemGrey,
                             ),
@@ -184,16 +211,19 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
                   ),
                 ),
                 if (playlists.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: Text(
-                        'This folder is empty',
-                        style: TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
-                          color: CupertinoColors.systemGrey,
-                        ),
-                      ),
+                  SliverToBoxAdapter(
+                    child: ContentState(
+                      icon: CupertinoIcons.folder,
+                      loading: _loadingCandidates,
+                      title: _loadingCandidates
+                          ? 'Loading your playlists'
+                          : 'This folder is ready for music',
+                      message:
+                          'Add a playlist to keep your collections organized.',
+                      actionLabel: 'Add a playlist',
+                      onAction: _loadingCandidates
+                          ? null
+                          : _showAddPlaylistDialog,
                     ),
                   )
                 else
@@ -230,18 +260,30 @@ class _PlaylistFolderPageState extends State<PlaylistFolderPage> {
   }
 
   Future<void> _showAddPlaylistDialog() async {
+    if (_loadingCandidates) return;
+    setState(() => _loadingCandidates = true);
     final customCandidates = getPlaylistsNotInFolders();
-    final youtubeCandidates = await getUserPlaylistsNotInFolders();
+    var youtubeCandidates = <dynamic>[];
+    try {
+      youtubeCandidates = await getUserPlaylistsNotInFolders().timeout(
+        const Duration(seconds: 15),
+      );
+    } catch (_) {
+      if (mounted)
+        showToast(context, 'Some online playlists could not be loaded.');
+    } finally {
+      if (mounted) setState(() => _loadingCandidates = false);
+    }
     final candidates = [...customCandidates, ...youtubeCandidates];
 
     if (!mounted) return;
 
     if (candidates.isEmpty) {
-      showToast(context, context.l10n.noPlaylistsAdded);
+      showCreatePlaylistDialog(context, folderId: widget.folderId);
       return;
     }
 
-    await showMusifiedPickerSheet(
+    await showMusynPickerSheet(
       context,
       title: 'Add to Folder',
       emptyMessage: 'No playlists available',

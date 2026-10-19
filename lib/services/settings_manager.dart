@@ -1,8 +1,8 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:musified/models/playlist_sort_type.dart';
-import 'package:musified/utilities/language_utils.dart';
+import 'package:musyn/models/playlist_sort_type.dart';
+import 'package:musyn/utilities/language_utils.dart';
 
 T _safeBoxGet<T>(String key, T defaultValue) {
   try {

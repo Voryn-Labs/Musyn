@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/utilities/mediaitem.dart';
+import 'package:musyn/utilities/mediaitem.dart';
 
 void main() {
   test(

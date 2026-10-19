@@ -1,17 +1,20 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/mediaitem.dart';
-import 'package:musified/utilities/playlist_dialogs.dart';
-import 'package:musified/utilities/song_info_dialog.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/mediaitem.dart';
+import 'package:musyn/utilities/playlist_dialogs.dart';
+import 'package:musyn/utilities/song_info_dialog.dart';
+import 'package:musyn/widgets/download_picker_sheet.dart';
+import 'package:musyn/widgets/sleep_timer_picker.dart';
+import 'package:musyn/widgets/song_artwork.dart';
+import 'package:musyn/widgets/track_action_drawer.dart';
 
 /// Shows an Apple Music-style Cupertino action sheet with track preview.
 void showSongActionsSheet(
@@ -27,38 +30,14 @@ void showSongActionsSheet(
   final isLiked = isSongAlreadyLiked(ytid);
   final isOffline = isSongAlreadyOffline(ytid);
 
-  final rawImage =
-      song['image']?.toString() ??
-      song['lowResImage']?.toString() ??
-      'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
-  final imageUrl = upgradeArtworkUrl(rawImage, targetSize: 100);
-
   final isDark = isAppDarkMode(context);
 
   showCupertinoModalPopup<void>(
     context: context,
-    builder: (ctx) => CupertinoActionSheet(
+    builder: (ctx) => TrackActionDrawer(
       title: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(MusifiedStyle.radiusSm),
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => ColoredBox(
-                  color: musifiedSecondarySurface(isDark),
-                  child: const Icon(
-                    CupertinoIcons.music_note,
-                    size: 20,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          SongArtworkWidget(metadata: mapToMediaItem(song), size: 54),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -68,7 +47,7 @@ void showSongActionsSheet(
                 Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
@@ -81,9 +60,11 @@ void showSongActionsSheet(
                   Text(
                     artist,
                     style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       fontSize: 13,
-                      color: isDark ? MusifiedStyle.darkSecondary : CupertinoColors.systemGrey,
+                      color: isDark
+                          ? MusynStyle.darkSecondary
+                          : CupertinoColors.systemGrey,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -95,6 +76,21 @@ void showSongActionsSheet(
         ],
       ),
       actions: [
+        if (isAudioHandlerInitialized &&
+            audioHandler.currentPlayingYtid.value == ytid)
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(ctx);
+              showSleepTimerPicker(context);
+            },
+            child: const Row(
+              children: [
+                Icon(CupertinoIcons.moon_zzz, size: 20),
+                SizedBox(width: 10),
+                Text('Sleep timer'),
+              ],
+            ),
+          ),
         CupertinoActionSheetAction(
           onPressed: () {
             Navigator.pop(ctx);
@@ -102,7 +98,6 @@ void showSongActionsSheet(
             showToast(context, 'Playing next');
           },
           child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(CupertinoIcons.play_rectangle, size: 20),
               SizedBox(width: 10),
@@ -117,7 +112,6 @@ void showSongActionsSheet(
             showToast(context, 'Added to queue');
           },
           child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(CupertinoIcons.text_badge_plus, size: 20),
               SizedBox(width: 10),
@@ -142,7 +136,6 @@ void showSongActionsSheet(
               }
             },
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   isLiked
@@ -151,7 +144,7 @@ void showSongActionsSheet(
                   size: 20,
                   color: isLiked
                       ? CupertinoColors.systemRed
-                      : MusifiedStyle.appleRed,
+                      : MusynStyle.appleRed,
                 ),
                 const SizedBox(width: 10),
                 Text(isLiked ? 'Remove from Favorites' : 'Favorite'),
@@ -165,7 +158,6 @@ void showSongActionsSheet(
               showAddToPlaylistDialog(context, song: song);
             },
             child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(CupertinoIcons.plus_circle, size: 20),
                 SizedBox(width: 10),
@@ -180,18 +172,23 @@ void showSongActionsSheet(
               await removeSongFromOffline(ytid);
               if (context.mounted) showToast(context, 'Download removed');
             } else {
-              showToast(context, 'Downloading track...');
-              final success = await makeSongOffline(song);
-              if (context.mounted) {
-                showToast(
-                  context,
-                  success ? 'Downloaded to Device' : 'Download failed',
+              await showDownloadPicker(context, song, (source, quality) async {
+                final success = await makeSongOffline(
+                  song,
+                  source: source,
+                  quality: quality,
                 );
-              }
+                if (context.mounted)
+                  showToast(
+                    context,
+                    success
+                        ? 'Downloaded to device'
+                        : 'Download failed. Try again.',
+                  );
+              });
             }
           },
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 isOffline
@@ -210,7 +207,6 @@ void showSongActionsSheet(
             showSongInfoDialog(context, song);
           },
           child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(CupertinoIcons.info_circle, size: 20),
               SizedBox(width: 10),
@@ -226,7 +222,6 @@ void showSongActionsSheet(
               onRemove();
             },
             child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   CupertinoIcons.delete,

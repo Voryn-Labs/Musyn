@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/offline_song_registry.dart';
+import 'package:musyn/services/offline_song_registry.dart';
 
 void main() {
   test(

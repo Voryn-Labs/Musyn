@@ -1,8 +1,8 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/models/full_player_state.dart';
-import 'package:musified/models/position_data.dart';
+import 'package:musyn/models/full_player_state.dart';
+import 'package:musyn/models/position_data.dart';
 
 /// UI-facing playback contract, independent of the concrete engine and services.
 abstract class PlaybackController extends BaseAudioHandler {
@@ -34,6 +34,7 @@ abstract class PlaybackController extends BaseAudioHandler {
   Future<void> reorderQueue(int oldIndex, int newIndex);
   void clearQueue();
   void clearPinnedSources();
+  void clearPreparedStreams();
   Future<String?> switchSource(String source);
   Future<void> setSleepTimer(Duration duration);
   void cancelSleepTimer();

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/widgets/spinner.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/widgets/spinner.dart';
 
 Widget _defaultAsyncLoaderErrorBuilder(
   BuildContext context,

@@ -1,20 +1,24 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
-import 'package:musified/screens/artist_page.dart';
-import 'package:musified/screens/bottom_navigation_page.dart';
-import 'package:musified/screens/home_page.dart';
-import 'package:musified/screens/library_page.dart';
-import 'package:musified/screens/logs_page.dart';
-import 'package:musified/screens/playlist_folder_page.dart';
-import 'package:musified/screens/playlist_page.dart';
-import 'package:musified/screens/search_page.dart';
-import 'package:musified/screens/settings_page.dart';
-import 'package:musified/screens/user_songs_page.dart';
-import 'package:musified/services/app_navigation_state.dart';
-import 'package:musified/services/playlist_download_service.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/widgets/offline_search_placeholder.dart';
+import 'package:musyn/screens/artist_page.dart';
+import 'package:musyn/screens/bottom_navigation_page.dart';
+import 'package:musyn/screens/charts_page.dart';
+import 'package:musyn/screens/downloads_page.dart';
+import 'package:musyn/screens/explore_page.dart';
+import 'package:musyn/screens/home_page.dart';
+import 'package:musyn/screens/library_page.dart';
+import 'package:musyn/screens/logs_page.dart';
+import 'package:musyn/screens/playlist_folder_page.dart';
+import 'package:musyn/screens/playlist_page.dart';
+import 'package:musyn/screens/search_page.dart';
+import 'package:musyn/screens/settings_page.dart';
+import 'package:musyn/screens/user_songs_page.dart';
+import 'package:musyn/services/app_navigation_state.dart';
+import 'package:musyn/services/playlist_download_service.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/offline_search_placeholder.dart';
 
 class NavigationManager {
   factory NavigationManager() {
@@ -27,6 +31,18 @@ class NavigationManager {
 
   void _setupRouter() {
     final routes = [
+      GoRoute(
+        path: settingsPath,
+        pageBuilder: (context, state) =>
+            _pushPage(child: const SettingsPage(), state: state),
+        routes: [
+          GoRoute(
+            path: 'logs',
+            pageBuilder: (context, state) =>
+                _pushPage(child: const LogsPage(), state: state),
+          ),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         parentNavigatorKey: parentNavigatorKey,
         branches: _getRouteBranches(),
@@ -42,6 +58,25 @@ class NavigationManager {
     _router = GoRouter(
       navigatorKey: parentNavigatorKey,
       initialLocation: homePath,
+      errorBuilder: (context, state) => CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(
+          middle: Text('Page unavailable'),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: ContentState(
+              icon: CupertinoIcons.link,
+              title: 'This page is no longer available',
+              message:
+                  'The link may be incomplete or the collection may have moved.',
+              actionLabel: 'Go to Home',
+              onAction: () => context.go(homePath),
+              secondaryLabel: 'Open library',
+              onSecondary: () => context.go(libraryPath),
+            ),
+          ),
+        ),
+      ),
       routes: routes,
       restorationScopeId: 'router',
       debugLogDiagnostics: kDebugMode,
@@ -50,11 +85,6 @@ class NavigationManager {
         // Handle offline mode redirects
         final isOffline = offlineMode.value;
         final currentPath = state.matchedLocation;
-
-        if (isOffline && currentPath == searchPath) {
-          // Redirect unavailable pages to home in offline mode
-          return homePath;
-        }
 
         if (isOffline && currentPath.contains('/album/')) {
           // Releases are only browsable through YouTube Music.
@@ -92,7 +122,7 @@ class NavigationManager {
       GlobalKey<NavigatorState>();
   static final GlobalKey<NavigatorState> libraryTabNavigatorKey =
       GlobalKey<NavigatorState>();
-  static final GlobalKey<NavigatorState> settingsTabNavigatorKey =
+  static final GlobalKey<NavigatorState> exploreTabNavigatorKey =
       GlobalKey<NavigatorState>();
 
   BuildContext get context {
@@ -111,6 +141,7 @@ class NavigationManager {
       router.routeInformationParser;
 
   static const String homePath = '/home';
+  static const String explorePath = '/explore';
   static const String settingsPath = '/settings';
   static const String searchPath = '/search';
   static const String libraryPath = '/library';
@@ -149,6 +180,8 @@ class NavigationManager {
                 pageBuilder: (context, state) =>
                     _pushPage(child: const LibraryPage(), state: state),
               ),
+              _downloadsRoute(),
+              _chartsRoute(),
               _playlistRoute(),
               _artistRoute(),
               _albumRoute(),
@@ -157,28 +190,35 @@ class NavigationManager {
           ),
         ],
       ),
-      // Branch 1: Search
+      // Branch 1: Explore
       StatefulShellBranch(
-        navigatorKey: searchTabNavigatorKey,
+        navigatorKey: exploreTabNavigatorKey,
         routes: [
           GoRoute(
-            path: searchPath,
-            pageBuilder: (context, GoRouterState state) {
-              return getPage(
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: offlineMode,
-                  builder: (context, isOffline, _) {
-                    return isOffline
-                        ? const OfflineSearchPlaceholder()
-                        : const SearchPage();
-                  },
-                ),
-                state: state,
-              );
-            },
+            path: explorePath,
+            pageBuilder: (context, state) =>
+                getPage(child: const ExplorePage(), state: state),
             routes: [
+              GoRoute(
+                path: 'category',
+                pageBuilder: (context, state) => _pushPage(
+                  child: ExplorePage(
+                    category:
+                        _extraAsMap(state.extra)?.cast<String, dynamic>() ??
+                        {
+                          'browseId': state.uri.queryParameters['id'],
+                          'params': state.uri.queryParameters['params'],
+                          'title':
+                              state.uri.queryParameters['title'] ?? 'Category',
+                        },
+                  ),
+                  state: state,
+                ),
+              ),
               _artistRoute(),
               _albumRoute(),
+              _downloadsRoute(),
+              _chartsRoute(),
               _playlistRoute(),
               _folderRoute(),
             ],
@@ -206,33 +246,60 @@ class NavigationManager {
               ),
               _artistRoute(),
               _albumRoute(),
+              _downloadsRoute(),
+              _chartsRoute(),
               _playlistRoute(),
               _folderRoute(),
             ],
           ),
         ],
       ),
-      // Branch 3: Settings
+      // Branch 3: Search
       StatefulShellBranch(
-        navigatorKey: settingsTabNavigatorKey,
+        navigatorKey: searchTabNavigatorKey,
         routes: [
           GoRoute(
-            path: settingsPath,
-            pageBuilder: (context, state) {
-              return getPage(child: const SettingsPage(), state: state);
+            path: searchPath,
+            pageBuilder: (context, GoRouterState state) {
+              return getPage(
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: offlineMode,
+                  builder: (context, isOffline, _) {
+                    return isOffline
+                        ? const OfflineSearchPlaceholder()
+                        : SearchPage(
+                            initialQuery: state.uri.queryParameters['q'],
+                          );
+                  },
+                ),
+                state: state,
+              );
             },
             routes: [
-              GoRoute(
-                path: 'logs',
-                pageBuilder: (context, state) =>
-                    _pushPage(child: const LogsPage(), state: state),
-              ),
+              _artistRoute(),
+              _albumRoute(),
+              _downloadsRoute(),
+              _chartsRoute(),
+              _playlistRoute(),
+              _folderRoute(),
             ],
           ),
         ],
       ),
     ];
   }
+
+  GoRoute _downloadsRoute() => GoRoute(
+    path: 'downloads',
+    pageBuilder: (context, state) =>
+        _pushPage(child: const DownloadsPage(), state: state),
+  );
+
+  GoRoute _chartsRoute() => GoRoute(
+    path: 'charts',
+    pageBuilder: (context, state) =>
+        _pushPage(child: const ChartsPage(), state: state),
+  );
 
   GoRoute _playlistRoute() => GoRoute(
     path: 'playlist/:playlistId',

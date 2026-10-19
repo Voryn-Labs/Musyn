@@ -1,16 +1,16 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 bool _isIOSSheetOpen = false;
 
 bool isBottomSheetOpen() => _isIOSSheetOpen;
 
-/// Shows a bottom sheet using the Musified pure iOS presentation style.
+/// Shows a bottom sheet using the Musyn pure iOS presentation style.
 dynamic showCustomBottomSheet(BuildContext context, Widget content) {
   final size = MediaQuery.sizeOf(context);
   final isDark = isAppDarkMode(context);
-  final sheetColor = isDark ? MusifiedStyle.elevated : MusifiedStyle.lightElevated;
+  final sheetColor = isDark ? MusynStyle.elevated : MusynStyle.lightElevated;
 
   _isIOSSheetOpen = true;
   showCupertinoModalPopup<void>(
@@ -19,11 +19,11 @@ dynamic showCustomBottomSheet(BuildContext context, Widget content) {
       decoration: BoxDecoration(
         color: sheetColor,
         borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(MusifiedStyle.radiusXl),
+          top: Radius.circular(MusynStyle.radiusXl),
         ),
         border: Border(
           top: BorderSide(
-            color: isDark ? MusifiedStyle.hairline : MusifiedStyle.lightHairline,
+            color: isDark ? MusynStyle.hairline : MusynStyle.lightHairline,
           ),
         ),
       ),

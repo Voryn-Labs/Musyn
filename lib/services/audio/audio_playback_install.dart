@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/mediaitem.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/mediaitem.dart';
 
 /// Builds [AudioSource] for just_audio. No queue/preload dependencies.
 class AudioPlaybackInstall {

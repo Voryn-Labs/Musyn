@@ -1,16 +1,20 @@
 import 'dart:ui';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/constants/player_layout.dart';
-import 'package:musified/models/full_player_state.dart';
-import 'package:musified/screens/now_playing_page.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/mediaitem.dart' show upgradeArtworkUrl;
+import 'package:musyn/constants/player_layout.dart';
+import 'package:musyn/models/full_player_state.dart';
+import 'package:musyn/models/position_data.dart';
+import 'package:musyn/screens/now_playing_page.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/navigation_paths.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/widgets/player_sheet_route.dart';
+import 'package:musyn/widgets/song_artwork.dart';
 
 /// BitChord-inspired iOS floating mini player with horizontal swipe-to-skip
 /// and upward drag to expand.
@@ -23,8 +27,7 @@ class MiniPlayer extends StatefulWidget {
   State<MiniPlayer> createState() => _MiniPlayerState();
 }
 
-class _MiniPlayerState extends State<MiniPlayer>
-    with TickerProviderStateMixin {
+class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
   late final AnimationController _pressController;
   late final Animation<double> _scaleAnimation;
 
@@ -32,7 +35,12 @@ class _MiniPlayerState extends State<MiniPlayer>
   late final AnimationController _swipeController;
   late Animation<double> _swipeAnimation;
   double _dragOffset = 0;
-  static const double _swipeThreshold = 64;
+  static const double _swipeThreshold = 72;
+  OverlayEntry? _pullPreview;
+  late final AnimationController _pullController = AnimationController(
+    vsync: this,
+  );
+  String _navigationBase = '/home';
 
   @override
   void initState() {
@@ -45,7 +53,7 @@ class _MiniPlayerState extends State<MiniPlayer>
       CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
     );
 
-    _swipeController = AnimationController(
+    _swipeController = AnimationController.unbounded(
       duration: const Duration(milliseconds: 260),
       vsync: this,
     );
@@ -56,29 +64,101 @@ class _MiniPlayerState extends State<MiniPlayer>
 
   @override
   void dispose() {
+    _pullPreview?.remove();
+    _pullController.dispose();
     _pressController.dispose();
     _swipeController.dispose();
     super.dispose();
   }
 
   void _openNowPlaying() {
+    FocusManager.instance.primaryFocus?.unfocus();
     HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      PageRouteBuilder<void>(
-        pageBuilder: (context, animation, _) => const NowPlayingPage(),
-        reverseTransitionDuration: const Duration(milliseconds: 250),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final tween = Tween(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).chain(CurveTween(curve: Curves.easeInOutCubic));
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
+    final route = PlayerSheetRoute(
+      reduceMotion: MediaQuery.disableAnimationsOf(context),
+      builder: (_) =>
+          NowPlayingPage(navigationBase: NavigationPaths.basePathFor(context)),
+    );
+    Navigator.of(context, rootNavigator: true).push(route);
+  }
+
+  void _startPull(DragStartDetails details) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    _navigationBase = NavigationPaths.basePathFor(context);
+    _pullPreview?.remove();
+    _pullController
+      ..stop()
+      ..value = 0;
+    // Navigator.push cancels active pointers. Preview in the overlay until
+    // release so the original mini-player keeps owning this drag.
+    _pullPreview = OverlayEntry(
+      builder: (overlayContext) => Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: _pullController,
+            builder: (context, child) => Stack(
+              children: [
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: CupertinoColors.black.withValues(
+                      alpha: .4 * _pullController.value,
+                    ),
+                  ),
+                ),
+                Transform.translate(
+                  offset: Offset(
+                    0,
+                    (1 - _pullController.value) *
+                        MediaQuery.sizeOf(context).height,
+                  ),
+                  child: child,
+                ),
+              ],
+            ),
+            child: NowPlayingPage(navigationBase: _navigationBase),
+          ),
+        ),
       ),
     );
+    Overlay.of(context, rootOverlay: true).insert(_pullPreview!);
+  }
+
+  void _updatePull(DragUpdateDetails details) {
+    _pullController.value =
+        (_pullController.value -
+                details.delta.dy / MediaQuery.sizeOf(context).height)
+            .clamp(0.0, 1.0);
+  }
+
+  void _finishPull(double velocity, {bool cancelled = false}) {
+    if (_pullPreview == null) return;
+    final progress = _pullController.value;
+    final commit =
+        !cancelled && (velocity < -350 || (velocity < 350 && progress > .15));
+    if (commit) {
+      _pullPreview?.remove();
+      _pullPreview = null;
+      Navigator.of(context, rootNavigator: true).push(
+        PlayerSheetRoute(
+          initialProgress: progress,
+          reduceMotion: MediaQuery.disableAnimationsOf(context),
+          builder: (_) => NowPlayingPage(navigationBase: _navigationBase),
+        ),
+      );
+    } else {
+      _pullController
+          .animateTo(
+            0,
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          )
+          .then((_) {
+            _pullPreview?.remove();
+            _pullPreview = null;
+          });
+    }
   }
 
   void _handleHorizontalDragUpdate(DragUpdateDetails details) {
@@ -94,30 +174,39 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   void _handleHorizontalDragEnd(DragEndDetails details) {
-    if (_dragOffset < -_swipeThreshold) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (_dragOffset < -_swipeThreshold || velocity < -600) {
       // Swiped left -> Next track
       HapticFeedback.mediumImpact();
       audioHandler.skipToNext();
-    } else if (_dragOffset > _swipeThreshold) {
+    } else if (_dragOffset > _swipeThreshold || velocity > 600) {
       // Swiped right -> Previous track
       HapticFeedback.mediumImpact();
       audioHandler.skipToPrevious();
     }
 
-    // Spring back to center
-    _swipeAnimation = Tween<double>(
-      begin: _dragOffset,
-      end: 0,
-    ).animate(
-      CurvedAnimation(parent: _swipeController, curve: Curves.easeOutCubic),
-    );
-    _swipeController.forward(from: 0).then((_) {
-      if (mounted) {
-        setState(() {
-          _dragOffset = 0;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      setState(() => _dragOffset = 0);
+      return;
+    }
+    _swipeAnimation = _swipeController;
+    _swipeController.value = _dragOffset;
+    _swipeController
+        .animateWith(
+          SpringSimulation(
+            SpringDescription.withDampingRatio(
+              mass: 1,
+              stiffness: 320,
+              ratio: .8,
+            ),
+            _dragOffset,
+            0,
+            velocity,
+          ),
+        )
+        .then((_) {
+          if (mounted) setState(() => _dragOffset = 0);
         });
-      }
-    });
   }
 
   @override
@@ -125,6 +214,16 @@ class _MiniPlayerState extends State<MiniPlayer>
     if (!isAudioHandlerInitialized) return const SizedBox.shrink();
 
     return StreamBuilder<FullPlayerState>(
+      initialData: FullPlayerState(
+        mediaItem: audioHandler.mediaItem.valueOrNull,
+        playbackState: audioHandler.playbackState.value,
+        queue: audioHandler.queue.value,
+        position: PositionData(
+          Duration.zero,
+          Duration.zero,
+          audioHandler.mediaItem.valueOrNull?.duration ?? Duration.zero,
+        ),
+      ),
       stream: audioHandler.fullPlayerStateStream,
       builder: (context, stateSnapshot) {
         final state = stateSnapshot.data;
@@ -134,9 +233,7 @@ class _MiniPlayerState extends State<MiniPlayer>
         }
 
         final isDark = isAppDarkMode(context);
-        final bg = isDark
-            ? const Color(0xE6161618)
-            : const Color(0xF2FFFFFF);
+        final bg = isDark ? const Color(0xE6161618) : const Color(0xF2FFFFFF);
         final border = isDark
             ? const Color(0x33FFFFFF)
             : const Color(0x1F000000);
@@ -144,7 +241,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             ? CupertinoColors.white
             : CupertinoColors.black;
         final artistColor = isDark
-            ? MusifiedStyle.darkSecondary
+            ? MusynStyle.darkSecondary
             : CupertinoColors.systemGrey;
 
         final metadataDuration = metadata.duration;
@@ -160,14 +257,6 @@ class _MiniPlayerState extends State<MiniPlayer>
                       totalDuration.inMilliseconds)
                   .clamp(0.0, 1.0);
 
-        final ytid = metadata.extras?['ytid']?.toString() ?? metadata.id;
-        final rawImage =
-            metadata.artUri?.toString() ??
-            metadata.extras?['lowResImage']?.toString() ??
-            metadata.extras?['image']?.toString() ??
-            'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
-        final imageUrl = upgradeArtworkUrl(rawImage, targetSize: 120);
-
         final isPlaying = state.playbackState.playing;
         final isLoading =
             state.playbackState.processingState ==
@@ -176,42 +265,50 @@ class _MiniPlayerState extends State<MiniPlayer>
                 AudioProcessingState.buffering;
         final hasNext = audioHandler.hasNext;
 
-        final currentSwipeOffset = _swipeController.isAnimating
-            ? _swipeAnimation.value
-            : _dragOffset;
-
         return Padding(
-          padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
           child: AnimatedBuilder(
-            animation: _scaleAnimation,
+            animation: Listenable.merge([_scaleAnimation, _swipeController]),
             builder: (context, child) => Transform.scale(
               scale: _scaleAnimation.value,
               child: GestureDetector(
+                dragStartBehavior: DragStartBehavior.down,
                 onTapDown: (_) => _pressController.forward(),
                 onTapUp: (_) => _pressController.reverse(),
                 onTapCancel: () => _pressController.reverse(),
                 onTap: _openNowPlaying,
-                onVerticalDragEnd: (details) {
-                  // Drag up opens now playing
-                  if ((details.primaryVelocity ?? 0) < -150) {
-                    _openNowPlaying();
-                  }
+                onVerticalDragStart: _startPull,
+                onVerticalDragUpdate: _updatePull,
+                onVerticalDragCancel: () => _finishPull(0, cancelled: true),
+                onVerticalDragEnd: (details) =>
+                    _finishPull(details.primaryVelocity ?? 0),
+                onHorizontalDragStart: (_) {
+                  _swipeController.stop();
+                  _dragOffset = 0;
+                },
+                onHorizontalDragCancel: () {
+                  _swipeController.stop();
+                  setState(() => _dragOffset = 0);
                 },
                 onHorizontalDragUpdate: _handleHorizontalDragUpdate,
                 onHorizontalDragEnd: _handleHorizontalDragEnd,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
+                  borderRadius: BorderRadius.circular(MusynStyle.radiusPill),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                     child: Container(
                       height: MiniPlayer.playerHeight,
                       decoration: BoxDecoration(
                         color: bg,
-                        borderRadius: BorderRadius.circular(MusifiedStyle.radiusPill),
+                        borderRadius: BorderRadius.circular(
+                          MusynStyle.radiusPill,
+                        ),
                         border: Border.all(color: border, width: 0.5),
                         boxShadow: [
                           BoxShadow(
-                            color: CupertinoColors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                            color: CupertinoColors.black.withValues(
+                              alpha: isDark ? 0.4 : 0.08,
+                            ),
                             blurRadius: 18,
                             offset: const Offset(0, 6),
                           ),
@@ -234,9 +331,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                                 alignment: Alignment.centerLeft,
                                 child: FractionallySizedBox(
                                   widthFactor: progress,
-                                  child: Container(
-                                    color: MusifiedStyle.appleRed,
-                                  ),
+                                  child: Container(color: titleColor),
                                 ),
                               ),
                             ),
@@ -244,34 +339,27 @@ class _MiniPlayerState extends State<MiniPlayer>
 
                           // Main content with horizontal swipe translation
                           Transform.translate(
-                            offset: Offset(currentSwipeOffset, 0),
+                            offset: Offset(
+                              _swipeController.isAnimating
+                                  ? _swipeAnimation.value
+                                  : _dragOffset,
+                              0,
+                            ),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
                               child: Row(
                                 children: [
                                   // Artwork
                                   Hero(
-                                    tag: 'now_playing_art_$ytid',
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: SizedBox(
-                                        width: 44,
-                                        height: 44,
-                                        child: CachedNetworkImage(
-                                          imageUrl: imageUrl,
-                                          fit: BoxFit.cover,
-                                          memCacheWidth: 120,
-                                          memCacheHeight: 120,
-                                          errorWidget: (_, __, ___) => ColoredBox(
-                                            color: musifiedSecondarySurface(isDark),
-                                            child: const Icon(
-                                              CupertinoIcons.music_note,
-                                              size: 20,
-                                              color: CupertinoColors.systemGrey,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                    flightShuttleBuilder:
+                                        SongArtworkWidget.flightShuttle,
+                                    tag: 'playing-art-${metadata.id}',
+                                    child: SongArtworkWidget(
+                                      metadata: metadata,
+                                      size: 40,
+                                      borderRadius: 8,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -279,13 +367,15 @@ class _MiniPlayerState extends State<MiniPlayer>
                                   // Track info
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
                                           metadata.title,
                                           style: TextStyle(
-                                            fontFamily: MusifiedStyle.uiFont,
+                                            fontFamily: MusynStyle.uiFont,
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             letterSpacing: -0.2,
@@ -299,7 +389,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                                         Text(
                                           metadata.artist ?? '',
                                           style: TextStyle(
-                                            fontFamily: MusifiedStyle.uiFont,
+                                            fontFamily: MusynStyle.uiFont,
                                             fontSize: 13,
                                             fontWeight: FontWeight.w400,
                                             color: artistColor,
@@ -350,7 +440,9 @@ class _MiniPlayerState extends State<MiniPlayer>
                                       },
                                       child: Icon(
                                         CupertinoIcons.forward_fill,
-                                        color: titleColor.withValues(alpha: 0.8),
+                                        color: titleColor.withValues(
+                                          alpha: 0.8,
+                                        ),
                                         size: 22,
                                       ),
                                     ),

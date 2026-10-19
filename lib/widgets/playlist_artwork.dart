@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/utilities/artwork_provider.dart';
-import 'package:musified/widgets/no_artwork_cube.dart';
+import 'package:musyn/utilities/artwork_provider.dart';
+import 'package:musyn/widgets/no_artwork_cube.dart';
 
 class PlaylistArtwork extends StatelessWidget {
   const PlaylistArtwork({

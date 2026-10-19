@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:musified/services/audio/playback_controller.dart';
+import 'package:musyn/services/audio/playback_controller.dart';
 
 PlaybackController? audioHandlerInstance;
 final audioHandlerReady = ValueNotifier<bool>(false);

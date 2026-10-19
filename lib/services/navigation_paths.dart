@@ -3,8 +3,13 @@ import 'package:go_router/go_router.dart';
 
 class NavigationPaths {
   static const String homePath = '/home';
+  static const String explorePath = '/explore';
   static const String searchPath = '/search';
   static const String libraryPath = '/library';
+  static String downloadsPath(BuildContext context) =>
+      '${basePathFor(context)}/downloads';
+  static String chartsPath(BuildContext context) =>
+      '${basePathFor(context)}/charts';
   static String playlistPath(BuildContext context, String playlistId) =>
       '${basePathFor(context)}/playlist/${Uri.encodeComponent(playlistId)}';
 
@@ -32,6 +37,7 @@ class NavigationPaths {
   static String basePathFor(BuildContext context) {
     try {
       final currentPath = GoRouterState.of(context).uri.path;
+      if (currentPath.startsWith(explorePath)) return explorePath;
       if (currentPath.startsWith(searchPath)) return searchPath;
       if (currentPath.startsWith(libraryPath)) return libraryPath;
     } catch (_) {}

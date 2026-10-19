@@ -1,11 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/source_resolver.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/mediaitem.dart';
-import 'package:musified/widgets/song_artwork.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/source_resolver.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/mediaitem.dart';
+import 'package:musyn/widgets/song_artwork.dart';
 
 class DownloadPickerSheet extends StatefulWidget {
   const DownloadPickerSheet({
@@ -89,8 +89,8 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     final title = widget.song['title']?.toString() ?? 'Track';
     final artist = widget.song['artist']?.toString() ?? '';
     final isDark = isAppDarkMode(context);
-    const primaryColor = MusifiedStyle.appleRed;
-    final cardBg = musifiedSecondarySurface(isDark);
+    final primaryColor = CupertinoTheme.of(context).primaryColor;
+    final cardBg = musynSecondarySurface(isDark);
     final textColor = isDark ? CupertinoColors.white : CupertinoColors.black;
     const secondaryTextColor = CupertinoColors.systemGrey;
 
@@ -101,128 +101,85 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
 
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 18,
-          right: 18,
-          top: 14,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 18,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .85,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0x66FFFFFF)
-                      : const Color(0x33000000),
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 18,
+              right: 18,
+              top: 14,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 18,
             ),
-            const SizedBox(height: 18),
-            Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SongArtworkWidget(
-                    metadata: mapToMediaItem(widget.song),
-                    size: 54,
-                    errorWidgetIconSize: 24,
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0x66FFFFFF)
+                          : const Color(0x33000000),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontFamily: MusifiedStyle.displayFont,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: textColor,
-                          letterSpacing: -0.3,
-                          decoration: TextDecoration.none,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SongArtworkWidget(
+                        metadata: mapToMediaItem(widget.song),
+                        size: 54,
+                        errorWidgetIconSize: 24,
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        artist.isEmpty ? 'Musified' : artist,
-                        style: const TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
-                          fontSize: 13,
-                          color: secondaryTextColor,
-                          decoration: TextDecoration.none,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontFamily: MusynStyle.displayFont,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: textColor,
+                              letterSpacing: -0.3,
+                              decoration: TextDecoration.none,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            artist.isEmpty ? 'Musyn' : artist,
+                            style: const TextStyle(
+                              fontFamily: MusynStyle.uiFont,
+                              fontSize: 13,
+                              color: secondaryTextColor,
+                              decoration: TextDecoration.none,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'AUDIO PROVIDER',
-              style: TextStyle(
-                fontFamily: MusifiedStyle.uiFont,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: secondaryTextColor,
-                letterSpacing: 0.5,
-                decoration: TextDecoration.none,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildSourceOption(
-              value: 'saavn',
-              title: 'JioSaavn',
-              subtitle: _isCheckingSaavn
-                  ? 'Checking availability...'
-                  : (_availabilityUnknown
-                        ? 'Availability checked when downloading'
-                        : _isSaavnAvailable
-                        ? 'AAC · up to 320 kbps'
-                        : 'Unavailable on JioSaavn for this track'),
-              icon: CupertinoIcons.waveform,
-              iconBg: CupertinoColors.systemGreen,
-              isEnabled: !_isCheckingSaavn && _isSaavnAvailable,
-              isDark: isDark,
-              primaryColor: primaryColor,
-              cardBg: cardBg,
-              textColor: textColor,
-              secondaryTextColor: secondaryTextColor,
-            ),
-            _buildSourceOption(
-              value: 'youtube',
-              title: 'YouTube Music',
-              subtitle: 'AAC · best available within the quality limit',
-              icon: CupertinoIcons.play_rectangle_fill,
-              iconBg: const Color(0xFFFF0033),
-              isEnabled: true,
-              isDark: isDark,
-              primaryColor: primaryColor,
-              cardBg: cardBg,
-              textColor: textColor,
-              secondaryTextColor: secondaryTextColor,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+                const SizedBox(height: 20),
                 const Text(
-                  'AUDIO QUALITY',
+                  'AUDIO PROVIDER',
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: secondaryTextColor,
@@ -230,77 +187,138 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                     decoration: TextDecoration.none,
                   ),
                 ),
-                Text(
-                  'Up to $_selectedQuality kbps',
-                  style: const TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: primaryColor,
-                    decoration: TextDecoration.none,
-                  ),
+                const SizedBox(height: 8),
+                _buildSourceOption(
+                  value: 'saavn',
+                  title: 'JioSaavn',
+                  subtitle: !jiosaavnEnabled.value
+                      ? 'Enable JioSaavn in Settings to use this source'
+                      : _isCheckingSaavn
+                      ? 'Checking availability...'
+                      : (_availabilityUnknown
+                            ? 'Availability checked when downloading'
+                            : _isSaavnAvailable
+                            ? 'AAC · up to 320 kbps'
+                            : 'Unavailable on JioSaavn for this track'),
+                  icon: CupertinoIcons.waveform,
+                  iconBg: CupertinoColors.systemGreen,
+                  isEnabled: !_isCheckingSaavn && _isSaavnAvailable,
+                  isDark: isDark,
+                  primaryColor: primaryColor,
+                  cardBg: cardBg,
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: CupertinoSlidingSegmentedControl<String>(
-                groupValue: _selectedQuality,
-                children: {
-                  for (final quality in _availableBitrates)
-                    quality: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text('$quality kbps'),
-                    ),
-                },
-                onValueChanged: (quality) {
-                  if (quality == null) return;
-                  HapticFeedback.selectionClick();
-                  setState(() => _selectedQuality = quality);
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Downloads use the selected source. If unavailable, you can choose another source and retry.',
-              style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: CupertinoButton(
-                color: primaryColor,
-                borderRadius: BorderRadius.circular(14),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  Navigator.pop(context);
-                  widget.onDownload(_selectedSource, _selectedQuality);
-                },
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                _buildSourceOption(
+                  value: 'youtube',
+                  title: 'YouTube Music',
+                  subtitle: 'AAC · best available within the quality limit',
+                  icon: CupertinoIcons.play_rectangle_fill,
+                  iconBg: const Color(0xFFFF0033),
+                  isEnabled: true,
+                  isDark: isDark,
+                  primaryColor: primaryColor,
+                  cardBg: cardBg,
+                  textColor: textColor,
+                  secondaryTextColor: secondaryTextColor,
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 12,
+                  runSpacing: 6,
                   children: [
-                    Icon(
-                      CupertinoIcons.arrow_down_circle_fill,
-                      color: CupertinoColors.white,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Download Track',
+                    const Text(
+                      'AUDIO QUALITY',
                       style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
+                        fontFamily: MusynStyle.uiFont,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: CupertinoColors.white,
+                        color: secondaryTextColor,
+                        letterSpacing: 0.5,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                    Text(
+                      'Up to $_selectedQuality kbps',
+                      style: TextStyle(
+                        fontFamily: MusynStyle.uiFont,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: primaryColor,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: CupertinoSlidingSegmentedControl<String>(
+                    groupValue: _selectedQuality,
+                    children: {
+                      for (final quality in _availableBitrates)
+                        quality: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text('$quality kbps'),
+                        ),
+                    },
+                    onValueChanged: (quality) {
+                      if (quality == null) return;
+                      HapticFeedback.selectionClick();
+                      setState(() => _selectedQuality = quality);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Downloads use the selected source. If unavailable, you can choose another source and retry.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: CupertinoButton(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      Navigator.pop(context);
+                      widget.onDownload(_selectedSource, _selectedQuality);
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          CupertinoIcons.arrow_down_circle_fill,
+                          color: CupertinoTheme.of(
+                            context,
+                          ).primaryContrastingColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Download Track',
+                          style: TextStyle(
+                            fontFamily: MusynStyle.uiFont,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: CupertinoTheme.of(
+                              context,
+                            ).primaryContrastingColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -366,7 +384,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                     Text(
                       title,
                       style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
+                        fontFamily: MusynStyle.uiFont,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: selected ? primaryColor : textColor,
@@ -377,7 +395,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
+                        fontFamily: MusynStyle.uiFont,
                         fontSize: 12,
                         color: secondaryTextColor,
                         decoration: TextDecoration.none,
@@ -413,7 +431,7 @@ Future<void> showDownloadPicker(
     builder: (ctx) => DecoratedBox(
       decoration: BoxDecoration(
         color: isDark
-            ? musifiedElevatedSurface(isDark)
+            ? musynElevatedSurface(isDark)
             : const Color(0xFFFFFFFF),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),

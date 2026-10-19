@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/widgets/section_title.dart';
+import 'package:musyn/widgets/section_title.dart';
 
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
@@ -18,13 +17,7 @@ class SectionHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: SectionTitle(
-            title,
-            MusifiedStyle.appleRed,
-            icon: icon,
-          ),
-        ),
+        Expanded(child: SectionTitle(title, CupertinoColors.label)),
         if (actionButton != null) actionButton!,
       ],
     );

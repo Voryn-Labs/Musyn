@@ -1,11 +1,10 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/playlist_download_service.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/offline_playlist_dialogs.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/playlist_download_service.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/offline_playlist_dialogs.dart';
 
 class PlaylistDownloadButton extends StatefulWidget {
   const PlaylistDownloadButton({
@@ -60,13 +59,13 @@ class _PlaylistDownloadButtonState extends State<PlaylistDownloadButton> {
           if (_isOffline) {
             return CupertinoButton(
               padding: const EdgeInsets.all(10),
-              color: MusifiedStyle.appleRed,
+              color: CupertinoTheme.of(context).primaryColor,
               borderRadius: BorderRadius.circular(22),
               onPressed: () =>
                   showRemoveOfflinePlaylistDialog(context, playlistId),
-              child: const Icon(
+              child: Icon(
                 CupertinoIcons.arrow_down_circle_fill,
-                color: CupertinoColors.white,
+                color: CupertinoTheme.of(context).primaryContrastingColor,
                 size: 20,
               ),
             );
@@ -93,13 +92,13 @@ class _PlaylistDownloadButtonState extends State<PlaylistDownloadButton> {
 
               return CupertinoButton(
                 padding: const EdgeInsets.all(10),
-                color: musifiedSecondarySurface(isDark),
+                color: musynSecondarySurface(isDark),
                 borderRadius: BorderRadius.circular(22),
                 onPressed: () => _download(context),
-                child: const Icon(
+                child: Icon(
                   CupertinoIcons.arrow_down_to_line,
                   size: 20,
-                  color: MusifiedStyle.appleRed,
+                  color: CupertinoTheme.of(context).primaryColor,
                 ),
               );
             },

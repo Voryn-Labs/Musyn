@@ -1,132 +1,74 @@
-name: Build iOS IPA
-
-# Manual only. A push to main must not build an IPA while playback is still being fixed.
+name: Build Musyn iOS
 on:
   workflow_dispatch:
-
+    inputs:
+      publish:
+        description: Publish the 0.1 preview and update the installer source
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
 permissions:
   contents: write
-
+concurrency:
+  group: musyn-ios-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build-ios:
-    name: Build iOS IPA
-    runs-on: macos-14
-
+    runs-on: macos-15
+    timeout-minutes: 45
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          flutter-version: '3.47.7'
+          channel: stable
           cache: true
-
-      - name: Cache pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
-
-      - name: Cache CocoaPods & Specs
-        uses: actions/cache@v4
-        with:
-          path: |
-            ios/Pods
-            ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
-
-      - name: Cache Xcode DerivedData
-        uses: actions/cache@v4
-        with:
-          path: ~/Library/Developer/Xcode/DerivedData
-          key: ${{ runner.os }}-deriveddata-${{ hashFiles('ios/Podfile.lock', 'pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-deriveddata-
-
       - name: Install dependencies
-        run: |
-          flutter pub get
-          cd ios
-          pod install
-          cd ..
-
+        run: flutter pub get
       - name: Analyze and test
         run: |
-          flutter analyze --no-fatal-infos --no-fatal-warnings
+          flutter analyze
           flutter test
-
-      - name: Build iOS App (No Codesign)
-        # Unsigned IPA for LiveContainer / SideStore / AltStore sideload
-        # (see readmes/10_ios_build.md — UIBackgroundModes audio only).
+          python3 scripts/verify_branding.py
+          plutil -lint ios/Runner/Info.plist
+          plutil -lint ios/Runner.xcodeproj/project.pbxproj
+      - name: Build unsigned iOS app
         run: flutter build ios --release --no-codesign
-
-      - name: Package into IPA
+      - name: Package and verify
+        id: package
         run: |
           mkdir -p build/ipa/Payload
           cp -R build/ios/iphoneos/Runner.app build/ipa/Payload/Runner.app
           cd build/ipa
-          zip -r Musified.ipa Payload
-          ls -la Musified.ipa
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+          zip -q -r Musyn.ipa Payload
+          shasum -a 256 Musyn.ipa > Musyn.ipa.sha256
+          cd ../..
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/ios/iphoneos/Runner.app/Info.plist)
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          python3 scripts/release_feed.py --ipa build/ipa/Musyn.ipa --tag "v$VERSION"
+      - uses: actions/upload-artifact@v4
         with:
-          name: Musified-ipa
-          path: build/ipa/Musified.ipa
+          name: Musyn-ios-${{ github.run_number }}
+          path: |
+            build/ipa/Musyn.ipa
+            build/ipa/Musyn.ipa.sha256
+            source.json
+            apps.json
           if-no-files-found: error
-
-      - name: Extract app version
-        id: app_version
-        run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1 | tr -d ' ')
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Update apps.json with build metadata
-        run: |
-          IPA_SIZE=$(wc -c < build/ipa/Musified.ipa | tr -d ' ')
-          DATE_NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          python3 -c "
-          import json
-          with open('apps.json', 'r') as f:
-              data = json.load(f)
-          data['apps'][0]['version'] = '${{ env.VERSION }}'
-          data['apps'][0]['size'] = int('$IPA_SIZE')
-          data['apps'][0]['versionDate'] = '$DATE_NOW'
-          data['apps'][0]['downloadURL'] = 'https://github.com/tinyredphoenix/Musified/releases/latest/download/Musified.ipa'
-          data['apps'][0]['versionDescription'] = 'Musified v${{ env.VERSION }}: Apple Music UI with YouTube Music & JioSaavn 320k lossless audio, karaoke synced lyrics, and OLED black theme.'
-          with open('apps.json', 'w') as f:
-              json.dump(data, f, indent=2)
-          "
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps.json
-          git commit -m "Update apps.json to v${{ env.VERSION }} [skip ci]" || true
-          git push origin main || true
-
-      - name: Delete existing release
-        run: gh release delete "v${{ env.VERSION }}" --yes || true
+      - name: Publish preview
+        if: inputs.publish || startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ env.VERSION }}"
-          name: "Musified iOS v${{ env.VERSION }}"
-          body: "Ready-to-install unsigned iOS IPA for Musified v${{ env.VERSION }} (YouTube Music + JioSaavn 320k client)."
-          draft: false
-          prerelease: false
-          files: |
-            build/ipa/Musified.ipa
-            apps.json
-          make_latest: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.package.outputs.tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo 'This version already exists. Increment the version before publishing.'
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn 0.1 — Voryn Labs" --notes-file docs/releases/0.1.0.md --prerelease build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add source.json apps.json
+          git commit -m 'chore(release): publish Musyn installer feed'
+          git push origin HEAD:main

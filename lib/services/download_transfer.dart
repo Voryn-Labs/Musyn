@@ -52,6 +52,7 @@ Future<void> writeDownloadAtomically({
   required Stream<List<int>> bytes,
   required DownloadCancellation cancellation,
   int? expectedBytes,
+  void Function(int received, int? total)? onProgress,
   int minimumBytes = 8193,
   Duration idleTimeout = const Duration(seconds: 20),
 }) async {
@@ -67,6 +68,7 @@ Future<void> writeDownloadAtomically({
       final chunk = iterator.current;
       sink.add(chunk);
       received += chunk.length;
+      onProgress?.call(received, expectedBytes);
     }
     await sink.flush();
     await sink.close();

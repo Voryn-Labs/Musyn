@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:musified/constants/artist_constants.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/youtube_client.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/formatter.dart';
+import 'package:musyn/constants/artist_constants.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/youtube_client.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/formatter.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:youtube_music_explode_dart/youtube_music_explode_dart.dart';
 

@@ -1,239 +1,213 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/youtube_auth_service.dart';
-import 'package:musified/services/youtube_music_sync_service.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
 
 void showCreatePlaylistDialog(
   BuildContext context, {
   dynamic songToAdd,
   List<dynamic>? songsToAdd,
+  String? folderId,
 }) {
   final nameController = TextEditingController();
   final linkController = TextEditingController();
   var isCustom = true;
-
+  var busy = false;
+  String? error;
   showCupertinoModalPopup<void>(
     context: context,
-    builder: (ctx) {
-      final isDark = isAppDarkMode(ctx);
-      final sheetColor = isDark
-          ? MusifiedStyle.elevated
-          : MusifiedStyle.lightElevated;
-      final hairline = isDark
-          ? MusifiedStyle.hairline
-          : MusifiedStyle.lightHairline;
-      final primary = CupertinoTheme.of(ctx).primaryColor;
-      final labelColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-      final fieldFill = isDark
-          ? MusifiedStyle.surface
-          : MusifiedStyle.lightSurfaceHigh;
-      final placeholderColor = isDark
-          ? MusifiedStyle.tertiaryLabel
-          : MusifiedStyle.lightTertiaryLabel;
-      final unselectedLabel = isDark
-          ? MusifiedStyle.secondaryLabel
-          : MusifiedStyle.lightSecondaryLabel;
-
-      return Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-        child: StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Container(
-              decoration: BoxDecoration(
-                color: sheetColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(MusifiedStyle.radiusXl),
-                ),
-                border: Border(top: BorderSide(color: hairline)),
+    builder: (sheet) => StatefulBuilder(
+      builder: (sheet, update) {
+        final dark = isAppDarkMode(sheet);
+        final foreground = CupertinoTheme.of(sheet).primaryContrastingColor;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(sheet).bottom,
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheet).height * .85,
+            ),
+            decoration: BoxDecoration(
+              color: musynSheetCard(dark),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(22),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SafeArea(
-                top: false,
+            ),
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10, bottom: 8),
-                      child: Container(
-                        width: 36,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0x66FFFFFF)
-                              : const Color(0x33000000),
-                          borderRadius: BorderRadius.circular(2.5),
-                        ),
+                    Container(
+                      width: 36,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemGrey3,
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     ),
-                    Text(
+                    const SizedBox(height: 18),
+                    const Text(
                       'New Playlist',
-                      style: MusifiedStyle.largeTitle(labelColor),
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
                       child: CupertinoSlidingSegmentedControl<bool>(
                         groupValue: isCustom,
-                        thumbColor: primary,
-                        backgroundColor: fieldFill,
-                        onValueChanged: (val) {
-                          if (val == null) return;
-                          setDialogState(() => isCustom = val);
+                        children: const {
+                          true: Text('Custom'),
+                          false: Text('YouTube Link'),
                         },
-                        children: {
-                          true: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            child: Text(
-                              'Custom',
-                              style: TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isCustom
-                                    ? CupertinoColors.white
-                                    : unselectedLabel,
-                              ),
-                            ),
-                          ),
-                          false: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            child: Text(
-                              'YouTube Link',
-                              style: TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: !isCustom
-                                    ? CupertinoColors.white
-                                    : unselectedLabel,
-                              ),
-                            ),
-                          ),
+                        onValueChanged: (value) {
+                          if (!busy && value != null)
+                            update(() {
+                              isCustom = value;
+                              error = null;
+                            });
                         },
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     CupertinoTextField(
                       controller: isCustom ? nameController : linkController,
+                      enabled: !busy,
                       placeholder: isCustom
                           ? 'Playlist name'
                           : 'YouTube playlist URL',
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      style: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
-                        fontSize: 16,
-                        color: labelColor,
-                      ),
-                      placeholderStyle: TextStyle(
-                        fontFamily: MusifiedStyle.uiFont,
-                        fontSize: 16,
-                        color: placeholderColor,
-                      ),
-                      cursorColor: primary,
-                      decoration: BoxDecoration(
-                        color: fieldFill,
-                        borderRadius: BorderRadius.circular(
-                          MusifiedStyle.radiusMd,
-                        ),
-                        border: Border.all(color: hairline),
-                      ),
+                      padding: const EdgeInsets.all(14),
+                      onChanged: (_) {
+                        if (error != null) update(() => error = null);
+                      },
                     ),
-                    const SizedBox(height: 16),
+                    if (error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          error!,
+                          style: const TextStyle(
+                            color: CupertinoColors.destructiveRed,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 18),
                     Row(
                       children: [
                         Expanded(
                           child: CupertinoButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: Text(
-                              ctx.l10n.cancel,
-                              style: TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
-                                color: unselectedLabel,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            onPressed: busy ? null : () => Navigator.pop(sheet),
+                            child: const Text('Cancel'),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: CupertinoButton.filled(
-                            borderRadius: BorderRadius.circular(
-                              MusifiedStyle.radiusMd,
-                            ),
-                            onPressed: () async {
-                              Navigator.pop(ctx);
-                              if (isCustom) {
-                                final name = nameController.text.trim();
-                                if (name.isEmpty) return;
-                                final res = createCustomPlaylist(
-                                  name,
-                                  null,
-                                  context,
-                                );
-                                if (songToAdd != null && songToAdd is Map) {
-                                  addSongInCustomPlaylist(
-                                    context,
-                                    res.$2,
-                                    songToAdd,
-                                  );
-                                } else if (songsToAdd != null &&
-                                    songsToAdd.isNotEmpty) {
-                                  addSongsInCustomPlaylist(
-                                    context,
-                                    res.$2,
-                                    songsToAdd.whereType<Map>().toList(),
-                                  );
-                                }
-                                if (context.mounted) {
-                                  showToast(context, res.$1);
-                                }
-                              } else {
-                                final link = linkController.text.trim();
-                                if (link.isNotEmpty) {
-                                  final result = await addUserPlaylist(
-                                    link,
-                                    context,
-                                  );
-                                  if (context.mounted) {
-                                    showToast(context, result);
-                                  }
-                                }
-                              }
-                            },
-                            child: Text(
-                              ctx.l10n.create,
-                              style: const TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
-                                color: CupertinoColors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                            onPressed: busy
+                                ? null
+                                : () async {
+                                    final value =
+                                        (isCustom
+                                                ? nameController
+                                                : linkController)
+                                            .text
+                                            .trim();
+                                    if (value.isEmpty) {
+                                      update(
+                                        () => error = isCustom
+                                            ? 'Enter a playlist name.'
+                                            : 'Enter a YouTube playlist link.',
+                                      );
+                                      return;
+                                    }
+                                    if (isCustom) {
+                                      final result = createCustomPlaylist(
+                                        value,
+                                        null,
+                                        context,
+                                      );
+                                      final entries =
+                                          songsToAdd ??
+                                          (songToAdd is Map
+                                              ? [songToAdd]
+                                              : <dynamic>[]);
+                                      if (entries.isNotEmpty)
+                                        addSongsInCustomPlaylist(
+                                          context,
+                                          result.$2,
+                                          entries.whereType<Map>().toList(),
+                                        );
+                                      if (folderId != null) {
+                                        final playlist =
+                                            getUserCustomPlaylists().firstWhere(
+                                              (p) => p['ytid'] == result.$2,
+                                            );
+                                        movePlaylistToFolder(
+                                          playlist,
+                                          folderId,
+                                          context,
+                                        );
+                                      }
+                                      Navigator.pop(sheet);
+                                      showToast(context, result.$1);
+                                    } else {
+                                      update(() {
+                                        busy = true;
+                                        error = null;
+                                      });
+                                      final before = userPlaylists.value.length;
+                                      try {
+                                        final result = await addUserPlaylist(
+                                          value,
+                                          context,
+                                        );
+                                        if (!sheet.mounted) return;
+                                        if (userPlaylists.value.length >
+                                            before) {
+                                          Navigator.pop(sheet);
+                                          if (context.mounted)
+                                            showToast(context, result);
+                                        } else
+                                          update(
+                                            () => error =
+                                                'This playlist could not be added. Check the link, your connection, and whether it is already saved.',
+                                          );
+                                      } catch (_) {
+                                        if (sheet.mounted)
+                                          update(
+                                            () => error =
+                                                'This playlist could not be added. Try again.',
+                                          );
+                                      } finally {
+                                        if (sheet.mounted)
+                                          update(() => busy = false);
+                                      }
+                                    }
+                                  },
+                            child: busy
+                                ? CupertinoActivityIndicator(color: foreground)
+                                : const Text('Create'),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-      );
-    },
+            ),
+          ),
+        );
+      },
+    ),
   ).whenComplete(() {
     nameController.dispose();
     linkController.dispose();

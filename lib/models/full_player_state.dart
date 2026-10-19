@@ -1,5 +1,5 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:musified/models/position_data.dart';
+import 'package:musyn/models/position_data.dart';
 
 class FullPlayerState {
   FullPlayerState({

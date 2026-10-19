@@ -1,4 +1,4 @@
-import 'package:musified/services/ytdlp_client_sync_service.dart';
+import 'package:musyn/services/ytdlp_client_sync_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 /// Active (synced or built-in) visionos client used first for stream manifests.

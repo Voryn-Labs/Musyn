@@ -1,34 +1,36 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:musified/constants/app_constants.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/jiosaavn_service.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/youtube_auth_service.dart';
-import 'package:musified/services/youtube_music_sync_service.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/widgets/mini_player_bottom_space.dart';
-import 'package:musified/widgets/playlist_cube.dart';
-import 'package:musified/widgets/section_header.dart';
-import 'package:musified/widgets/song_actions_sheet.dart';
+import 'package:musyn/constants/app_constants.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/discovery_state.dart';
+import 'package:musyn/services/jiosaavn_service.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/library_ranking.dart';
+import 'package:musyn/widgets/account_button.dart';
+import 'package:musyn/widgets/catalogue_artwork.dart';
+import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/discovery_links.dart';
+import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/playlist_cube.dart';
+import 'package:musyn/widgets/section_header.dart';
+import 'package:musyn/widgets/song_actions_sheet.dart';
 
-/// JioSaavn top-chart playlists (fetched once per app launch).
-final ValueNotifier<List<Map<String, dynamic>>> saavnCharts = ValueNotifier([]);
-
-/// YouTube Music chart playlists (Top 100, etc.) fetched once per session.
-final ValueNotifier<List<Map<String, dynamic>>> ytChartPlaylists =
-    ValueNotifier([]);
+export 'package:musyn/services/discovery_state.dart'
+    show saavnCharts, ytChartPlaylists;
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.loadFeed});
+  final Future<void> Function()? loadFeed;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -37,6 +39,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool _recentsIsList = false;
   bool _isLoading = true;
+  bool _feedFailed = false;
+  int _feedRequest = 0;
 
   @override
   void initState() {
@@ -45,83 +49,92 @@ class _HomePageState extends State<HomePage> {
     unawaited(_loadTrending());
   }
 
-  Future<void> _loadTrending() async {
-    try {
-      await Future.wait([
-        YouTubeMusicSyncService().fetchTrendingTracks(),
-        _loadSaavnCharts(),
-        _loadYtChartPlaylists(),
-      ]);
-    } catch (e) {
-      logger.log('Error loading trending: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+  Future<void> _loadTrending({bool refresh = false}) async {
+    final request = ++_feedRequest;
+    setState(() {
+      _isLoading = true;
+      _feedFailed = false;
+    });
+    var failed = false;
+    Future<void> load(Future<void> Function() fetch) async {
+      try {
+        await fetch().timeout(const Duration(seconds: 15));
+      } catch (error) {
+        failed = true;
+        logger.log('Home feed section failed', error: error);
       }
     }
-  }
 
-  Future<void> _loadSaavnCharts() async {
-    try {
-      if (saavnCharts.value.isNotEmpty) return;
-      final charts = await JioSaavnService().fetchTopCharts(limit: 15);
-      if (charts.isNotEmpty) saavnCharts.value = charts;
-    } catch (e) {
-      logger.log('Error loading Saavn charts: $e');
+    if (widget.loadFeed != null) {
+      await load(widget.loadFeed!);
+    } else {
+      await Future.wait([
+        load(() async {
+          await YouTubeMusicSyncService().fetchTrendingTracks();
+          if (trendingError.value != null) failed = true;
+        }),
+        if (jiosaavnEnabled.value)
+          load(() async {
+            if (!refresh && saavnCharts.value.isNotEmpty) return;
+            final charts = await JioSaavnService().fetchTopCharts(limit: 15);
+            if (charts.isEmpty) {
+              failed = true;
+            } else {
+              saavnCharts.value = charts;
+            }
+          }),
+        load(() async {
+          if (!refresh && ytChartPlaylists.value.isNotEmpty) return;
+          final charts = await YouTubeMusicSyncService().fetchChartPlaylists();
+          if (charts.isEmpty) {
+            failed = true;
+          } else {
+            ytChartPlaylists.value = charts;
+          }
+        }),
+      ]);
     }
-  }
-
-  Future<void> _loadYtChartPlaylists() async {
-    try {
-      if (ytChartPlaylists.value.isNotEmpty) return;
-      final playlists = await YouTubeMusicSyncService().fetchChartPlaylists();
-      if (playlists.isNotEmpty) ytChartPlaylists.value = playlists;
-    } catch (e) {
-      logger.log('Error loading YT chart playlists: $e');
-    }
+    if (mounted && request == _feedRequest)
+      setState(() {
+        _isLoading = false;
+        _feedFailed = failed;
+      });
   }
 
   Future<void> _handleRefresh() async {
-    unawaited(HapticFeedback.mediumImpact());
-    final futures = <Future<void>>[
-      YouTubeMusicSyncService().fetchTrendingTracks(),
-      () async {
-        final charts = await JioSaavnService().fetchTopCharts(limit: 15);
-        if (charts.isNotEmpty) saavnCharts.value = charts;
-      }(),
-      () async {
-        final playlists = await YouTubeMusicSyncService().fetchChartPlaylists();
-        if (playlists.isNotEmpty) ytChartPlaylists.value = playlists;
-      }(),
-    ];
-    if (YouTubeAuthService().isSignedIn.value) {
-      futures.add(YouTubeMusicSyncService().fullSync());
-    }
-    await Future.wait(futures);
+    await Future.wait([
+      _loadTrending(refresh: true),
+      if (YouTubeAuthService().isSignedIn.value)
+        YouTubeMusicSyncService()
+            .fullSync()
+            .timeout(const Duration(seconds: 20))
+            .catchError((Object _) {}),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: usePureBlackColor,
-      builder: (context, _, __) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([usePureBlackColor, jiosaavnEnabled]),
+      builder: (context, _) {
         final isDark = isAppDarkMode(context);
         final navBarColor = isDark
             ? const Color(0xB3121214)
             : const Color(0xB3FFFFFF);
 
         return CupertinoPageScaffold(
-          backgroundColor: musifiedCanvas(isDark),
+          backgroundColor: musynCanvas(isDark),
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
             slivers: [
               CupertinoSliverNavigationBar(
+                trailing: const AccountButton(),
                 largeTitle: const Text(
-                  'Musified',
+                  'Listen now',
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.displayFont,
+                    fontFamily: MusynStyle.displayFont,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.5,
                   ),
@@ -149,10 +162,20 @@ class _HomePageState extends State<HomePage> {
                       _buildLikedSongsSection(isDark),
                       _buildTrendingSection(isDark),
                       _buildYtChartsSection(isDark),
-                      _buildSaavnChartsSection(isDark),
+                      if (jiosaavnEnabled.value)
+                        _buildSaavnChartsSection(isDark),
                       _buildPlaylistsSection(),
                       _buildMostPlayedSection(isDark),
                       if (_isLoading) _buildFeedSkeleton(isDark),
+                      if (_feedFailed && !_isLoading)
+                        ContentState(
+                          icon: CupertinoIcons.wifi_exclamationmark,
+                          title: 'Some music could not be refreshed',
+                          message:
+                              'Your saved music is still available. Retry to refresh the catalogues.',
+                          actionLabel: 'Refresh music',
+                          onAction: _handleRefresh,
+                        ),
                       _buildEmptyStateIfNeeded(isDark),
                       const MiniPlayerBottomSpace(),
                     ],
@@ -184,7 +207,8 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 10),
             SizedBox(
-              height: 172,
+              height:
+                  (MediaQuery.sizeOf(context).width * .7).clamp(0, 320) / .92,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -198,11 +222,15 @@ class _HomePageState extends State<HomePage> {
                     onTap: () {
                       HapticFeedback.selectionClick();
                       audioHandler.playPlaylistSong(
-                        playlist: {'title': 'Featured Today', 'list': heroSongs},
+                        playlist: {
+                          'title': 'Featured Today',
+                          'list': heroSongs,
+                        },
                         songIndex: index,
                       );
                     },
-                    onLongPress: () => showSongActionsSheet(context, song: song),
+                    onLongPress: () =>
+                        showSongActionsSheet(context, song: song),
                   );
                 },
               ),
@@ -229,12 +257,17 @@ class _HomePageState extends State<HomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SectionHeader(
-                  title: 'Recently Played',
-                  icon: CupertinoIcons.clock_fill,
+                const Expanded(
+                  child: SectionHeader(
+                    title: 'Recently Played',
+                    icon: CupertinoIcons.clock_fill,
+                  ),
                 ),
                 CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   onPressed: () {
                     HapticFeedback.selectionClick();
                     setState(() => _recentsIsList = !_recentsIsList);
@@ -244,42 +277,49 @@ class _HomePageState extends State<HomePage> {
                         ? CupertinoIcons.square_grid_2x2
                         : CupertinoIcons.list_bullet,
                     size: 19,
-                    color: MusifiedStyle.appleRed,
+                    color: isDark
+                        ? CupertinoColors.white
+                        : CupertinoColors.black,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             if (_recentsIsList)
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: musifiedElevatedSurface(isDark),
-                  borderRadius: BorderRadius.circular(14),
-                ),
+              SizedBox(
+                height: 256,
                 child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: displayList.length > 6 ? 6 : displayList.length,
-                  separatorBuilder: (_, __) => Container(
-                    height: 0.5,
-                    margin: const EdgeInsets.only(left: 64),
-                    color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: (displayList.length / 4).ceil(),
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, column) => SizedBox(
+                    width: MediaQuery.sizeOf(context).width - 64,
+                    child: Column(
+                      children: [
+                        for (var row = 0; row < 4; row++)
+                          if (column * 4 + row < displayList.length)
+                            SizedBox(
+                              height: 64,
+                              child: _CompactTrackRow(
+                                song: displayList[column * 4 + row],
+                                isDark: isDark,
+                                onTap: () => audioHandler.playPlaylistSong(
+                                  playlist: {
+                                    'title': 'Recently Played',
+                                    'list': displayList,
+                                  },
+                                  songIndex: column * 4 + row,
+                                ),
+                                onLongPress: () => showSongActionsSheet(
+                                  context,
+                                  song: displayList[column * 4 + row],
+                                ),
+                              ),
+                            ),
+                      ],
+                    ),
                   ),
-                  itemBuilder: (context, index) {
-                    final song = displayList[index];
-                    return _CompactTrackRow(
-                      song: song,
-                      isDark: isDark,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        audioHandler.playPlaylistSong(
-                          playlist: {'title': 'Recently Played', 'list': displayList},
-                          songIndex: index,
-                        );
-                      },
-                      onLongPress: () => showSongActionsSheet(context, song: song),
-                    );
-                  },
                 ),
               )
             else
@@ -298,11 +338,15 @@ class _HomePageState extends State<HomePage> {
                       onTap: () {
                         HapticFeedback.selectionClick();
                         audioHandler.playPlaylistSong(
-                          playlist: {'title': 'Recently Played', 'list': displayList},
+                          playlist: {
+                            'title': 'Recently Played',
+                            'list': displayList,
+                          },
                           songIndex: index,
                         );
                       },
-                      onLongPress: () => showSongActionsSheet(context, song: song),
+                      onLongPress: () =>
+                          showSongActionsSheet(context, song: song),
                     );
                   },
                 ),
@@ -348,7 +392,8 @@ class _HomePageState extends State<HomePage> {
                         songIndex: index,
                       );
                     },
-                    onLongPress: () => showSongActionsSheet(context, song: song),
+                    onLongPress: () =>
+                        showSongActionsSheet(context, song: song),
                   );
                 },
               ),
@@ -357,6 +402,64 @@ class _HomePageState extends State<HomePage> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildMostPlayedSection(bool isDark) {
+    return ValueListenableBuilder<List>(
+      valueListenable: userRecentlyPlayed,
+      builder: (context, rawSongs, _) {
+        final ranked = mostPlayedTracks(rawSongs);
+        if (ranked.isEmpty) return const SizedBox.shrink();
+
+        final displayList = ranked.take(25).toList();
+        return _buildHorizontalSongSection(
+          isDark: isDark,
+          title: 'My Most Played',
+          icon: CupertinoIcons.chart_bar_fill,
+          songs: displayList,
+        );
+      },
+    );
+  }
+
+  Widget _buildHorizontalSongSection({
+    required bool isDark,
+    required String title,
+    required IconData icon,
+    required List<Map> songs,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: title, icon: icon),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 205,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: songs.length,
+            itemBuilder: (context, index) {
+              final song = songs[index];
+              return _HomeSongCard(
+                song: song,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  audioHandler.playPlaylistSong(
+                    playlist: {'title': title, 'list': songs},
+                    songIndex: index,
+                  );
+                },
+                onLongPress: () => showSongActionsSheet(context, song: song),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 18),
+      ],
     );
   }
 
@@ -386,7 +489,7 @@ class _HomePageState extends State<HomePage> {
       builder: (context, playlists, _) {
         if (playlists.isEmpty) return const SizedBox.shrink();
 
-        final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
+        const playlistHeight = 150.0;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,7 +543,7 @@ class _HomePageState extends State<HomePage> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
+                                fontFamily: MusynStyle.uiFont,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: -0.2,
@@ -455,7 +558,7 @@ class _HomePageState extends State<HomePage> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
+                                fontFamily: MusynStyle.uiFont,
                                 fontSize: 11,
                                 color: CupertinoColors.systemGrey,
                               ),
@@ -481,7 +584,7 @@ class _HomePageState extends State<HomePage> {
       builder: (context, charts, _) {
         if (charts.isEmpty) return const SizedBox.shrink();
 
-        final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
+        const playlistHeight = 150.0;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,7 +646,7 @@ class _HomePageState extends State<HomePage> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
+                                fontFamily: MusynStyle.uiFont,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: -0.2,
@@ -557,7 +660,7 @@ class _HomePageState extends State<HomePage> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
+                                fontFamily: MusynStyle.uiFont,
                                 fontSize: 11,
                                 color: CupertinoColors.systemGrey,
                               ),
@@ -577,80 +680,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildMostPlayedSection(bool isDark) {
-    return ValueListenableBuilder<List>(
-      valueListenable: userRecentlyPlayed,
-      builder: (context, rawSongs, _) {
-        final songs = rawSongs.whereType<Map>().toList();
-        final ranked =
-            songs.where((song) {
-              final count = song['listeningCount'];
-              return count is num && count > 0;
-            }).toList()..sort((a, b) {
-              final aCount = (a['listeningCount'] as num?)?.toInt() ?? 0;
-              final bCount = (b['listeningCount'] as num?)?.toInt() ?? 0;
-              return bCount.compareTo(aCount);
-            });
-        if (ranked.isEmpty) return const SizedBox.shrink();
-
-        final displayList = ranked.take(25).toList();
-        return _buildHorizontalSongSection(
-          isDark: isDark,
-          title: 'My Most Played',
-          icon: CupertinoIcons.chart_bar_fill,
-          songs: displayList,
-        );
-      },
-    );
-  }
-
-  Widget _buildHorizontalSongSection({
-    required bool isDark,
-    required String title,
-    required IconData icon,
-    required List<Map> songs,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title: title, icon: icon),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 205,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            itemCount: songs.length,
-            itemBuilder: (context, index) {
-              final song = songs[index];
-              return _HomeSongCard(
-                song: song,
-                isDark: isDark,
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  audioHandler.playPlaylistSong(
-                    playlist: {'title': title, 'list': songs},
-                    songIndex: index,
-                  );
-                },
-                onLongPress: () => showSongActionsSheet(context, song: song),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 18),
-      ],
-    );
-  }
-
   Widget _buildPlaylistsSection() {
     return ValueListenableBuilder<List<Map>>(
       valueListenable: userCustomPlaylists,
       builder: (context, customPlaylists, _) {
         if (customPlaylists.isEmpty) return const SizedBox.shrink();
 
-        final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
+        const playlistHeight = 150.0;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -706,23 +742,25 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 300,
-          height: 170,
+          width: (MediaQuery.sizeOf(context).width * .7).clamp(0, 320),
+          height: (MediaQuery.sizeOf(context).width * .7).clamp(0, 320) / .92,
           decoration: BoxDecoration(
-            color: musifiedElevatedSurface(isDark),
+            color: musynElevatedSurface(isDark),
             borderRadius: BorderRadius.circular(18),
           ),
         ),
         const SizedBox(height: 20),
-        Row(
-          children: List.generate(
-            3,
-            (index) => Container(
+        SizedBox(
+          height: 180,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (_, _) => Container(
               width: 140,
               height: 180,
-              margin: const EdgeInsets.only(right: 14),
               decoration: BoxDecoration(
-                color: musifiedElevatedSurface(isDark),
+                color: musynElevatedSurface(isDark),
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
@@ -733,63 +771,38 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildEmptyStateIfNeeded(bool isDark) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([
-        userLikedSongsList,
-        userRecentlyPlayed,
-        userCustomPlaylists,
-        trendingSongs,
-      ]),
-      builder: (context, _) {
-        final hasAny =
-            userLikedSongsList.value.isNotEmpty ||
-            userRecentlyPlayed.value.isNotEmpty ||
-            userCustomPlaylists.value.isNotEmpty ||
-            trendingSongs.value.isNotEmpty;
-
-        if (hasAny) return const SizedBox.shrink();
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  CupertinoIcons.music_note_2,
-                  size: 56,
-                  color: MusifiedStyle.appleRed,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Your Music Library',
-                  style: TextStyle(
-                    fontFamily: MusifiedStyle.displayFont,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: isDark
-                        ? CupertinoColors.white
-                        : CupertinoColors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Songs you like and play will appear here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
-                    fontSize: 14,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildEmptyStateIfNeeded(bool isDark) => AnimatedBuilder(
+    animation: Listenable.merge([
+      userLikedSongsList,
+      userRecentlyPlayed,
+      userCustomPlaylists,
+      trendingSongs,
+      ytChartPlaylists,
+      saavnCharts,
+    ]),
+    builder: (context, _) {
+      final hasAny =
+          userLikedSongsList.value.isNotEmpty ||
+          userRecentlyPlayed.value.isNotEmpty ||
+          userCustomPlaylists.value.isNotEmpty ||
+          trendingSongs.value.isNotEmpty ||
+          ytChartPlaylists.value.isNotEmpty ||
+          (jiosaavnEnabled.value && saavnCharts.value.isNotEmpty);
+      if (hasAny || _isLoading) return const SizedBox.shrink();
+      return Column(
+        children: [
+          ContentState(
+            title: 'Make yourself at home',
+            message:
+                'Find a song to start listening. Favorites, recent tracks and your playlists will appear here.',
+            actionLabel: 'Find music',
+            onAction: () => context.go('/search'),
           ),
-        );
-      },
-    );
-  }
+          const DiscoveryLinks(),
+        ],
+      );
+    },
+  );
 }
 
 class _HeroCard extends StatelessWidget {
@@ -816,8 +829,8 @@ class _HeroCard extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
-        width: 300,
-        height: 172,
+        width: (MediaQuery.sizeOf(context).width * .7).clamp(0, 320),
+        height: (MediaQuery.sizeOf(context).width * .7).clamp(0, 320) / .92,
         margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
@@ -835,11 +848,10 @@ class _HeroCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               if (imageUrl.toString().isNotEmpty)
-                CachedNetworkImage(
+                CatalogueArtwork(
                   imageUrl: imageUrl.toString(),
-                  fit: BoxFit.cover,
                   errorWidget: (_, __, ___) => ColoredBox(
-                    color: musifiedSecondarySurface(isDark),
+                    color: musynSecondarySurface(isDark),
                     child: const Icon(
                       CupertinoIcons.music_note,
                       size: 40,
@@ -849,7 +861,7 @@ class _HeroCard extends StatelessWidget {
                 )
               else
                 ColoredBox(
-                  color: musifiedSecondarySurface(isDark),
+                  color: musynSecondarySurface(isDark),
                   child: const Icon(
                     CupertinoIcons.music_note,
                     size: 40,
@@ -872,7 +884,7 @@ class _HeroCard extends StatelessWidget {
               ),
               Positioned(
                 left: 14,
-                right: 56,
+                right: 16,
                 bottom: 14,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -883,8 +895,8 @@ class _HeroCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontFamily: MusifiedStyle.displayFont,
-                        fontSize: 16,
+                        fontFamily: MusynStyle.displayFont,
+                        fontSize: 20,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.3,
                         color: CupertinoColors.white,
@@ -897,30 +909,14 @@ class _HeroCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
-                          fontSize: 12,
+                          fontFamily: MusynStyle.uiFont,
+                          fontSize: 14,
                           color: Color(0xB8FFFFFF),
                           fontWeight: FontWeight.w400,
                         ),
                       ),
                     ],
                   ],
-                ),
-              ),
-              Positioned(
-                right: 14,
-                bottom: 14,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: MusifiedStyle.appleRed,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.play_fill,
-                    size: 16,
-                    color: CupertinoColors.white,
-                  ),
                 ),
               ),
             ],
@@ -967,13 +963,12 @@ class _CompactTrackRow extends StatelessWidget {
                 width: 44,
                 height: 44,
                 child: imageUrl.toString().isNotEmpty
-                    ? CachedNetworkImage(
+                    ? CatalogueArtwork(
                         imageUrl: imageUrl.toString(),
-                        fit: BoxFit.cover,
                         memCacheWidth: 88,
                         memCacheHeight: 88,
                         errorWidget: (_, __, ___) => ColoredBox(
-                          color: musifiedSecondarySurface(isDark),
+                          color: musynSecondarySurface(isDark),
                           child: const Icon(
                             CupertinoIcons.music_note,
                             size: 18,
@@ -982,7 +977,7 @@ class _CompactTrackRow extends StatelessWidget {
                         ),
                       )
                     : ColoredBox(
-                        color: musifiedSecondarySurface(isDark),
+                        color: musynSecondarySurface(isDark),
                         child: const Icon(
                           CupertinoIcons.music_note,
                           size: 18,
@@ -1002,15 +997,17 @@ class _CompactTrackRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.2,
                       color: isCurrent
-                          ? MusifiedStyle.appleRed
+                          ? (isDark
+                                ? CupertinoColors.white
+                                : CupertinoColors.black)
                           : (isDark
-                              ? CupertinoColors.white
-                              : CupertinoColors.black),
+                                ? CupertinoColors.white
+                                : CupertinoColors.black),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1019,7 +1016,7 @@ class _CompactTrackRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       fontSize: 12,
                       color: CupertinoColors.systemGrey,
                     ),
@@ -1070,7 +1067,7 @@ class _HomeSongCard extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
-        width: 140,
+        width: 150,
         margin: const EdgeInsets.only(right: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1083,13 +1080,12 @@ class _HomeSongCard extends StatelessWidget {
                   child: AspectRatio(
                     aspectRatio: 1,
                     child: imageUrl.toString().isNotEmpty
-                        ? CachedNetworkImage(
+                        ? CatalogueArtwork(
                             imageUrl: imageUrl.toString(),
-                            fit: BoxFit.cover,
                             memCacheWidth: 280,
                             memCacheHeight: 280,
                             errorWidget: (_, __, ___) => ColoredBox(
-                              color: musifiedSecondarySurface(isDark),
+                              color: musynSecondarySurface(isDark),
                               child: const Icon(
                                 CupertinoIcons.music_note,
                                 size: 36,
@@ -1098,7 +1094,7 @@ class _HomeSongCard extends StatelessWidget {
                             ),
                           )
                         : ColoredBox(
-                            color: musifiedSecondarySurface(isDark),
+                            color: musynSecondarySurface(isDark),
                             child: const Icon(
                               CupertinoIcons.music_note,
                               size: 36,
@@ -1131,7 +1127,7 @@ class _HomeSongCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: MusifiedStyle.uiFont,
+                fontFamily: MusynStyle.uiFont,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
@@ -1144,7 +1140,7 @@ class _HomeSongCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontFamily: MusifiedStyle.uiFont,
+                fontFamily: MusynStyle.uiFont,
                 fontSize: 12,
                 color: secondaryColor,
                 fontWeight: FontWeight.w400,

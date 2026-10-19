@@ -5,15 +5,15 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/download_transfer.dart';
-import 'package:musified/services/io_service.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/offline_playlist_registry.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/utilities/flutter_toast.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/download_transfer.dart';
+import 'package:musyn/services/io_service.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/offline_playlist_registry.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
 
 class OfflinePlaylistService {
   factory OfflinePlaylistService() => _instance;
@@ -25,6 +25,11 @@ class OfflinePlaylistService {
   final Map<String, ValueNotifier<DownloadProgress>> downloadProgressNotifiers =
       {};
   final List<String> activeDownloads = [];
+  final activeDownloadIds = ValueNotifier<List<String>>([]);
+  final activeTitles = <String, String>{};
+  void _publishActive() {
+    activeDownloadIds.value = List.unmodifiable(activeDownloads);
+  }
 
   ValueNotifier<List<dynamic>> get offlinePlaylists =>
       offlinePlaylistRegistry.offlinePlaylists;
@@ -73,6 +78,8 @@ class OfflinePlaylistService {
     final progressNotifier = getProgressNotifier(playlistId)
       ..value = DownloadProgress(total: songsList.length);
     activeDownloads.add(playlistId);
+    activeTitles[playlistId] = playlist['title']?.toString() ?? 'Playlist';
+    _publishActive();
 
     try {
       final songQueue = Queue<dynamic>.from(songsList);
@@ -116,6 +123,8 @@ class OfflinePlaylistService {
         stackTrace: stackTrace,
       );
       activeDownloads.remove(playlistId);
+      activeTitles.remove(playlistId);
+      _publishActive();
       cleanupProgressNotifier(playlistId);
       if (context.mounted) {
         showToast(context, '${context.l10n.error}: $e');
@@ -132,6 +141,8 @@ class OfflinePlaylistService {
     try {
       // Remove from active downloads
       activeDownloads.remove(playlistId);
+      activeTitles.remove(playlistId);
+      _publishActive();
 
       final songsList = playlist['list'] as List<dynamic>;
       final completed = progressNotifier.value.completed;
@@ -460,6 +471,8 @@ class OfflinePlaylistService {
         cleanupProgressNotifier(id);
       }
       activeDownloads.clear();
+      activeTitles.clear();
+      _publishActive();
 
       unawaited(addOrUpdateData<List>('userNoBackup', 'offlineSongs', []));
       unawaited(addOrUpdateData<List>('userNoBackup', 'offlinePlaylists', []));

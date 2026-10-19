@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/services/audio/audio_playback_install.dart';
-import 'package:musified/services/audio/playback_source.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/async_operation_queue.dart';
+import 'package:musyn/services/audio/audio_playback_install.dart';
+import 'package:musyn/services/audio/playback_source.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/async_operation_queue.dart';
 
 typedef PlaybackLogFn =
     void Function(String message, {Map<String, Object?>? extra});
@@ -222,6 +222,7 @@ class AudioPlaybackCoordinator {
     Map song,
     Map<String, String> preloadedUrls, {
     required bool isOffline,
+    Map<String, Map<String, dynamic>> preloadedMetadata = const {},
     bool Function()? abandon,
   }) async {
     if (isOffline) {
@@ -238,13 +239,23 @@ class AudioPlaybackCoordinator {
         'Rejecting stale $source stream URL for $ytid',
         data: {'expire': Uri.tryParse(url)?.queryParameters['expire'] ?? '-'},
       );
-      song.remove('_preloadedStreamUrl');
-      if (ytid != null) preloadedUrls.remove(ytid);
+      song
+        ..remove('_preloadedStreamUrl')
+        ..remove('_preloadedStreamMetadata');
+      if (ytid != null) {
+        preloadedUrls.remove(ytid);
+        if (preloadedMetadata.containsKey(ytid)) preloadedMetadata.remove(ytid);
+      }
     }
 
     final warmed = song['_preloadedStreamUrl']?.toString();
     if (warmed != null && warmed.isNotEmpty) {
-      if (streamUrlMatchesPreferredSource(warmed, song)) {
+      final prepared = song['_preloadedStreamMetadata'];
+      final candidate = Map<dynamic, dynamic>.from(song);
+      if (prepared is Map) candidate.addAll(prepared);
+      // Explicit source selection still wins over the prepared descriptor.
+      if (streamUrlMatchesPreferredSource(warmed, candidate)) {
+        if (prepared is Map) song.addAll(prepared);
         logger.log('Using pre-warmed stream URL for $ytid');
         return warmed;
       }
@@ -252,7 +263,11 @@ class AudioPlaybackCoordinator {
     }
     if (ytid != null && preloadedUrls.containsKey(ytid)) {
       final cached = preloadedUrls[ytid]!;
-      if (streamUrlMatchesPreferredSource(cached, song)) {
+      final prepared = preloadedMetadata[ytid];
+      final candidate = Map<dynamic, dynamic>.from(song);
+      if (prepared != null) candidate.addAll(prepared);
+      if (streamUrlMatchesPreferredSource(cached, candidate)) {
+        if (prepared != null) song.addAll(prepared);
         logger.log('Using preloaded stream URL for $ytid');
         return cached;
       }
@@ -266,6 +281,7 @@ class AudioPlaybackCoordinator {
     Map songData, {
     required bool offlineModeEnabled,
     required Map<String, String> preloadedUrls,
+    Map<String, Map<String, dynamic>> preloadedMetadata = const {},
     bool Function()? abandon,
   }) async {
     if (abandon?.call() == true) return null;
@@ -322,6 +338,7 @@ class AudioPlaybackCoordinator {
     final songUrl = await getPlaybackUrl(
       songData,
       preloadedUrls,
+      preloadedMetadata: preloadedMetadata,
       isOffline: false,
       abandon: abandon,
     ).timeout(const Duration(seconds: 36));

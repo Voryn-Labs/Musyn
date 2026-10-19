@@ -1,55 +1,33 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:go_router/go_router.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/widgets/content_state.dart';
 
 class OfflineSearchPlaceholder extends StatelessWidget {
   const OfflineSearchPlaceholder({super.key});
-
   @override
-  Widget build(BuildContext context) {
-    final isDark = isAppDarkMode(context);
-    final navBarColor = isDark ? const Color(0xB3121214) : const Color(0xB3FFFFFF);
-
-    return CupertinoPageScaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text(
-          'Offline Mode',
-          style: TextStyle(
-            fontFamily: MusifiedStyle.displayFont,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        backgroundColor: navBarColor,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? const Color(0x26FFFFFF) : const Color(0x1F000000),
-            width: 0.5,
-          ),
+  Widget build(BuildContext context) => CupertinoPageScaffold(
+    backgroundColor: musynCanvas(isAppDarkMode(context)),
+    navigationBar: const CupertinoNavigationBar(middle: Text('Search')),
+    child: SafeArea(
+      child: SingleChildScrollView(
+        child: ContentState(
+          icon: CupertinoIcons.wifi_slash,
+          title: 'Search needs a connection',
+          message:
+              'Go online to search music, or listen to your saved downloads.',
+          actionLabel: 'Go online',
+          onAction: () {
+            offlineMode.value = false;
+            unawaited(addOrUpdateData('settings', 'offlineMode', false));
+          },
+          secondaryLabel: 'Open downloads',
+          onSecondary: () => context.go('/library/downloads'),
         ),
       ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.cloud_download,
-              size: 56,
-              color: CupertinoColors.systemGrey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Search unavailable in offline mode',
-              style: TextStyle(
-                fontFamily: MusifiedStyle.uiFont,
-                fontSize: 15,
-                color: CupertinoColors.systemGrey,
-                decoration: TextDecoration.none,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }

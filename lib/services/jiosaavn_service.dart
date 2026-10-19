@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:dart_des/dart_des.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/services/logger_service.dart';
+import 'package:musyn/services/logger_service.dart';
 
 class JioSaavnService {
   factory JioSaavnService() => _instance;

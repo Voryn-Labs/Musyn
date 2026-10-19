@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/logger_service.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/logger_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 const _ytdlpBasePyUrl =
@@ -270,7 +270,7 @@ class YtdlpClientSyncService {
             ),
             headers: {
               'Accept': 'application/vnd.github+json',
-              'User-Agent': 'Musified-App',
+              'User-Agent': 'Musyn-App',
             },
           )
           .timeout(const Duration(seconds: 10));

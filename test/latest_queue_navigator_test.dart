@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/services/audio/latest_queue_navigator.dart';
+import 'package:musyn/services/audio/latest_queue_navigator.dart';
 
 void main() {
   test('rapid taps resolve the final queue target', () async {

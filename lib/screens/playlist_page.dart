@@ -2,34 +2,34 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:musified/constants/app_constants.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/models/playlist_sort_type.dart';
-import 'package:musified/services/artist_service.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/services/playlist_download_service.dart';
-import 'package:musified/services/playlist_sharing.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/utilities/playlist_utils.dart';
-import 'package:musified/utilities/song_filtering.dart';
-import 'package:musified/utilities/sort_utils.dart';
-import 'package:musified/widgets/edit_playlist_dialog.dart';
-import 'package:musified/widgets/mini_player_bottom_space.dart';
-import 'package:musified/widgets/playlist_cube.dart';
-import 'package:musified/widgets/playlist_page/add_to_playlist_button.dart';
-import 'package:musified/widgets/playlist_page/download_button.dart';
-import 'package:musified/widgets/playlist_page/empty_playlist_state.dart';
-import 'package:musified/widgets/playlist_page/like_button.dart';
-import 'package:musified/widgets/playlist_page/playlist_action_buttons.dart';
-import 'package:musified/widgets/playlist_page/playlist_header.dart';
-import 'package:musified/widgets/song_tile.dart';
-import 'package:musified/widgets/sort_chips.dart';
+import 'package:go_router/go_router.dart';
+import 'package:musyn/constants/app_constants.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/models/playlist_sort_type.dart';
+import 'package:musyn/services/artist_service.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/playlist_sharing.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/utilities/playlist_utils.dart';
+import 'package:musyn/utilities/song_filtering.dart';
+import 'package:musyn/utilities/sort_utils.dart';
+import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/edit_playlist_dialog.dart';
+import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/playlist_cube.dart';
+import 'package:musyn/widgets/playlist_page/add_to_playlist_button.dart';
+import 'package:musyn/widgets/playlist_page/download_button.dart';
+import 'package:musyn/widgets/playlist_page/like_button.dart';
+import 'package:musyn/widgets/playlist_page/playlist_action_buttons.dart';
+import 'package:musyn/widgets/playlist_page/playlist_header.dart';
+import 'package:musyn/widgets/song_tile.dart';
+import 'package:musyn/widgets/sort_chips.dart';
 
 class PlaylistPage extends StatefulWidget {
   const PlaylistPage({
@@ -38,12 +38,14 @@ class PlaylistPage extends StatefulWidget {
     this.playlistData,
     this.cubeIcon = CupertinoIcons.list_bullet,
     this.isArtist = false,
+    this.loadPlaylist,
   });
 
   final String? playlistId;
   final dynamic playlistData;
   final IconData cubeIcon;
   final bool isArtist;
+  final Future<Map?> Function(String)? loadPlaylist;
 
   @override
   _PlaylistPageState createState() => _PlaylistPageState();
@@ -54,6 +56,9 @@ class _PlaylistPageState extends State<PlaylistPage> {
   List<dynamic> _originalPlaylistList = []; // Keep original order separately
 
   bool _isInitializingPlaylist = true;
+  bool _loadFailed = false;
+  bool _syncing = false;
+  int _loadRequest = 0;
 
   String? get _resolvedPlaylistId =>
       _playlist?['ytid']?.toString() ??
@@ -76,15 +81,28 @@ class _PlaylistPageState extends State<PlaylistPage> {
     return filterSongsByQuery(list, searchQuery);
   }
 
-  bool get _isArtistCatalogFailed =>
-      widget.isArtist && _playlist?['catalogStatus'] == 'failed';
-
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
     _searchFocusNode = FocusNode();
     _initializePlaylist();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlaylistPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldId =
+        oldWidget.playlistData?['ytid']?.toString() ?? oldWidget.playlistId;
+    final newId = widget.playlistData?['ytid']?.toString() ?? widget.playlistId;
+    if (oldId != newId || oldWidget.isArtist != widget.isArtist) {
+      _playlist = null;
+      _syncing = false;
+      _originalPlaylistList = [];
+      _searchController.clear();
+      _searchQueryNotifier.value = '';
+      unawaited(_initializePlaylist());
+    }
   }
 
   @override
@@ -96,59 +114,59 @@ class _PlaylistPageState extends State<PlaylistPage> {
   }
 
   Future<void> _initializePlaylist() async {
+    final request = ++_loadRequest;
+    setState(() {
+      _isInitializingPlaylist = true;
+      _loadFailed = false;
+    });
     try {
-      final initialPlaylist = widget.playlistData;
-      final resolvedId =
-          initialPlaylist?['ytid']?.toString() ?? widget.playlistId;
-
-      if (initialPlaylist != null) {
-        _playlist = initialPlaylist;
-        final playlistList = _playlist?['list'] as List?;
-        final shouldFetchInitialPlaylist =
-            playlistList == null || playlistList.isEmpty;
-        if (shouldFetchInitialPlaylist && resolvedId != null) {
-          _playlist =
-              await getPlaylistInfoForWidget(
-                resolvedId,
-                isArtist: widget.isArtist,
-                artistName: initialPlaylist?['title']?.toString(),
-                artistImage: initialPlaylist?['image']?.toString(),
-                sourceSongId: initialPlaylist?['sourceSongId']?.toString(),
-                sourceVideoAuthor: initialPlaylist?['videoAuthor']?.toString(),
-                preferredVerified: initialPlaylist?['isVerifiedArtist'] == true,
-              ) ??
-              initialPlaylist;
-        }
+      final initial = widget.playlistData is Map
+          ? Map<dynamic, dynamic>.from(widget.playlistData as Map)
+          : null;
+      final id = initial?['ytid']?.toString() ?? widget.playlistId ?? '';
+      Map? loaded;
+      final local =
+          initial?['source'] == 'user-created' || initial?['isOffline'] == true;
+      if (initial?['list'] is List &&
+          ((initial!['list'] as List).isNotEmpty || local)) {
+        loaded = initial;
       } else {
-        _playlist = await getPlaylistInfoForWidget(
-          resolvedId,
-          isArtist: widget.isArtist,
-          artistName: initialPlaylist?['title']?.toString(),
-          artistImage: initialPlaylist?['image']?.toString(),
-          sourceSongId: initialPlaylist?['sourceSongId']?.toString(),
-          sourceVideoAuthor: initialPlaylist?['videoAuthor']?.toString(),
-          preferredVerified: initialPlaylist?['isVerifiedArtist'] == true,
-        );
+        if (id.isEmpty)
+          throw const FormatException('Missing playlist destination');
+        loaded =
+            await (widget.loadPlaylist?.call(id) ??
+                    getPlaylistInfoForWidget(
+                      id,
+                      isArtist: widget.isArtist,
+                      artistName: initial?['title']?.toString(),
+                      artistImage: initial?['image']?.toString(),
+                      sourceSongId: initial?['sourceSongId']?.toString(),
+                      sourceVideoAuthor: initial?['videoAuthor']?.toString(),
+                      preferredVerified: initial?['isVerifiedArtist'] == true,
+                    ))
+                .timeout(const Duration(seconds: 20));
       }
-
-      if (_playlist != null && _playlist['list'] != null) {
-        _originalPlaylistList = List<dynamic>.from(_playlist['list'] as List);
-        _sortPlaylist(_sortType);
+      if (!mounted || request != _loadRequest) return;
+      if (loaded == null ||
+          loaded['list'] is! List ||
+          loaded['catalogStatus'] == 'failed')
+        throw StateError('Playlist unavailable');
+      if ((loaded['list'] as List).isEmpty &&
+          loaded['source'] != 'user-created' &&
+          loaded['isOffline'] != true &&
+          loaded['downloadedAt'] == null &&
+          loaded['catalogStatus'] != 'complete') {
+        throw StateError('No playable remote track list available');
       }
-    } catch (e, stackTrace) {
-      logger.log(
-        'Error initializing playlist:',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      if (mounted) {
-        showToast(context, context.l10n.error);
-      }
+      _playlist = Map<dynamic, dynamic>.from(loaded);
+      _originalPlaylistList = List<dynamic>.from(_playlist['list'] as List);
+      _sortPlaylist(_sortType);
+    } catch (error, stack) {
+      logger.log('Playlist could not load', error: error, stackTrace: stack);
+      if (mounted && request == _loadRequest) _loadFailed = true;
     } finally {
-      _isInitializingPlaylist = false;
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted && request == _loadRequest)
+        setState(() => _isInitializingPlaylist = false);
     }
   }
 
@@ -160,12 +178,12 @@ class _PlaylistPageState extends State<PlaylistPage> {
         : const Color(0xB3FFFFFF);
 
     return CupertinoPageScaffold(
-      backgroundColor: musifiedCanvas(isDark),
+      backgroundColor: musynCanvas(isDark),
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           _playlistTitle,
           style: const TextStyle(
-            fontFamily: MusifiedStyle.displayFont,
+            fontFamily: MusynStyle.displayFont,
             fontWeight: FontWeight.w700,
           ),
           maxLines: 1,
@@ -181,8 +199,12 @@ class _PlaylistPageState extends State<PlaylistPage> {
       ),
       child: SafeArea(
         bottom: false,
-        child: _isInitializingPlaylist
-            ? const Center(child: CupertinoActivityIndicator(radius: 14))
+        child: _isInitializingPlaylist && _playlist == null
+            ? const ContentState(
+                loading: true,
+                title: 'Opening collection',
+                message: 'Loading the track list…',
+              )
             : _playlist != null
             ? CustomScrollView(
                 physics: const BouncingScrollPhysics(
@@ -190,11 +212,35 @@ class _PlaylistPageState extends State<PlaylistPage> {
                 ),
                 slivers: [
                   SliverToBoxAdapter(child: _buildHeaderSection()),
+                  if (_loadFailed)
+                    SliverToBoxAdapter(
+                      child: ContentState(
+                        title: 'Could not refresh this collection',
+                        message:
+                            'Your previously loaded tracks are still available.',
+                        actionLabel: 'Retry collection',
+                        onAction: _handleSyncPlaylist,
+                      ),
+                    ),
                   if ((_playlist['list'] as List? ?? const []).isNotEmpty) ...[
                     ValueListenableBuilder<String>(
                       valueListenable: _searchQueryNotifier,
                       builder: (context, searchQuery, _) {
                         final sourceList = _getSourceList(searchQuery);
+                        if (sourceList.isEmpty)
+                          return SliverToBoxAdapter(
+                            child: ContentState(
+                              icon: CupertinoIcons.search,
+                              title: 'No tracks match this filter',
+                              message:
+                                  'Try another title or artist, or clear your filter.',
+                              actionLabel: 'Clear filter',
+                              onAction: () {
+                                _searchController.clear();
+                                _searchQueryNotifier.value = '';
+                              },
+                            ),
+                          );
                         return SliverList(
                           delegate: SliverChildBuilderDelegate((
                             context,
@@ -212,38 +258,33 @@ class _PlaylistPageState extends State<PlaylistPage> {
                         );
                       },
                     ),
-                  ] else if (_isArtistCatalogFailed)
-                    EmptyPlaylistState(message: context.l10n.error)
-                  else
-                    EmptyPlaylistState(message: context.l10n.noSongsInPlaylist),
+                  ] else
+                    SliverToBoxAdapter(
+                      child: ContentState(
+                        title: 'This collection has no tracks yet',
+                        message: _playlist['source'] == 'user-created'
+                            ? 'Find a track, open its options and choose Add to a Playlist.'
+                            : 'Refresh this collection or search for more music.',
+                        actionLabel: _playlist['source'] == 'user-created'
+                            ? 'Find tracks to add'
+                            : 'Refresh collection',
+                        onAction: _playlist['source'] == 'user-created'
+                            ? () => context.go('/search')
+                            : _initializePlaylist,
+                      ),
+                    ),
                   const SliverMiniPlayerBottomSpace(),
                 ],
               )
-            : Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        CupertinoIcons.list_bullet,
-                        size: 56,
-                        color: CupertinoColors.systemGrey,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        context.l10n.error,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: MusifiedStyle.uiFont,
-                          color: CupertinoColors.systemGrey,
-                          fontSize: 15,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            : ContentState(
+                icon: CupertinoIcons.music_albums,
+                title: 'Collection unavailable',
+                message:
+                    'The track list could not be loaded. Check your connection and try again.',
+                actionLabel: 'Retry collection',
+                onAction: _initializePlaylist,
+                secondaryLabel: 'Find other music',
+                onSecondary: () => context.go('/search'),
               ),
       ),
     );
@@ -254,6 +295,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
         _playlist?['title']?.toString() ??
         widget.playlistData?['title']?.toString() ??
         '';
+    if (rawTitle.trim().isEmpty) return 'Collection';
     return widget.isArtist ? normalizeArtistDisplayTitle(rawTitle) : rawTitle;
   }
 
@@ -270,17 +312,19 @@ class _PlaylistPageState extends State<PlaylistPage> {
           }
         : basePlaylist;
     return GestureDetector(
-      onTap: () {
-        final currentPlaylist = _playlist ?? widget.playlistData;
-        final songs = currentPlaylist?['list'] as List? ?? [];
-        if (songs.isNotEmpty) {
-          HapticFeedback.selectionClick();
-          audioHandler.playPlaylistSong(
-            playlist: currentPlaylist,
-            songIndex: 0,
-          );
-        }
-      },
+      onTap: (playlist['list'] as List? ?? []).isEmpty
+          ? null
+          : () {
+              final currentPlaylist = _playlist ?? widget.playlistData;
+              final songs = currentPlaylist?['list'] as List? ?? [];
+              if (songs.isNotEmpty) {
+                HapticFeedback.selectionClick();
+                audioHandler.playPlaylistSong(
+                  playlist: currentPlaylist,
+                  songIndex: 0,
+                );
+              }
+            },
       child: PlaylistCube(
         playlist,
         size: isLandscape ? 250 : screenWidth / commonPlaylistArtworkDivision,
@@ -307,8 +351,6 @@ class _PlaylistPageState extends State<PlaylistPage> {
           songsLength: songsLength,
           isAlbum: playlist['isAlbum'] == true,
           isArtist: widget.isArtist,
-          showImage: false,
-          showTitle: false,
         ),
         if (songsLength > 0)
           PlaylistActionButtons(
@@ -327,9 +369,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
           ),
         if (hasSecondaryActions) ...[
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
             spacing: 5,
+            runSpacing: 8,
             children: [
               if (widget.playlistId != null &&
                   !isUserCreated &&
@@ -339,9 +382,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   playlistData: () => _playlist,
                 ),
               if (!offlineMode.value) ...[
-                PlaylistAddToPlaylistButton(
-                  resolvePlaylist: () async => _playlist,
-                ),
+                if (songsLength > 0)
+                  PlaylistAddToPlaylistButton(
+                    resolvePlaylist: () async => _playlist,
+                  ),
                 if (!isUserCreated) _buildSyncButton(),
               ],
               if (songsLength > 0) _buildDownloadButton(),
@@ -390,14 +434,14 @@ class _PlaylistPageState extends State<PlaylistPage> {
     final isDark = isAppDarkMode(context);
     return CupertinoButton(
       padding: const EdgeInsets.all(10),
-      color: musifiedSecondarySurface(isDark),
+      color: musynSecondarySurface(isDark),
       borderRadius: BorderRadius.circular(22),
       onPressed: () async {
         try {
           final encodedPlaylist = PlaylistSharingService.encodePlaylist(
             _playlist,
           );
-          final url = 'musified://playlist/custom/$encodedPlaylist';
+          final url = 'musyn://playlist/custom/$encodedPlaylist';
           await Clipboard.setData(ClipboardData(text: url));
           if (mounted) {
             showToast(context, 'Playlist link copied');
@@ -413,10 +457,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
           }
         }
       },
-      child: const Icon(
+      child: Icon(
         CupertinoIcons.share,
         size: 20,
-        color: MusifiedStyle.appleRed,
+        color: CupertinoTheme.of(context).primaryColor,
       ),
     );
   }
@@ -425,14 +469,16 @@ class _PlaylistPageState extends State<PlaylistPage> {
     final isDark = isAppDarkMode(context);
     return CupertinoButton(
       padding: const EdgeInsets.all(10),
-      color: musifiedSecondarySurface(isDark),
+      color: musynSecondarySurface(isDark),
       borderRadius: BorderRadius.circular(22),
-      onPressed: _handleSyncPlaylist,
-      child: const Icon(
-        CupertinoIcons.arrow_2_circlepath,
-        size: 20,
-        color: MusifiedStyle.appleRed,
-      ),
+      onPressed: _syncing ? null : _handleSyncPlaylist,
+      child: _syncing
+          ? const CupertinoActivityIndicator()
+          : Icon(
+              CupertinoIcons.arrow_2_circlepath,
+              size: 20,
+              color: CupertinoTheme.of(context).primaryColor,
+            ),
     );
   }
 
@@ -440,7 +486,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
     final isDark = isAppDarkMode(context);
     return CupertinoButton(
       padding: const EdgeInsets.all(10),
-      color: musifiedSecondarySurface(isDark),
+      color: musynSecondarySurface(isDark),
       borderRadius: BorderRadius.circular(22),
       onPressed: () async {
         final result = await showCupertinoDialog<Map?>(
@@ -521,10 +567,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
           showToast(context, 'Playlist updated');
         }
       },
-      child: const Icon(
+      child: Icon(
         CupertinoIcons.pencil,
         size: 20,
-        color: MusifiedStyle.appleRed,
+        color: CupertinoTheme.of(context).primaryColor,
       ),
     );
   }
@@ -542,49 +588,60 @@ class _PlaylistPageState extends State<PlaylistPage> {
     );
   }
 
-  void _handleSyncPlaylist() async {
+  Future<void> _handleSyncPlaylist() async {
     final playlistId = _playlist?['ytid']?.toString();
-    if (playlistId == null || playlistId.isEmpty) return;
-
-    if (offlineMode.value &&
-        offlinePlaylistService.isPlaylistDownloaded(playlistId)) {
-      if (mounted) {
-        showToast(context, context.l10n.removeOffline);
-      }
+    if (_syncing || playlistId == null || playlistId.isEmpty) return;
+    if (offlineMode.value) {
+      showToast(context, 'Go online to refresh this collection.');
       return;
     }
-
-    // Neither an artist nor a release is one of the built-in playlists
-    // updatePlaylistList knows: they are refreshed by dropping the cache entry
-    // they were read from, and they report the refresh themselves.
-    final isCachedPage = widget.isArtist || playlistId.startsWith('MPRE');
-    final updated = widget.isArtist
-        ? await getPlaylistInfoForWidget(
+    setState(() {
+      _syncing = true;
+      _loadFailed = false;
+    });
+    try {
+      Future<Map?> fetch() async {
+        if (widget.loadPlaylist != null)
+          return widget.loadPlaylist!(playlistId);
+        if (widget.isArtist ||
+            playlistId.startsWith('MPRE') ||
+            playlistId.startsWith('saavn_')) {
+          return getPlaylistInfoForWidget(
             playlistId,
-            isArtist: true,
+            isArtist: widget.isArtist,
             artistName: _playlist?['title']?.toString(),
             artistImage: _playlist?['image']?.toString(),
             preferredVerified: _playlist?['isVerifiedArtist'] == true,
             forceRefresh: true,
-          )
-        : isCachedPage
-        ? await getPlaylistInfoForWidget(playlistId, forceRefresh: true)
-        : await updatePlaylistList(context, playlistId);
-    if (updated?['catalogStatus'] == 'failed') {
-      if (mounted) showToast(context, context.l10n.error);
-      return;
-    }
-    if (updated != null && mounted) {
+          );
+        }
+        final songs = await getSongsFromPlaylist(
+          playlistId,
+          forceRefresh: true,
+        );
+        return {..._playlist as Map, 'list': songs};
+      }
+
+      final updated = await fetch().timeout(const Duration(seconds: 20));
+      if (!mounted || _resolvedPlaylistId != playlistId) return;
+      if (updated == null ||
+          updated['list'] is! List ||
+          (updated['list'] as List).isEmpty ||
+          updated['catalogStatus'] == 'failed')
+        throw StateError('No refreshed tracks');
       setState(() {
         _playlist = updated;
-        _originalPlaylistList = List<dynamic>.from(
-          _playlist['list'] as List? ?? const [],
-        );
+        _originalPlaylistList = List<dynamic>.from(updated['list'] as List);
         _sortPlaylist(_sortType);
       });
-      if (isCachedPage) {
-        showToast(context, context.l10n.playlistUpdated);
-      }
+      showToast(context, context.l10n.playlistUpdated);
+    } catch (error, stack) {
+      logger.log('Collection refresh failed', error: error, stackTrace: stack);
+      if (mounted && _resolvedPlaylistId == playlistId)
+        setState(() => _loadFailed = true);
+    } finally {
+      if (mounted && _resolvedPlaylistId == playlistId)
+        setState(() => _syncing = false);
     }
   }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 class PlaylistHeader extends StatelessWidget {
   const PlaylistHeader(
@@ -39,17 +39,14 @@ class PlaylistHeader extends StatelessWidget {
             if (isArtist)
               ClipOval(child: image)
             else
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: image,
-              ),
+              ClipRRect(borderRadius: BorderRadius.circular(16), child: image),
           ],
           if (showTitle) ...[
             const SizedBox(height: 20),
             Text(
               title,
               style: TextStyle(
-                fontFamily: MusifiedStyle.displayFont,
+                fontFamily: MusynStyle.displayFont,
                 fontWeight: FontWeight.w700,
                 fontSize: 22,
                 color: titleColor,
@@ -127,7 +124,7 @@ class _DescriptionState extends State<_Description> {
         child: Text(
           widget.text,
           style: const TextStyle(
-            fontFamily: MusifiedStyle.uiFont,
+            fontFamily: MusynStyle.uiFont,
             color: CupertinoColors.systemGrey,
             fontSize: 13,
             height: 1.4,
@@ -143,11 +140,7 @@ class _DescriptionState extends State<_Description> {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.icon,
-    required this.label,
-    required this.isDark,
-  });
+  const _Chip({required this.icon, required this.label, required this.isDark});
 
   final IconData icon;
   final String label;
@@ -155,7 +148,7 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chipBg = musifiedSecondarySurface(isDark);
+    final chipBg = musynSecondarySurface(isDark);
     final chipText = isDark ? CupertinoColors.white : CupertinoColors.black;
 
     return Container(
@@ -167,12 +160,12 @@ class _Chip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: MusifiedStyle.appleRed),
+          Icon(icon, size: 13, color: CupertinoTheme.of(context).primaryColor),
           const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              fontFamily: MusifiedStyle.uiFont,
+              fontFamily: MusynStyle.uiFont,
               color: chipText,
               fontWeight: FontWeight.w600,
               fontSize: 12,

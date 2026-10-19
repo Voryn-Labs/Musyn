@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/library_state.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/library_state.dart';
 
 class OfflinePlaylistRegistry {
   // List of playlists that are fully available offline

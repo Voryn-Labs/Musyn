@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 void showSongInfoDialog(BuildContext context, Map song) async {
   final ytid = song['ytid']?.toString() ?? '';
@@ -63,7 +63,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
   if (!context.mounted) return;
 
   final isDark = isAppDarkMode(context);
-  final cardBg = isDark ? musifiedSecondarySurface(isDark) : CupertinoColors.white;
+  final cardBg = isDark ? musynSecondarySurface(isDark) : CupertinoColors.white;
   const secondaryColor = CupertinoColors.systemGrey;
   final labelColor = isDark ? CupertinoColors.white : CupertinoColors.black;
   final separatorColor = isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000);
@@ -77,7 +77,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
           Text(
             title,
             style: TextStyle(
-              fontFamily: MusifiedStyle.displayFont,
+              fontFamily: MusynStyle.displayFont,
               fontSize: 17,
               fontWeight: FontWeight.w700,
               color: labelColor,
@@ -90,7 +90,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
           Text(
             artist,
             style: const TextStyle(
-              fontFamily: MusifiedStyle.uiFont,
+              fontFamily: MusynStyle.uiFont,
               fontSize: 14,
               color: secondaryColor,
             ),
@@ -107,7 +107,7 @@ void showSongInfoDialog(BuildContext context, Map song) async {
             ),
             child: Column(
               children: [
-                _infoRow('Audio Source', source, isDark, highlightColor: MusifiedStyle.appleRed),
+                _infoRow('Audio Source', source, isDark, highlightColor: MusynStyle.appleRed),
                 Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),
                 _infoRow('Audio Bitrate', bitrate, isDark),
                 Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),
@@ -139,7 +139,7 @@ Widget _infoRow(String label, String value, bool isDark, {Color? highlightColor}
       Text(
         label,
         style: const TextStyle(
-          fontFamily: MusifiedStyle.uiFont,
+          fontFamily: MusynStyle.uiFont,
           fontSize: 13,
           fontWeight: FontWeight.w500,
           color: CupertinoColors.systemGrey,
@@ -149,7 +149,7 @@ Widget _infoRow(String label, String value, bool isDark, {Color? highlightColor}
         child: Text(
           value,
           style: TextStyle(
-            fontFamily: MusifiedStyle.uiFont,
+            fontFamily: MusynStyle.uiFont,
             fontSize: 13,
             fontWeight: highlightColor != null ? FontWeight.w700 : FontWeight.w600,
             color: highlightColor ?? (isDark ? CupertinoColors.white : CupertinoColors.black),

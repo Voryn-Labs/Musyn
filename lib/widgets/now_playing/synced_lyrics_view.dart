@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/logger_service.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/widgets/now_playing/lyrics/compact_lyrics_panel.dart';
-import 'package:musified/widgets/now_playing/lyrics/lrc_parser.dart';
-import 'package:musified/widgets/now_playing/lyrics/lyrics_stage.dart';
-import 'package:musified/widgets/now_playing/lyrics/lyrics_theme.dart';
-import 'package:musified/widgets/now_playing/lyrics/plain_lyrics_reader.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/widgets/now_playing/lyrics/compact_lyrics_panel.dart';
+import 'package:musyn/widgets/now_playing/lyrics/lrc_parser.dart';
+import 'package:musyn/widgets/now_playing/lyrics/lyrics_stage.dart';
+import 'package:musyn/widgets/now_playing/lyrics/lyrics_theme.dart';
+import 'package:musyn/widgets/now_playing/lyrics/plain_lyrics_reader.dart';
 
 /// Live synced lyrics — compact spotlight panel or full-screen stage.
 class SyncedLyricsView extends StatefulWidget {

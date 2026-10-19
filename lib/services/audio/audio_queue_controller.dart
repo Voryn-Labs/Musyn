@@ -1,5 +1,5 @@
-import 'package:musified/services/audio/audio_queue_state.dart';
-import 'package:musified/utilities/map_utils.dart';
+import 'package:musyn/services/audio/audio_queue_state.dart';
+import 'package:musyn/utilities/map_utils.dart';
 
 /// Pure queue list mutations — no playback, no streams.
 /// Handler owns [AudioQueueState] and calls these for predictable queue edits.

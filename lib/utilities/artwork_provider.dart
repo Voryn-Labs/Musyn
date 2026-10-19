@@ -39,7 +39,7 @@ class ArtworkProvider {
         provider = AssetImage(artwork);
       }
     } catch (_) {
-      provider = const AssetImage('assets/icons/musify_icon.png');
+      provider = const AssetImage('assets/icons/musyn_icon.png');
     }
 
     _cache[artwork] = provider;

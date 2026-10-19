@@ -3,14 +3,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/ytdlp_client_sync_service.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/ytdlp_client_sync_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('musified-settings-');
+    directory = await Directory.systemTemp.createTemp('musyn-settings-');
     Hive.init(directory.path);
   });
   tearDown(() async {

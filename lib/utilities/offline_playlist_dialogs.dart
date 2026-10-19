@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:musified/services/playlist_download_service.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/widgets/confirmation_dialog.dart';
+import 'package:musyn/services/playlist_download_service.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/widgets/confirmation_dialog.dart';
 
 void showRemoveOfflinePlaylistDialog(BuildContext context, String playlistId) {
   showCupertinoDialog<void>(

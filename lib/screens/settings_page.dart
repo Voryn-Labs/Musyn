@@ -3,19 +3,20 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:musified/constants/version.dart';
-import 'package:musified/screens/youtube_auth_webview.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/common_services.dart';
-import 'package:musified/services/data_manager.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/services/youtube_auth_service.dart';
-import 'package:musified/services/youtube_music_sync_service.dart';
-import 'package:musified/services/ytdlp_client_sync_service.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/constants/version.dart';
+import 'package:musyn/screens/youtube_auth_webview.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/discovery_state.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/services/ytdlp_client_sync_service.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/widgets/mini_player_bottom_space.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -29,7 +30,7 @@ class SettingsPage extends StatelessWidget {
         final navBarColor = isDark
             ? const Color(0xB3121214)
             : const Color(0xB3FFFFFF);
-        final scaffoldBg = musifiedCanvas(isDark);
+        final scaffoldBg = musynCanvas(isDark);
 
         return CupertinoPageScaffold(
           backgroundColor: scaffoldBg,
@@ -42,7 +43,7 @@ class SettingsPage extends StatelessWidget {
                 largeTitle: const Text(
                   'Settings',
                   style: TextStyle(
-                    fontFamily: MusifiedStyle.displayFont,
+                    fontFamily: MusynStyle.displayFont,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,
                   ),
@@ -92,7 +93,7 @@ class SettingsPage extends StatelessWidget {
   // THEME SELECTOR CARD
   // ---------------------------------------------------------------------------
   Widget _buildThemeSelector(BuildContext context, bool isDark) {
-    final cardBg = musifiedSheetCard(isDark);
+    final cardBg = musynSheetCard(isDark);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,27 +154,30 @@ class SettingsPage extends StatelessWidget {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.circle_fill,
-                              color: CupertinoColors.systemGrey,
-                              size: 16,
-                            ),
-                            SizedBox(width: 10),
-                            Text(
-                              'Pure OLED Black',
-                              style: TextStyle(
-                                fontFamily: MusifiedStyle.uiFont,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                        const Icon(
+                          CupertinoIcons.circle_fill,
+                          color: CupertinoColors.systemGrey,
+                          size: 16,
                         ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Pure OLED Black',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         CupertinoSwitch(
                           value: pureBlack,
-                          activeTrackColor: MusifiedStyle.appleRed,
+                          activeTrackColor: isDark
+                              ? CupertinoColors.white
+                              : CupertinoColors.black,
+                          thumbColor: pureBlack && isDark
+                              ? CupertinoColors.black
+                              : CupertinoColors.white,
                           onChanged: (val) {
                             HapticFeedback.selectionClick();
                             usePureBlackColor.value = val;
@@ -205,12 +209,12 @@ class SettingsPage extends StatelessWidget {
     required VoidCallback onTap,
     required bool isDark,
   }) {
-    const primaryColor = MusifiedStyle.appleRed;
+    final primaryColor = isDark ? CupertinoColors.white : CupertinoColors.black;
     final buttonBg = isSelected
         ? primaryColor
-        : musifiedSecondarySurface(isDark);
+        : musynSecondarySurface(isDark);
     final textColor = isSelected
-        ? CupertinoColors.white
+        ? (isDark ? CupertinoColors.black : CupertinoColors.white)
         : (isDark ? CupertinoColors.white : CupertinoColors.black);
 
     return Expanded(
@@ -232,7 +236,7 @@ class SettingsPage extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  fontFamily: MusifiedStyle.uiFont,
+                  fontFamily: MusynStyle.uiFont,
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: textColor,
@@ -256,7 +260,7 @@ class SettingsPage extends StatelessWidget {
   // YOUTUBE MUSIC ACCOUNT SECTION
   // ---------------------------------------------------------------------------
   Widget _buildYouTubeAccountCard(BuildContext context, bool isDark) {
-    final cardBg = musifiedSheetCard(isDark);
+    final cardBg = musynSheetCard(isDark);
 
     return ValueListenableBuilder<bool>(
       valueListenable: YouTubeAuthService().isSignedIn,
@@ -312,7 +316,7 @@ class SettingsPage extends StatelessWidget {
               Text(
                 'Connect YouTube Music',
                 style: TextStyle(
-                  fontFamily: MusifiedStyle.displayFont,
+                  fontFamily: MusynStyle.displayFont,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -321,7 +325,7 @@ class SettingsPage extends StatelessWidget {
               Text(
                 'Sync your liked tracks, playlists & mixes',
                 style: TextStyle(
-                  fontFamily: MusifiedStyle.uiFont,
+                  fontFamily: MusynStyle.uiFont,
                   fontSize: 13,
                   color: CupertinoColors.systemGrey,
                 ),
@@ -346,7 +350,7 @@ class SettingsPage extends StatelessWidget {
           child: const Text(
             'Sign In',
             style: TextStyle(
-              fontFamily: MusifiedStyle.uiFont,
+              fontFamily: MusynStyle.uiFont,
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: CupertinoColors.white,
@@ -376,7 +380,7 @@ class SettingsPage extends StatelessWidget {
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : 'Y',
                   style: const TextStyle(
-                    fontFamily: MusifiedStyle.displayFont,
+                    fontFamily: MusynStyle.displayFont,
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: CupertinoColors.white,
@@ -392,7 +396,7 @@ class SettingsPage extends StatelessWidget {
                   Text(
                     name,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.displayFont,
+                      fontFamily: MusynStyle.displayFont,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -401,7 +405,7 @@ class SettingsPage extends StatelessWidget {
                   Text(
                     email,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       fontSize: 13,
                       color: CupertinoColors.systemGrey,
                     ),
@@ -414,7 +418,7 @@ class SettingsPage extends StatelessWidget {
               child: const Text(
                 'Sign Out',
                 style: TextStyle(
-                  fontFamily: MusifiedStyle.uiFont,
+                  fontFamily: MusynStyle.uiFont,
                   color: CupertinoColors.destructiveRed,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -455,7 +459,7 @@ class SettingsPage extends StatelessWidget {
                   Text(
                     'Sync Library Now',
                     style: TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: CupertinoColors.systemGreen,
@@ -479,7 +483,7 @@ class SettingsPage extends StatelessWidget {
   // AUDIO & PLAYBACK ENGINE
   // ---------------------------------------------------------------------------
   Widget _buildAudioEngineSection(BuildContext context, bool isDark) {
-    final cardBg = musifiedSheetCard(isDark);
+    final cardBg = musynSheetCard(isDark);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -502,46 +506,68 @@ class SettingsPage extends StatelessWidget {
                 builder: (context, source, _) {
                   String label;
                   if (source == 'saavn' || source == 'jiosaavn') {
-                    label = 'JioSaavn 320k';
+                    label = 'JioSaavn';
                   } else if (source == 'youtube') {
                     label = 'YouTube Music';
                   } else {
-                    label = 'Auto (Saavn→YT)';
+                    label = 'Auto';
                   }
                   return _buildSettingRow(
                     icon: CupertinoIcons.music_note_2,
-                    iconBg: MusifiedStyle.appleRed,
+
                     title: 'Default Audio Provider',
-                    subtitle: 'Auto tries Saavn match, else YouTube audio',
+                    subtitle:
+                        'Applies to upcoming tracks. Switch the current track in the player.',
                     trailingText: label,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      // Cycle auto → jiosaavn → youtube → auto.
-                      final String next;
-                      if (source == 'auto') {
-                        next = 'jiosaavn';
-                      } else if (source == 'saavn' || source == 'jiosaavn') {
-                        next = 'youtube';
-                      } else {
-                        next = 'auto';
-                      }
-                      preferredSource.value = next;
-                      unawaited(
-                        addOrUpdateData('settings', 'preferredSource', next),
-                      );
-                      if (isAudioHandlerInitialized) {
-                        audioHandler.clearPinnedSources();
-                      }
-                      final toastLabel = next == 'youtube'
-                          ? 'YouTube Music'
-                          : next == 'auto'
-                          ? 'Auto (Saavn match → YouTube)'
-                          : 'JioSaavn 320k Lossless';
-                      showToast(context, 'Default provider: $toastLabel');
-                    },
+                    onTap: () => _selectProvider(context, source),
                     isDark: isDark,
                   );
                 },
+              ),
+              _buildDivider(isDark),
+              ValueListenableBuilder<String>(
+                valueListenable: audioQualitySetting,
+                builder: (context, value, _) => _buildSettingRow(
+                  icon: CupertinoIcons.waveform,
+                  title: 'YouTube streaming quality',
+                  subtitle:
+                      'Applies to upcoming tracks. Available quality depends on the track.',
+                  trailingText:
+                      const {
+                        'high': 'Highest',
+                        'medium': 'Balanced',
+                        'low': 'Data saver',
+                      }[value] ??
+                      'Highest',
+                  onTap: () => _selectQuality(
+                    context,
+                    audioQualitySetting,
+                    'audioQuality',
+                    const {
+                      'high': 'Highest available',
+                      'medium': 'Balanced',
+                      'low': 'Data saver',
+                    },
+                  ),
+                  isDark: isDark,
+                ),
+              ),
+              _buildDivider(isDark),
+              ValueListenableBuilder<String>(
+                valueListenable: jiosaavnQuality,
+                builder: (context, value, _) => _buildSettingRow(
+                  icon: CupertinoIcons.music_note,
+                  title: 'JioSaavn streaming quality',
+                  subtitle: 'AAC audio for upcoming tracks.',
+                  trailingText: '$value kbps',
+                  onTap: () => _selectQuality(
+                    context,
+                    jiosaavnQuality,
+                    'jiosaavnQuality',
+                    const {'160': '160 kbps', '320': '320 kbps'},
+                  ),
+                  isDark: isDark,
+                ),
               ),
               _buildDivider(isDark),
               ValueListenableBuilder<int>(
@@ -553,12 +579,12 @@ class SettingsPage extends StatelessWidget {
                       final service = YtdlpClientSyncService.instance;
                       return _buildSettingRow(
                         icon: CupertinoIcons.cloud_download,
-                        iconBg: CupertinoColors.systemRed,
-                        title: 'Sync YouTube Client',
+
+                        title: 'Repair YouTube playback',
                         subtitle: syncing
-                            ? 'Fetching Innertube config from GitHub…'
+                            ? 'Updating playback settings…'
                             : _clientSyncSubtitle(service.lastSyncedAt.value),
-                        trailingText: service.clientLabel,
+                        trailingText: syncing ? 'Updating' : 'Refresh',
                         onTap: syncing
                             ? null
                             : () => unawaited(_syncYoutubeClient(context)),
@@ -574,9 +600,9 @@ class SettingsPage extends StatelessWidget {
                 builder: (context, enabled, _) {
                   return _buildSwitchRow(
                     icon: CupertinoIcons.waveform,
-                    iconBg: CupertinoColors.systemIndigo,
-                    title: 'JioSaavn 320k Lossless',
-                    subtitle: 'Studio master high-definition AAC streams',
+
+                    title: 'JioSaavn AAC · up to 320 kbps',
+                    subtitle: 'Allow matching and playback from JioSaavn.',
                     value: enabled,
                     onChanged: (val) {
                       HapticFeedback.selectionClick();
@@ -595,7 +621,7 @@ class SettingsPage extends StatelessWidget {
                 builder: (context, autoPlay, _) {
                   return _buildSwitchRow(
                     icon: CupertinoIcons.infinite,
-                    iconBg: CupertinoColors.systemTeal,
+
                     title: 'Infinite Recommendations',
                     subtitle: 'Auto-play similar music when queue ends',
                     value: autoPlay,
@@ -620,7 +646,7 @@ class SettingsPage extends StatelessWidget {
                 builder: (context, offline, _) {
                   return _buildSwitchRow(
                     icon: CupertinoIcons.airplane,
-                    iconBg: CupertinoColors.systemOrange,
+
                     title: 'Offline Mode Only',
                     subtitle: 'Play exclusively from downloaded local tracks',
                     value: offline,
@@ -646,7 +672,7 @@ class SettingsPage extends StatelessWidget {
   // STORAGE & CACHE
   // ---------------------------------------------------------------------------
   Widget _buildStorageSection(BuildContext context, bool isDark) {
-    final cardBg = musifiedSheetCard(isDark);
+    final cardBg = musynSheetCard(isDark);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -666,21 +692,32 @@ class SettingsPage extends StatelessWidget {
             children: [
               _buildSettingRow(
                 icon: CupertinoIcons.trash_fill,
-                iconBg: CupertinoColors.systemRed,
+
                 title: 'Clear Audio Cache',
-                subtitle: 'Frees temporary streams & token manifests',
+                subtitle:
+                    'Remove temporary playback data. Downloads stay saved.',
                 onTap: () async {
                   unawaited(HapticFeedback.mediumImpact());
-                  await clearAllCache();
+                  final cleared = await clearAllCache();
+                  if (cleared) {
+                    if (isAudioHandlerInitialized)
+                      audioHandler.clearPreparedStreams();
+                    await invalidateAllSongStreamCaches();
+                  }
                   if (context.mounted)
-                    showToast(context, 'Audio cache cleared');
+                    showToast(
+                      context,
+                      cleared
+                          ? 'Audio cache cleared'
+                          : 'Cache could not be cleared. Try again.',
+                    );
                 },
                 isDark: isDark,
               ),
               _buildDivider(isDark),
               _buildSettingRow(
                 icon: CupertinoIcons.clock_fill,
-                iconBg: CupertinoColors.systemPurple,
+
                 title: 'Clear History & Recents',
                 subtitle: 'Resets search keywords and recently played',
                 onTap: () async {
@@ -688,6 +725,7 @@ class SettingsPage extends StatelessWidget {
                   await deleteData('user', 'searchHistory');
                   await deleteData('user', 'recentlyPlayed');
                   userRecentlyPlayed.value = [];
+                  searchHistoryNotifier.value = [];
                   if (context.mounted)
                     showToast(context, 'Search & recent history cleared');
                 },
@@ -704,7 +742,7 @@ class SettingsPage extends StatelessWidget {
   // ABOUT MUSIFIED
   // ---------------------------------------------------------------------------
   Widget _buildAboutSection(BuildContext context, bool isDark) {
-    final cardBg = musifiedSheetCard(isDark);
+    final cardBg = musynSheetCard(isDark);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,16 +762,16 @@ class SettingsPage extends StatelessWidget {
             children: [
               _buildSettingRow(
                 icon: CupertinoIcons.info_circle_fill,
-                iconBg: CupertinoColors.activeBlue,
+
                 title: 'Version',
-                subtitle: 'Musified Native iOS Edition',
+                subtitle: 'Musyn by Voryn Labs',
                 trailingText: 'v$appVersion',
                 isDark: isDark,
               ),
               _buildDivider(isDark),
               _buildSettingRow(
                 icon: CupertinoIcons.doc_plaintext,
-                iconBg: const Color(0xFF64D2FF),
+
                 title: 'Diagnostic Logs',
                 subtitle: 'Inspect live network & audio pipeline logs',
                 onTap: () {
@@ -758,7 +796,7 @@ class SettingsPage extends StatelessWidget {
       child: Text(
         title,
         style: const TextStyle(
-          fontFamily: MusifiedStyle.uiFont,
+          fontFamily: MusynStyle.uiFont,
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
@@ -770,7 +808,6 @@ class SettingsPage extends StatelessWidget {
 
   Widget _buildSettingRow({
     required IconData icon,
-    required Color iconBg,
     required String title,
     required String subtitle,
     String? trailingText,
@@ -788,10 +825,14 @@ class SettingsPage extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: iconBg,
+                color: musynSecondarySurface(isDark),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: CupertinoColors.white, size: 20),
+              child: Icon(
+                icon,
+                color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -801,7 +842,7 @@ class SettingsPage extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -810,7 +851,7 @@ class SettingsPage extends StatelessWidget {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      fontFamily: MusifiedStyle.uiFont,
+                      fontFamily: MusynStyle.uiFont,
                       fontSize: 13,
                       color: CupertinoColors.systemGrey,
                     ),
@@ -819,13 +860,18 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
             if (trailingText != null) ...[
-              Text(
-                trailingText,
-                style: const TextStyle(
-                  fontFamily: MusifiedStyle.uiFont,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: CupertinoColors.systemGrey,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 90),
+                child: Text(
+                  trailingText,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: MusynStyle.uiFont,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: CupertinoColors.systemGrey,
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
@@ -844,7 +890,6 @@ class SettingsPage extends StatelessWidget {
 
   Widget _buildSwitchRow({
     required IconData icon,
-    required Color iconBg,
     required String title,
     required String subtitle,
     required bool value,
@@ -859,10 +904,14 @@ class SettingsPage extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: iconBg,
+              color: musynSecondarySurface(isDark),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: CupertinoColors.white, size: 20),
+            child: Icon(
+              icon,
+              color: isDark ? CupertinoColors.white : CupertinoColors.black,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -872,7 +921,7 @@ class SettingsPage extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -881,7 +930,7 @@ class SettingsPage extends StatelessWidget {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    fontFamily: MusifiedStyle.uiFont,
+                    fontFamily: MusynStyle.uiFont,
                     fontSize: 13,
                     color: CupertinoColors.systemGrey,
                   ),
@@ -891,7 +940,12 @@ class SettingsPage extends StatelessWidget {
           ),
           CupertinoSwitch(
             value: value,
-            activeTrackColor: MusifiedStyle.appleRed,
+            activeTrackColor: isDark
+                ? CupertinoColors.white
+                : CupertinoColors.black,
+            thumbColor: value && isDark
+                ? CupertinoColors.black
+                : CupertinoColors.white,
             onChanged: onChanged,
           ),
         ],
@@ -899,19 +953,93 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  void _selectQuality(
+    BuildContext context,
+    ValueNotifier<String> setting,
+    String key,
+    Map<String, String> options,
+  ) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheet) => CupertinoActionSheet(
+        title: const Text('Streaming quality'),
+        message: const Text(
+          'Your current track continues playing. Downloads have their own source and quality picker.',
+        ),
+        actions: [
+          for (final entry in options.entries)
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.pop(sheet);
+                setting.value = entry.key;
+                if (isAudioHandlerInitialized)
+                  audioHandler.clearPreparedStreams();
+                await addOrUpdateData('settings', key, entry.key);
+                await invalidateAllSongStreamCaches();
+              },
+              child: Text(
+                '${setting.value == entry.key ? '✓ ' : ''}${entry.value}',
+              ),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheet),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  void _selectProvider(BuildContext context, String current) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheet) => CupertinoActionSheet(
+        title: const Text('Default audio provider'),
+        message: const Text(
+          'Applies to upcoming tracks. Use the player to switch the current track.',
+        ),
+        actions: [
+          for (final entry in const {
+            'auto': 'Auto',
+            'youtube': 'YouTube Music',
+            'jiosaavn': 'JioSaavn',
+          }.entries)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheet);
+                preferredSource.value = entry.key;
+                unawaited(
+                  addOrUpdateData('settings', 'preferredSource', entry.key),
+                );
+                if (isAudioHandlerInitialized)
+                  audioHandler.clearPinnedSources();
+              },
+              child: Text(
+                '${current == entry.key || (current == 'saavn' && entry.key == 'jiosaavn') ? '✓ ' : ''}${entry.value}',
+              ),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheet),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
   String _clientSyncSubtitle(DateTime? syncedAt) {
     if (syncedAt == null) {
-      return 'Tap to fetch latest Innertube config from GitHub';
+      return 'Refresh connection settings if YouTube tracks fail to play';
     }
     final elapsed = DateTime.now().difference(syncedAt);
-    if (elapsed.inMinutes < 1) return 'Innertube config updated just now';
+    if (elapsed.inMinutes < 1) return 'Playback settings updated just now';
     if (elapsed.inHours < 1) {
-      return 'Innertube config updated ${elapsed.inMinutes}m ago';
+      return 'Playback settings updated ${elapsed.inMinutes}m ago';
     }
     if (elapsed.inDays < 1) {
-      return 'Innertube config updated ${elapsed.inHours}h ago';
+      return 'Playback settings updated ${elapsed.inHours}h ago';
     }
-    return 'Innertube config updated ${elapsed.inDays}d ago';
+    return 'Playback settings updated ${elapsed.inDays}d ago';
   }
 
   Future<void> _syncYoutubeClient(BuildContext context) async {
@@ -924,8 +1052,8 @@ class SettingsPage extends StatelessWidget {
     showToast(
       context,
       result.ok
-          ? 'YouTube client updated to ${result.label}'
-          : 'Sync failed: ${result.error}',
+          ? 'YouTube playback settings updated'
+          : 'Playback settings could not be refreshed. Try again.',
     );
   }
 

@@ -16,7 +16,7 @@ class DeviceLogUpload {
   DeviceLogUpload._();
 
   static const _token = String.fromEnvironment('GITHUB_LOG_TOKEN');
-  static const _repo = 'tinyredphoenix/Musified';
+  static const _repo = 'Voryn-Labs/Musyn';
   static const _uploadGap = Duration(seconds: 15);
 
   static final String _session = DateTime.now()
@@ -88,7 +88,7 @@ class DeviceLogUpload {
         headers: {
           'Authorization': 'Bearer $_token',
           'Accept': 'application/vnd.github+json',
-          'User-Agent': 'musified-device-log',
+          'User-Agent': 'musyn-device-log',
         },
         body: jsonEncode(body),
       );
@@ -98,7 +98,7 @@ class DeviceLogUpload {
           headers: {
             'Authorization': 'Bearer $_token',
             'Accept': 'application/vnd.github+json',
-            'User-Agent': 'musified-device-log',
+            'User-Agent': 'musyn-device-log',
           },
         );
         if (current.statusCode == 200) {
@@ -110,7 +110,7 @@ class DeviceLogUpload {
               headers: {
                 'Authorization': 'Bearer $_token',
                 'Accept': 'application/vnd.github+json',
-                'User-Agent': 'musified-device-log',
+                'User-Agent': 'musyn-device-log',
               },
               body: jsonEncode(body),
             );

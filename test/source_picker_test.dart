@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musified/widgets/now_playing/source_picker_sheet.dart';
+import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
 
 void main() {
   testWidgets(

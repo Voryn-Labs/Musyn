@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musified/services/logger_service.dart';
+import 'package:musyn/services/logger_service.dart';
 
 /// Inputs for [AudioCompletionCoordinator.handleNearEndSkip].
 class NearEndSkipContext {
@@ -72,6 +72,7 @@ class SongCompletionContext {
     required this.stopPlayback,
     required this.audioIsPlaying,
     required this.hasAnotherTrack,
+    this.mayRetry,
   });
 
   final Future<void> Function() addCurrentToHistory;
@@ -82,6 +83,7 @@ class SongCompletionContext {
   final Future<void> Function() stopPlayback;
   final bool Function() audioIsPlaying;
   final bool Function() hasAnotherTrack;
+  final bool Function()? mayRetry;
 }
 
 /// Inputs for playback error recovery.
@@ -314,6 +316,10 @@ class AudioCompletionCoordinator {
       // and try skipToNext one more time.
       if (!ctx.audioIsPlaying()) {
         await Future<void>.delayed(const Duration(milliseconds: 500));
+        if (!(ctx.mayRetry?.call() ?? true) ||
+            ctx.currentQueueIndex() != indexBefore ||
+            ctx.audioIsPlaying())
+          return;
         await ctx.skipToNext();
         if (ctx.audioIsPlaying()) return;
       }

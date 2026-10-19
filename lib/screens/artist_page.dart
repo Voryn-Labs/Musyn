@@ -3,36 +3,42 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:musified/constants/app_constants.dart';
-import 'package:musified/extensions/l10n.dart';
-import 'package:musified/screens/playlist_page.dart';
-import 'package:musified/services/artist_service.dart';
-import 'package:musified/services/audio/audio_runtime.dart';
-import 'package:musified/services/navigation_paths.dart';
-import 'package:musified/services/playlists_manager.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/theme/app_themes.dart';
-import 'package:musified/theme/musified_style.dart';
-import 'package:musified/utilities/app_utils.dart';
-import 'package:musified/utilities/async_loader.dart';
-import 'package:musified/utilities/flutter_toast.dart';
-import 'package:musified/widgets/artist_shelf.dart';
-import 'package:musified/widgets/mini_player_bottom_space.dart';
-import 'package:musified/widgets/playlist_cube.dart';
-import 'package:musified/widgets/playlist_page/add_to_playlist_button.dart';
-import 'package:musified/widgets/playlist_page/download_button.dart';
-import 'package:musified/widgets/playlist_page/empty_playlist_state.dart';
-import 'package:musified/widgets/playlist_page/like_button.dart';
-import 'package:musified/widgets/playlist_page/playlist_action_buttons.dart';
-import 'package:musified/widgets/playlist_page/playlist_header.dart';
-import 'package:musified/widgets/section_header.dart';
-import 'package:musified/widgets/song_tile.dart';
-import 'package:musified/widgets/spinner.dart';
+import 'package:musyn/constants/app_constants.dart';
+import 'package:musyn/extensions/l10n.dart';
+import 'package:musyn/screens/playlist_page.dart';
+import 'package:musyn/services/artist_service.dart';
+import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/navigation_paths.dart';
+import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
+import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/async_loader.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
+import 'package:musyn/widgets/artist_shelf.dart';
+import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/playlist_cube.dart';
+import 'package:musyn/widgets/playlist_page/add_to_playlist_button.dart';
+import 'package:musyn/widgets/playlist_page/download_button.dart';
+import 'package:musyn/widgets/playlist_page/like_button.dart';
+import 'package:musyn/widgets/playlist_page/playlist_action_buttons.dart';
+import 'package:musyn/widgets/playlist_page/playlist_header.dart';
+import 'package:musyn/widgets/section_header.dart';
+import 'package:musyn/widgets/song_tile.dart';
+import 'package:musyn/widgets/spinner.dart';
 
 /// The page an artist opens on: who the artist is, its top songs, its releases
 /// and related artists.
 class ArtistPage extends StatefulWidget {
-  const ArtistPage({super.key, required this.artistId, this.artistData});
+  const ArtistPage({
+    super.key,
+    required this.artistId,
+    this.artistData,
+    this.loadArtist,
+  });
+  final Future<Map<String, dynamic>?> Function(String)? loadArtist;
 
   final String artistId;
   final Map? artistData;
@@ -127,23 +133,29 @@ class _ArtistPageState extends State<ArtistPage> {
   }) async {
     final generation = _artistLoadGeneration;
     final artistData = widget.artistData;
-    final artist = await getArtistProfile(
-      widget.artistId,
-      forceRefresh: forceRefresh,
-      cacheResult: !refreshCatalog,
-      preferredName: artistData?['title']?.toString(),
-      preferredImage: artistData?['image']?.toString(),
-      sourceSongId: artistData?['sourceSongId']?.toString(),
-      sourceVideoAuthor: artistData?['videoAuthor']?.toString(),
-      preferredVerified: artistData?['isVerifiedArtist'] == true,
-    );
+    final artist =
+        await (widget.loadArtist?.call(widget.artistId) ??
+                getArtistProfile(
+                  widget.artistId,
+                  forceRefresh: forceRefresh,
+                  cacheResult: !refreshCatalog,
+                  preferredName: artistData?['title']?.toString(),
+                  preferredImage: artistData?['image']?.toString(),
+                  sourceSongId: artistData?['sourceSongId']?.toString(),
+                  sourceVideoAuthor: artistData?['videoAuthor']?.toString(),
+                  preferredVerified: artistData?['isVerifiedArtist'] == true,
+                ))
+            .timeout(const Duration(seconds: 20));
     if (artist == null || !mounted || generation != _artistLoadGeneration) {
       return null;
     }
 
     Map<String, dynamic>? catalog;
     if (refreshCatalog) {
-      catalog = await getArtistCatalogFromProfile(artist, forceRebuild: true);
+      catalog = await getArtistCatalogFromProfile(
+        artist,
+        forceRebuild: true,
+      ).timeout(const Duration(seconds: 20));
       if (catalog == null ||
           catalog['catalogStatus'] == 'failed' ||
           !mounted ||
@@ -194,6 +206,7 @@ class _ArtistPageState extends State<ArtistPage> {
         child: const Center(child: Spinner()),
       ),
       emptyWidget: _buildNotFoundPage(),
+      errorBuilder: (_, _, _) => _buildNotFoundPage(),
       builder: (context, _) => CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(backgroundColor: navBarColor),
         child: SafeArea(
@@ -262,24 +275,39 @@ class _ArtistPageState extends State<ArtistPage> {
     );
   }
 
-  Widget _buildNotFoundPage() {
-    return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Artist Not Found'),
-      ),
-      child: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            EmptyPlaylistState(
-              icon: CupertinoIcons.person_crop_circle_fill,
-              message: context.l10n.artistNotFound,
+  Widget _buildNotFoundPage() => CupertinoPageScaffold(
+    navigationBar: const CupertinoNavigationBar(middle: Text('Artist')),
+    child: SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            ContentState(
+              icon: CupertinoIcons.person_crop_circle,
+              title: 'Artist unavailable',
+              message:
+                  'This artist could not be loaded. Try again or search by name.',
+              actionLabel: 'Retry artist',
+              onAction: () => setState(() {
+                _artistFuture = _loadArtist();
+              }),
+              secondaryLabel: 'Search for artist',
+              onSecondary: () => context.go(
+                Uri(
+                  path: '/search',
+                  queryParameters: {
+                    'q':
+                        widget.artistData?['title']?.toString() ??
+                        widget.artistId,
+                  },
+                ).toString(),
+              ),
             ),
-            const SliverMiniPlayerBottomSpace(),
+            const MiniPlayerBottomSpace(),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
 
   Widget _buildHeaderSection() {
     final screenSize = MediaQuery.sizeOf(context);
@@ -324,13 +352,13 @@ class _ArtistPageState extends State<ArtistPage> {
             ),
             CupertinoButton(
               padding: const EdgeInsets.all(10),
-              color: musifiedSecondarySurface(isDark),
+              color: musynSecondarySurface(isDark),
               borderRadius: BorderRadius.circular(22),
               onPressed: _refresh,
               child: const Icon(
                 CupertinoIcons.arrow_2_circlepath,
                 size: 20,
-                color: MusifiedStyle.appleRed,
+                color: MusynStyle.appleRed,
               ),
             ),
           ],
@@ -403,9 +431,15 @@ class _ArtistPageState extends State<ArtistPage> {
 
     final generation = _artistLoadGeneration;
     final artistId = _resolvedArtistId;
-    final future = _resolveCatalog();
+    final future = _resolveCatalog().timeout(const Duration(seconds: 20));
     _catalogFuture = future;
-    final catalog = await future;
+    final Map? catalog;
+    try {
+      catalog = await future;
+    } catch (_) {
+      if (identical(_catalogFuture, future)) _catalogFuture = null;
+      rethrow;
+    }
 
     final ownsFuture = identical(_catalogFuture, future);
     final isCurrent =
@@ -418,7 +452,7 @@ class _ArtistPageState extends State<ArtistPage> {
 
     if (catalog != null && catalog['catalogStatus'] != 'failed') {
       setState(() {
-        _catalog = Map<String, dynamic>.from(catalog);
+        _catalog = Map<String, dynamic>.from(catalog!);
       });
     }
     return catalog;
@@ -459,6 +493,9 @@ class _ArtistPageState extends State<ArtistPage> {
       } else {
         await audioHandler.playPlaylistSong(playlist: catalog, songIndex: 0);
       }
+    } catch (_) {
+      if (mounted)
+        showToast(context, 'Artist tracks could not be loaded. Try again.');
     } finally {
       if (mounted) _isLoadingCatalog.value = false;
     }

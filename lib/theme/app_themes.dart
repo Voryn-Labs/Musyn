@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:musified/services/settings_manager.dart';
-import 'package:musified/theme/musified_style.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/musyn_style.dart';
 
 enum ThemeMode { system, light, dark }
 
@@ -55,69 +55,82 @@ bool isAppDarkMode(BuildContext context) {
 }
 
 /// Scaffold / page canvas. OLED on = `#000000`, OLED off = elevated `#121214`.
-Color musifiedCanvas(bool isDark) => isDark
-    ? (usePureBlackColor.value ? MusifiedStyle.oledBlack : MusifiedStyle.elevated)
-    : MusifiedStyle.lightCanvas;
+Color musynCanvas(bool isDark) => isDark
+    ? (usePureBlackColor.value
+          ? MusynStyle.oledBlack
+          : MusynStyle.elevated)
+    : MusynStyle.lightCanvas;
 
-/// Card / grouped-row fill that still contrasts with [musifiedCanvas].
-Color musifiedCard(bool isDark) => isDark
-    ? (usePureBlackColor.value ? const Color(0xFF0A0A0A) : MusifiedStyle.surface)
-    : MusifiedStyle.lightSurface;
+/// Card / grouped-row fill that still contrasts with [musynCanvas].
+Color musynCard(bool isDark) => isDark
+    ? (usePureBlackColor.value
+          ? const Color(0xFF0A0A0A)
+          : MusynStyle.surface)
+    : MusynStyle.lightSurface;
 
 /// Placeholder / chip / secondary control surface (OLED-aware).
-Color musifiedSecondarySurface(bool isDark) => isDark
-    ? (usePureBlackColor.value ? const Color(0xFF0A0A0A) : MusifiedStyle.surfaceHigh)
+Color musynSecondarySurface(bool isDark) => isDark
+    ? (usePureBlackColor.value
+          ? const Color(0xFF0A0A0A)
+          : MusynStyle.surfaceHigh)
     : const Color(0xFFE5E5EA);
 
 /// Mini-player frosted panel background.
-Color musifiedMiniPlayerBg(bool isDark) => isDark
+Color musynMiniPlayerBg(bool isDark) => isDark
     ? (usePureBlackColor.value
-        ? const Color(0xE6000000)
-        : const Color(0xE61C1C1E))
+          ? const Color(0xE6000000)
+          : const Color(0xE61C1C1E))
     : const Color(0xE6FFFFFF);
 
 /// Grouped list / sheet surface (#1C1C1E elevated, OLED near-black).
-Color musifiedElevatedSurface(bool isDark) => isDark
-    ? (usePureBlackColor.value ? const Color(0xFF0A0A0A) : MusifiedStyle.surface)
+Color musynElevatedSurface(bool isDark) => isDark
+    ? (usePureBlackColor.value
+          ? const Color(0xFF0A0A0A)
+          : MusynStyle.surface)
     : const Color(0xFFF2F2F7);
 
 /// Sheet / dialog card on elevated surfaces.
-Color musifiedSheetCard(bool isDark) => isDark
-    ? (usePureBlackColor.value ? const Color(0xFF0A0A0A) : MusifiedStyle.surface)
+Color musynSheetCard(bool isDark) => isDark
+    ? (usePureBlackColor.value
+          ? const Color(0xFF0A0A0A)
+          : MusynStyle.surface)
     : CupertinoColors.white;
 
 CupertinoThemeData buildCupertinoTheme({
   required Brightness brightness,
-  Color primaryColor = MusifiedStyle.appleRed,
+  Color? primaryColor,
 }) {
   final isDark = brightness == Brightness.dark;
   final useOled = isDark && usePureBlackColor.value;
 
   return CupertinoThemeData(
     brightness: brightness,
-    primaryColor: primaryColor,
+    primaryContrastingColor: isDark ? CupertinoColors.black : CupertinoColors.white,
+    primaryColor:
+        primaryColor ??
+        (isDark ? CupertinoColors.white : CupertinoColors.black),
     scaffoldBackgroundColor: isDark
-        ? (useOled ? MusifiedStyle.oledBlack : MusifiedStyle.elevated)
-        : MusifiedStyle.lightCanvas,
+        ? (useOled ? MusynStyle.oledBlack : MusynStyle.elevated)
+        : MusynStyle.lightCanvas,
     barBackgroundColor: isDark
         ? const Color(0xB3121214)
         : const Color(0xB3FFFFFF),
     textTheme: CupertinoTextThemeData(
       textStyle: TextStyle(
-        fontFamily: MusifiedStyle.uiFont,
+        fontFamily: MusynStyle.uiFont,
         fontSize: 17,
         color: isDark ? CupertinoColors.white : CupertinoColors.black,
         decoration: TextDecoration.none,
       ),
       navTitleTextStyle: TextStyle(
-        fontFamily: MusifiedStyle.displayFont,
+        fontFamily: MusynStyle.displayFont,
         fontSize: 17,
         fontWeight: FontWeight.w700,
         color: isDark ? CupertinoColors.white : CupertinoColors.black,
         decoration: TextDecoration.none,
       ),
       navLargeTitleTextStyle: TextStyle(
-        fontFamily: MusifiedStyle.displayFont,
+        fontFamily: MusynStyle.displayFont,
         fontSize: 34,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.5,
