@@ -3,7 +3,8 @@
 Identity: **Musyn by Voryn Labs**, `com.vorynlabs.musyn`, `0.1.0+1`, iOS 15+.
 This is a fresh app; no legacy migration or URL schemes are shipped.
 
-1. Use Flutter 3.47.7 / Dart 3.13.5 and full Xcode/CocoaPods for iOS.
+1. Use Flutter 3.47.7 / Dart 3.13.5 and full Xcode for iOS. All native plugins use Swift Package Manager;
+   no CocoaPods install is required.
 2. Run `flutter pub get`, `flutter analyze`, `flutter test` and
    `python3 scripts/verify_branding.py`.
 3. Run the **Build Musyn iOS** workflow manually. A normal push runs checks only.

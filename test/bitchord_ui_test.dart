@@ -127,8 +127,14 @@ void main() {
     for (final box in ['user', 'settings', 'cache']) {
       await Hive.openBox(box, bytes: Uint8List(0));
     }
-    final font = File('/System/Library/Fonts/SFNS.ttf');
-    if (font.existsSync()) {
+    // Linux has no San Francisco font. Load a licensed readable fallback
+    // instead of Ahem's square glyphs, which distort every label's width.
+    const portableFont = bool.fromEnvironment('MUSYN_PORTABLE_FONT');
+    final systemFont = File('/System/Library/Fonts/SFNS.ttf');
+    final font = !portableFont && systemFont.existsSync()
+        ? systemFont
+        : File('test/fixtures/fonts/Roboto-Regular.ttf');
+    {
       final bytes = await font.readAsBytes();
       for (final family in [
         '.SF Pro Text',
