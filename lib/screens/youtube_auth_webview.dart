@@ -41,7 +41,7 @@ class _YouTubeAuthWebViewState extends State<YouTubeAuthWebView> {
           },
           onUrlChange: (UrlChange change) async {
             final url = change.url;
-            if (url != null && url.contains('music.youtube.com')) {
+            if (url != null && Uri.tryParse(url)?.host == 'music.youtube.com') {
               await _extractCookiesAndComplete();
             }
           },
@@ -99,7 +99,7 @@ class _YouTubeAuthWebViewState extends State<YouTubeAuthWebView> {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: const Text('Sign in to YouTube Music'),
+        middle: const Text('Connect YouTube Music'),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () => Navigator.pop(context, false),

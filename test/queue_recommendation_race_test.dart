@@ -188,8 +188,8 @@ void main() {
         );
         await Future<void>.delayed(Duration.zero);
         expect(
-          handler.mediaItem.valueOrNull?.artUri.toString(),
-          'https://covers.example/second.jpg',
+          handler.mediaItem.valueOrNull?.artUri,
+          isNull,
         );
         covers['https://covers.example/second.jpg']!.complete(
           Uri.file('${directory.path}/second.png'),

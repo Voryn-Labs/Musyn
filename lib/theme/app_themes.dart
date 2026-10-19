@@ -56,16 +56,12 @@ bool isAppDarkMode(BuildContext context) {
 
 /// Scaffold / page canvas. OLED on = `#000000`, OLED off = elevated `#121214`.
 Color musynCanvas(bool isDark) => isDark
-    ? (usePureBlackColor.value
-          ? MusynStyle.oledBlack
-          : MusynStyle.elevated)
+    ? (usePureBlackColor.value ? MusynStyle.oledBlack : MusynStyle.elevated)
     : MusynStyle.lightCanvas;
 
 /// Card / grouped-row fill that still contrasts with [musynCanvas].
 Color musynCard(bool isDark) => isDark
-    ? (usePureBlackColor.value
-          ? const Color(0xFF0A0A0A)
-          : MusynStyle.surface)
+    ? (usePureBlackColor.value ? const Color(0xFF0A0A0A) : MusynStyle.surface)
     : MusynStyle.lightSurface;
 
 /// Placeholder / chip / secondary control surface (OLED-aware).
@@ -84,16 +80,12 @@ Color musynMiniPlayerBg(bool isDark) => isDark
 
 /// Grouped list / sheet surface (#1C1C1E elevated, OLED near-black).
 Color musynElevatedSurface(bool isDark) => isDark
-    ? (usePureBlackColor.value
-          ? const Color(0xFF0A0A0A)
-          : MusynStyle.surface)
+    ? (usePureBlackColor.value ? const Color(0xFF0A0A0A) : MusynStyle.surface)
     : const Color(0xFFF2F2F7);
 
 /// Sheet / dialog card on elevated surfaces.
 Color musynSheetCard(bool isDark) => isDark
-    ? (usePureBlackColor.value
-          ? const Color(0xFF0A0A0A)
-          : MusynStyle.surface)
+    ? (usePureBlackColor.value ? const Color(0xFF0A0A0A) : MusynStyle.surface)
     : CupertinoColors.white;
 
 CupertinoThemeData buildCupertinoTheme({
@@ -105,10 +97,12 @@ CupertinoThemeData buildCupertinoTheme({
 
   return CupertinoThemeData(
     brightness: brightness,
-    primaryContrastingColor: isDark ? CupertinoColors.black : CupertinoColors.white,
+    primaryContrastingColor: isDark
+        ? CupertinoColors.black
+        : CupertinoColors.white,
     primaryColor:
         primaryColor ??
-        (isDark ? CupertinoColors.white : CupertinoColors.black),
+        (isDark ? MusynStyle.brandCoral : MusynStyle.brandCoralLight),
     scaffoldBackgroundColor: isDark
         ? (useOled ? MusynStyle.oledBlack : MusynStyle.elevated)
         : MusynStyle.lightCanvas,

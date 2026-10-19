@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:musyn/extensions/l10n.dart';
 import 'package:musyn/localization/app_localizations.dart';
+import 'package:musyn/screens/onboarding_page.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/audio/remote_favorites.dart';
 import 'package:musyn/services/audio_service.dart';
@@ -263,7 +264,7 @@ void main() async {
           throw StateError('Audio initialization failed');
         unawaited(cleanupOldCacheEntries());
       },
-      readyBuilder: (_) => const MusynApp(),
+      readyBuilder: (_) => FirstRunGate(readyBuilder: (_) => const MusynApp()),
     ),
   );
 }

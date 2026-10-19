@@ -140,7 +140,7 @@ class BitChordTabBar extends StatelessWidget {
             onTap: onSelect,
             height: 54,
             backgroundColor: musynCanvas(isAppDarkMode(context)),
-            activeColor: const Color(0xFFFF2D55),
+            activeColor: CupertinoTheme.of(context).primaryColor,
             inactiveColor: CupertinoColors.systemGrey,
             border: null,
             items: List.generate(

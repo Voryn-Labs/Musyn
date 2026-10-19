@@ -8,6 +8,7 @@ import 'package:musyn/services/download_transfer.dart';
 import 'package:musyn/services/download_activity.dart';
 import 'package:musyn/screens/user_songs_page.dart';
 import 'package:musyn/screens/settings_page.dart';
+import 'package:musyn/screens/onboarding_page.dart';
 import 'package:musyn/screens/playlist_folder_page.dart';
 import 'package:musyn/screens/artist_page.dart';
 import 'package:musyn/screens/playlist_page.dart';
@@ -194,6 +195,7 @@ void main() {
     Size size = const Size(390, 844),
     Brightness brightness = Brightness.dark,
     double scale = 1,
+    bool reduceMotion = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -205,9 +207,10 @@ void main() {
         builder: (context, child) => RepaintBoundary(
           key: const ValueKey('capture'),
           child: MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(scale)),
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(scale),
+              disableAnimations: reduceMotion,
+            ),
             child: child!,
           ),
         ),
@@ -873,14 +876,16 @@ void main() {
     await render(tester, const DownloadsPage());
     expect(find.textContaining('50%'), findsOneWidget);
     await capture(tester, 'downloads-dark');
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.byKey(ValueKey('cancel-download-$id')));
     await tester.pump();
     expect(token.isCancelled, isTrue);
-    expect(find.text('Cancelling…'), findsOneWidget);
+    expect(find.textContaining('Cancelling…'), findsOneWidget);
     downloadActivity.finish(id, false);
     await tester.pumpAndSettle();
-    expect(find.text('Download cancelled'), findsOneWidget);
+    expect(find.textContaining('Cancelled'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('download-options')));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Clear finished'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(CupertinoSearchTextField), 'zzzz');
@@ -1058,9 +1063,9 @@ void main() {
     (tester) async {
       final source = preferredSource.value;
       await render(tester, const SettingsPage());
-      await tester.ensureVisible(find.text('YouTube streaming quality'));
+      await tester.ensureVisible(find.text('YouTube quality'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('YouTube streaming quality'));
+      await tester.tap(find.text('YouTube quality'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Data saver'));
       await tester.pumpAndSettle();
@@ -1076,11 +1081,21 @@ void main() {
   ) async {
     preferredSource.value = 'auto';
     await render(tester, const SettingsPage());
-    await tester.ensureVisible(find.text('Default Audio Provider'));
+    await tester.ensureVisible(find.text('Default source'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Default Audio Provider'));
+    await tester.tap(find.text('Default source'));
     await tester.pumpAndSettle();
-    expect(find.text('✓ Auto'), findsOneWidget);
+    expect(
+      tester
+          .widget<CupertinoActionSheetAction>(
+            find.ancestor(
+              of: find.text('Automatic').last,
+              matching: find.byType(CupertinoActionSheetAction),
+            ),
+          )
+          .isDefaultAction,
+      isTrue,
+    );
     await tester.tap(find.text('YouTube Music').last);
     await tester.pumpAndSettle();
     expect(preferredSource.value, 'youtube');
@@ -1324,7 +1339,7 @@ void main() {
         );
         expect(tester.takeException(), isNull);
         await capture(tester, 'settings-${light ? 'light' : 'dark'}');
-        await tester.ensureVisible(find.text('YouTube streaming quality'));
+        await tester.ensureVisible(find.text('YouTube quality'));
         await tester.pumpAndSettle();
         await capture(tester, 'quality-settings-${light ? 'light' : 'dark'}');
       },
@@ -1359,6 +1374,48 @@ void main() {
     expect(tester.takeException(), isNull);
     await capture(tester, 'folder-dark');
   });
+
+  for (final small in [false, true]) {
+    testWidgets(
+      'Musyn walkthrough ${small ? 'large text' : 'standard'} is complete and skippable',
+      (tester) async {
+        var completed = 0;
+        await render(
+          tester,
+          OnboardingPage(
+            onComplete: () async {
+              completed++;
+            },
+          ),
+          size: small ? const Size(320, 568) : const Size(390, 844),
+          scale: small ? 1.8 : 1,
+        );
+        expect(tester.takeException(), isNull);
+        await capture(
+          tester,
+          small ? 'walkthrough-small' : 'walkthrough-welcome',
+        );
+        await tester.tap(find.text('Continue'));
+        await tester.pumpAndSettle();
+        expect(find.text('One player. Your sources.'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await capture(
+          tester,
+          small ? 'walkthrough-sources-small' : 'walkthrough-sources',
+        );
+        await tester.tap(find.text('Continue'));
+        await tester.pumpAndSettle();
+        await capture(
+          tester,
+          small ? 'walkthrough-ready-small' : 'walkthrough-ready',
+        );
+        await tester.tap(find.text('Start listening'));
+        await tester.pump();
+        expect(completed, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   for (final entry in [
     (name: 'player-dark', size: const Size(390, 844), light: false, scale: 1.0),

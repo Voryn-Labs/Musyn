@@ -52,7 +52,10 @@ class SongArtworkWidget extends StatelessWidget {
       ytid: ytid,
       targetSize: cacheDimension,
     );
-    final rawArtUri = metadata.artUri?.toString();
+    final rawArtUri =
+        metadata.artUri?.toString() ??
+        metadata.extras?['_artworkOriginal']?.toString();
+    final localArtUri = Uri.tryParse(rawArtUri ?? '');
     final isValidUri =
         rawArtUri != null && rawArtUri.isNotEmpty && rawArtUri != 'null';
     final imageUrl = upgradeArtworkUrl(
@@ -77,7 +80,7 @@ class SongArtworkWidget extends StatelessWidget {
                 NullArtworkWidget(iconSize: errorWidgetIconSize, size: size),
           );
 
-    return metadata.artUri?.scheme == 'file'
+    return localArtUri?.scheme == 'file'
         ? SizedBox(
             width: size,
             height: size,
@@ -86,7 +89,7 @@ class SongArtworkWidget extends StatelessWidget {
               child: Image.file(
                 key: ValueKey('${metadata.id}:${metadata.artUri}'),
                 File(
-                  metadata.artUri?.toFilePath() ??
+                  localArtUri?.toFilePath() ??
                       metadata.extras?['artworkPath']?.toString() ??
                       metadata.extras?['artWorkPath']?.toString() ??
                       '',

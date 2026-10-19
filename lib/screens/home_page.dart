@@ -133,7 +133,7 @@ class _HomePageState extends State<HomePage> {
               CupertinoSliverNavigationBar(
                 trailing: const AccountButton(),
                 largeTitle: const Text(
-                  'Listen now',
+                  'Musyn',
                   style: TextStyle(
                     fontFamily: MusynStyle.displayFont,
                     fontWeight: FontWeight.w700,
@@ -496,7 +496,36 @@ class _HomePageState extends State<HomePage> {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: ytChartPlaylists,
       builder: (context, playlists, _) {
-        if (playlists.isEmpty) return const SizedBox.shrink();
+        if (playlists.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeader(
+                title: 'YouTube Charts',
+                icon: CupertinoIcons.music_note_list,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: _isLoading
+                    ? const Row(
+                        children: [
+                          CupertinoActivityIndicator(),
+                          SizedBox(width: 12),
+                          Expanded(child: Text('Loading official charts…')),
+                        ],
+                      )
+                    : ContentState(
+                        icon: CupertinoIcons.chart_bar,
+                        title: 'Charts are unavailable',
+                        message:
+                            'Musyn could not reach YouTube Music. Retry or browse the other charts.',
+                        actionLabel: 'Retry charts',
+                        onAction: () => _loadTrending(refresh: true),
+                      ),
+              ),
+            ],
+          );
+        }
 
         const playlistHeight = 150.0;
 

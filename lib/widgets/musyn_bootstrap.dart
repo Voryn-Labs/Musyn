@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
 
-/// Shows the real initialization state; no artificial splash delay.
+/// Holds the branded launch briefly while initialization runs in parallel.
 class MusynBootstrap extends StatefulWidget {
   const MusynBootstrap({
     super.key,
     required this.initialize,
     required this.readyBuilder,
+    this.minimumDisplay = const Duration(milliseconds: 1800),
   });
   final Future<void> Function(ValueChanged<String> report) initialize;
   final WidgetBuilder readyBuilder;
+  final Duration minimumDisplay;
   @override
   State<MusynBootstrap> createState() => _MusynBootstrapState();
 }
@@ -30,9 +32,12 @@ class _MusynBootstrapState extends State<MusynBootstrap> {
       _status = 'Preparing your library';
     });
     try {
-      await widget.initialize((status) {
-        if (mounted) setState(() => _status = status);
-      });
+      await Future.wait<void>([
+        widget.initialize((status) {
+          if (mounted) setState(() => _status = status);
+        }),
+        Future<void>.delayed(widget.minimumDisplay),
+      ], eagerError: true);
       if (mounted) setState(() => _ready = true);
     } catch (_) {
       if (mounted) setState(() => _failed = true);

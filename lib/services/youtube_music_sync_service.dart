@@ -10,6 +10,7 @@ import 'package:musyn/services/library_state.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_public_context.dart';
 import 'package:musyn/utilities/youtube_playlist_parser.dart';
 
 class YouTubeMusicSyncService {
@@ -26,6 +27,8 @@ class YouTubeMusicSyncService {
       'hl': 'en',
     },
   };
+
+  final _publicContext = YouTubePublicContext();
 
   static const _baseUrl = 'https://music.youtube.com/youtubei/v1';
 
@@ -96,14 +99,28 @@ class YouTubeMusicSyncService {
   Future<Map<String, dynamic>> _publicPost(
     String endpoint,
     Map<String, dynamic> body,
-  ) {
-    return _post(endpoint, body, {
-      'User-Agent':
-          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
-          'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148',
-      'Origin': 'https://music.youtube.com',
-      'Referer': 'https://music.youtube.com/',
-    });
+  ) async {
+    final version = await _publicContext.version();
+    final context = Map<String, dynamic>.from(
+      body['context'] as Map? ?? _remixContext,
+    );
+    final client = Map<String, dynamic>.from(context['client'] as Map? ?? {});
+    context['client'] = {
+      ...client,
+      'clientName': 'WEB_REMIX',
+      'clientVersion': version,
+    };
+    return _post(
+      endpoint,
+      {...body, 'context': context},
+      {
+        'User-Agent': YouTubePublicContext.userAgent,
+        'Origin': 'https://music.youtube.com',
+        'Referer': 'https://music.youtube.com/',
+        'X-Youtube-Client-Name': '67',
+        'X-Youtube-Client-Version': version,
+      },
+    );
   }
 
   Future<Map<String, dynamic>> _post(
@@ -122,7 +139,7 @@ class YouTubeMusicSyncService {
           headers: headers,
           body: jsonEncode(fullBody),
         )
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 8));
 
     if (response.statusCode != 200) {
       throw Exception('YouTube API error: ${response.statusCode}');
@@ -284,7 +301,11 @@ class YouTubeMusicSyncService {
         trendingError.value = null;
         return [];
       }
-      final tracks = await fetchPlaylistTracks(chartId);
+      final tracks = await fetchPlaylistTracks(
+        chartId,
+        publicOnly: true,
+        limit: 20,
+      );
       if (country != chartCountry.value) return [];
       final ranked = tracks.take(20).toList();
       for (var i = 0; i < ranked.length; i++) {
@@ -310,28 +331,51 @@ class YouTubeMusicSyncService {
     final region = chartCountries.containsKey(selected) ? selected : 'IN';
     return _chartRequests.putIfAbsent(
       region,
-      () => _fetchChartPlaylists(
-        region,
-      ).whenComplete(() => _chartRequests.remove(region)),
+      () => _fetchChartPlaylists(region).whenComplete(() {
+        _chartRequests.remove(region);
+      }),
     );
   }
 
   Future<List<Map<String, dynamic>>> _fetchChartPlaylists(
     String country,
   ) async {
-    final response = await _browsePost({
-      'context': {
-        'client': {
-          ..._remixContext['client']!,
-          'gl': country == 'ZZ' ? 'US' : country,
+    try {
+      final response = await _publicPost('/browse', {
+        'context': {
+          'client': {
+            ..._remixContext['client']!,
+            'gl': country == 'ZZ' ? 'US' : country,
+          },
         },
-      },
-      'browseId': 'FEmusic_charts',
-      'formData': {
-        'selectedValues': [country],
-      },
-    });
-    return YouTubePlaylistParser.officialCharts(response, country: country);
+        'browseId': 'FEmusic_charts',
+        'formData': {
+          'selectedValues': [country],
+        },
+      });
+      final charts = YouTubePlaylistParser.officialCharts(
+        response,
+        country: country,
+      );
+      if (charts.isEmpty) throw StateError('No official charts returned');
+      if (Hive.isBoxOpen('cache'))
+        await addOrUpdateData<List>('cache', 'officialCharts_$country', charts);
+      return charts;
+    } catch (error) {
+      if (Hive.isBoxOpen('cache')) {
+        final cached = await getData(
+          'cache',
+          'officialCharts_$country',
+          cachingDuration: const Duration(days: 3),
+        );
+        if (cached is List && cached.isNotEmpty)
+          return cached
+              .whereType<Map>()
+              .map(Map<String, dynamic>.from)
+              .toList();
+      }
+      rethrow;
+    }
   }
 
   /// Server-defined Explore destinations: no search phrases masquerading as charts.
@@ -434,8 +478,10 @@ class YouTubeMusicSyncService {
   }
 
   Future<List<Map<String, dynamic>>> fetchPlaylistTracks(
-    String playlistId,
-  ) async {
+    String playlistId, {
+    bool publicOnly = false,
+    int? limit,
+  }) async {
     try {
       if (isLikedMusicPlaylist({'playlistId': playlistId})) {
         return await fetchLikedSongs();
@@ -444,7 +490,11 @@ class YouTubeMusicSyncService {
           playlistId.startsWith('VL') || playlistId.startsWith('FE')
           ? playlistId
           : 'VL$playlistId';
-      return await _browseAllTracks(browseId);
+      return await _browseAllTracks(
+        browseId,
+        publicOnly: publicOnly,
+        limit: limit,
+      );
     } catch (e) {
       logger.log('Error fetching playlist tracks: $e');
       return [];
@@ -452,11 +502,17 @@ class YouTubeMusicSyncService {
   }
 
   /// Walks browse + continuation pages until exhausted (capped for safety).
-  Future<List<Map<String, dynamic>>> _browseAllTracks(String browseId) async {
+  Future<List<Map<String, dynamic>>> _browseAllTracks(
+    String browseId, {
+    bool publicOnly = false,
+    int? limit,
+  }) async {
     final tracks = <Map<String, dynamic>>[];
     final seen = <String>{};
 
-    var response = await _browsePost({'browseId': browseId});
+    Future<Map<String, dynamic>> browse(Map<String, dynamic> body) =>
+        publicOnly ? _publicPost('/browse', body) : _browsePost(body);
+    var response = await browse({'browseId': browseId});
     _appendUniqueTracks(
       tracks,
       seen,
@@ -471,9 +527,10 @@ class YouTubeMusicSyncService {
 
     while (continuation != null &&
         continuation.isNotEmpty &&
-        pages < maxPages) {
+        pages < maxPages &&
+        (limit == null || tracks.length < limit)) {
       pages++;
-      response = await _browsePost({'continuation': continuation});
+      response = await browse({'continuation': continuation});
       final pageTracks = _parseTrackRenderers(
         YouTubePlaylistParser.playlistScope(response),
       );
@@ -486,7 +543,7 @@ class YouTubeMusicSyncService {
       );
     }
 
-    return tracks;
+    return limit == null ? tracks : tracks.take(limit).toList();
   }
 
   void _appendUniqueTracks(

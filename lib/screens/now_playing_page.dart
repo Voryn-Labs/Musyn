@@ -9,16 +9,19 @@ import 'package:go_router/go_router.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/download_activity.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/async_loader.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/mediaitem.dart';
 import 'package:musyn/widgets/audio_route_button.dart';
 import 'package:musyn/widgets/content_state.dart';
 import 'package:musyn/widgets/now_playing/synced_lyrics_view.dart';
 import 'package:musyn/widgets/playback_icon_button.dart';
 import 'package:musyn/widgets/player_sheet_route.dart';
+import 'package:musyn/widgets/playing_artwork_motion.dart';
 import 'package:musyn/widgets/position_slider.dart';
 import 'package:musyn/widgets/queue_list_view.dart';
 import 'package:musyn/widgets/song_actions_sheet.dart';
@@ -242,7 +245,12 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                             _mainSleeve(item, cover, reduced),
                       ),
                     ),
-                    _credits(item),
+                    Row(
+                      children: [
+                        Expanded(child: _credits(item)),
+                        _downloadControl(item),
+                      ],
+                    ),
                     if (!(item.extras?['isLive'] ?? false))
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -397,13 +405,20 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               _downward ? 0 : _coverDrag.clamp(-96.0, 0.0) * .5,
               0,
             ),
-            child: Hero(
-              flightShuttleBuilder: SongArtworkWidget.flightShuttle,
-              tag: 'playing-art-${item.id}',
-              child: SongArtworkWidget(
-                metadata: item,
-                size: sleeve.toDouble(),
-                errorWidgetIconSize: 64,
+            child: StreamBuilder<PlaybackState>(
+              initialData: audioHandler.playbackState.value,
+              stream: audioHandler.playbackState,
+              builder: (context, state) => PlayingArtworkMotion(
+                playing: state.data?.playing ?? false,
+                child: Hero(
+                  flightShuttleBuilder: SongArtworkWidget.flightShuttle,
+                  tag: 'playing-art-${item.id}',
+                  child: SongArtworkWidget(
+                    metadata: item,
+                    size: sleeve.toDouble(),
+                    errorWidgetIconSize: 64,
+                  ),
+                ),
               ),
             ),
           ),
@@ -680,6 +695,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                     : _PlayerPane.lyrics,
               );
             }, selected: _pane == _PlayerPane.lyrics),
+            _downloadControl(item),
             const AudioRouteButton(),
             _button(CupertinoIcons.list_bullet, 'Queue', () {
               HapticFeedback.selectionClick();
@@ -694,6 +710,44 @@ class _NowPlayingPageState extends State<NowPlayingPage>
       ],
     ),
   );
+
+  Widget _downloadControl(MediaItem item) => ValueListenableBuilder(
+    valueListenable: downloadActivity.jobs,
+    builder: (context, jobs, _) {
+      final id = item.extras?['ytid']?.toString() ?? item.id;
+      final active = jobs.any(
+        (job) => job.active && job.song['ytid']?.toString() == id,
+      );
+      final saved = hasPlayableOfflineFile(id);
+      return _button(
+        saved
+            ? CupertinoIcons.checkmark_circle_fill
+            : CupertinoIcons.arrow_down_circle,
+        active
+            ? 'Downloading'
+            : saved
+            ? 'Downloaded'
+            : 'Download track',
+        active ? null : () => unawaited(_download(item)),
+        selected: saved,
+      );
+    },
+  );
+
+  Future<void> _download(MediaItem item) async {
+    final id = item.extras?['ytid']?.toString() ?? item.id;
+    if (hasPlayableOfflineFile(id)) {
+      showToast(context, 'Already downloaded');
+      return;
+    }
+    showToast(context, 'Downloading…');
+    final ok = await makeSongOffline(mediaItemToMap(item));
+    if (mounted)
+      showToast(
+        context,
+        ok ? 'Saved to downloads' : 'Download failed. Try again.',
+      );
+  }
 
   String _qualityLabel(MediaItem item) {
     final extras = item.extras ?? {};
@@ -770,7 +824,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   Widget _button(
     IconData icon,
     String label,
-    VoidCallback action, {
+    VoidCallback? action, {
     double size = 24,
     double touch = 44,
     bool selected = false,

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -30,15 +31,17 @@ class PlayerArtworkCache {
   }
 
   static Future<Uri?> _prepare(Uri uri) async {
-    if (uri.scheme != 'https' && uri.scheme != 'http') return null;
+    if (!{'https', 'http', 'file'}.contains(uri.scheme)) return null;
     try {
       final cache = DefaultCacheManager();
-      final key = '$uri#musyn-square-v1';
+      final key = '$uri#musyn-square-v2';
       final cached = await cache.getFileFromCache(key);
       if (cached != null && await cached.file.exists()) return cached.file.uri;
-      final original = await cache
-          .getSingleFile(uri.toString())
-          .timeout(const Duration(seconds: 8));
+      final original = uri.scheme == 'file'
+          ? File.fromUri(uri)
+          : await cache
+                .getSingleFile(uri.toString())
+                .timeout(const Duration(seconds: 8));
       final videoThumbnail =
           uri.host.endsWith('ytimg.com') &&
           (uri.path.contains('/vi/') || uri.path.contains('/vi_webp/'));

@@ -233,29 +233,13 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         }
 
         final isDark = isAppDarkMode(context);
-        final bg = isDark ? const Color(0xF2232326) : const Color(0xF2F5F5F7);
-        final border = isDark
-            ? const Color(0x33FFFFFF)
-            : const Color(0x1F000000);
+        final bg = musynCanvas(isDark);
         final titleColor = isDark
             ? CupertinoColors.white
             : CupertinoColors.black;
         final artistColor = isDark
             ? MusynStyle.darkSecondary
             : CupertinoColors.systemGrey;
-
-        final metadataDuration = metadata.duration;
-        final totalDuration =
-            (metadataDuration != null && metadataDuration > Duration.zero)
-            ? metadataDuration
-            : (state.position.duration > Duration.zero
-                  ? state.position.duration
-                  : Duration.zero);
-        final progress = totalDuration.inMilliseconds == 0
-            ? 0.0
-            : (state.position.position.inMilliseconds /
-                      totalDuration.inMilliseconds)
-                  .clamp(0.0, 1.0);
 
         final isPlaying = state.playbackState.playing;
         final isLoading =
@@ -266,7 +250,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         final hasNext = audioHandler.hasNext;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(10, 3, 10, 3),
+          padding: const EdgeInsets.fromLTRB(12, 2, 8, 2),
           child: AnimatedBuilder(
             animation: Listenable.merge([_scaleAnimation, _swipeController]),
             builder: (context, child) => Transform.scale(
@@ -293,39 +277,13 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                 onHorizontalDragUpdate: _handleHorizontalDragUpdate,
                 onHorizontalDragEnd: _handleHorizontalDragEnd,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                     child: Container(
                       height: MiniPlayer.playerHeight,
-                      decoration: BoxDecoration(
-                        color: bg,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: border, width: 0.5),
-                      ),
+                      decoration: BoxDecoration(color: bg),
                       child: Stack(
                         children: [
-                          // Thin progress line along the bottom of the pill
-                          Positioned(
-                            bottom: 0,
-                            left: 18,
-                            right: 18,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(1),
-                              child: Container(
-                                height: 1.5,
-                                color: isDark
-                                    ? const Color(0x22FFFFFF)
-                                    : const Color(0x11000000),
-                                alignment: Alignment.centerLeft,
-                                child: FractionallySizedBox(
-                                  widthFactor: progress,
-                                  child: Container(color: MusynStyle.appleRed),
-                                ),
-                              ),
-                            ),
-                          ),
-
                           // Main content with horizontal swipe translation
                           Transform.translate(
                             offset: Offset(
@@ -347,7 +305,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                                     tag: 'playing-art-${metadata.id}',
                                     child: SongArtworkWidget(
                                       metadata: metadata,
-                                      size: 42,
+                                      size: 40,
                                       borderRadius: 7,
                                     ),
                                   ),
@@ -365,7 +323,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                                           metadata.title,
                                           style: TextStyle(
                                             fontFamily: MusynStyle.uiFont,
-                                            fontSize: 15,
+                                            fontSize: 14,
                                             fontWeight: FontWeight.w600,
                                             letterSpacing: -0.2,
                                             color: titleColor,

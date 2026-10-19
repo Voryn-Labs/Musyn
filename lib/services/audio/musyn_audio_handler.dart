@@ -451,35 +451,57 @@ class MusynAudioHandler extends PlaybackController {
 
   String _mediaItemSignature(MediaItem item) {
     final dur = item.duration?.inSeconds ?? -1;
-    return '${item.id}|${item.title}|${item.artUri}|${item.extras?['resolvedSource']}|$dur';
+    return '${item.id}|${item.title}|${item.artUri}|${item.extras?['resolvedSource']}|${item.extras?['_artworkOriginal']}|$dur';
   }
 
   void _publishMediaItem(MediaItem item, {bool force = false}) {
-    final remoteCover = item.artUri;
-    final localCover = remoteCover == null
-        ? null
-        : PlayerArtworkCache.cached(remoteCover);
-    if (localCover != null) item = item.copyWith(artUri: localCover);
-    final signature = _mediaItemSignature(item);
-    if (!force && signature == _lastPublishedMediaSignature) {
-      return;
+    final original = item.artUri;
+    final prepared = item.extras?['_squareArtwork'] == true;
+    final square = prepared || original == null
+        ? original
+        : PlayerArtworkCache.cached(original);
+    final needsCover = original != null && !prepared && square == null;
+    if (!prepared) {
+      // Never expose a video-shaped source to Now Playing, even while its
+      // square version is loading. The app still renders original art from extras.
+      item = item.copyWith(
+        artUri: square,
+        extras: {
+          ...?item.extras,
+          if (original != null) '_artworkOriginal': original.toString(),
+          '_squareArtwork': square != null,
+        },
+      );
     }
+    final signature = _mediaItemSignature(item);
+    if (!force && signature == _lastPublishedMediaSignature) return;
     _lastPublishedMediaSignature = signature;
     final ytid = item.extras?['ytid']?.toString();
-    if (ytid != null && ytid.isNotEmpty) {
-      currentPlayingYtid.value = ytid;
-    }
+    if (ytid != null && ytid.isNotEmpty) currentPlayingYtid.value = ytid;
     mediaItem.add(item);
-    final remote = item.artUri;
-    if (remote != null &&
-        (remote.scheme == 'https' || remote.scheme == 'http')) {
+    if (needsCover) {
       unawaited(
-        _prepareArtwork(remote).then((local) {
-          if (local == null || mediaItem.isClosed) return;
-          final current = mediaItem.valueOrNull;
-          if (current?.id != item.id || current?.artUri != remote) return;
-          _publishMediaItem(current!.copyWith(artUri: local));
-        }),
+        _prepareArtwork(original)
+            .then((local) {
+              if (local == null || mediaItem.isClosed) return;
+              final current = mediaItem.valueOrNull;
+              if (current?.id != item.id ||
+                  current?.extras?['_artworkOriginal'] != original.toString())
+                return;
+              _publishMediaItem(
+                current!.copyWith(
+                  artUri: local,
+                  extras: {...?current.extras, '_squareArtwork': true},
+                ),
+              );
+            })
+            .catchError((Object error, StackTrace stack) {
+              logger.log(
+                'Could not prepare square cover',
+                error: error,
+                stackTrace: stack,
+              );
+            }),
       );
     }
   }

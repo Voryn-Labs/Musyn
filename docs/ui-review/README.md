@@ -44,3 +44,10 @@ action inventory in `../../UI-FLOW-MAP.md`.
 - [Compact lyrics controls](lyrics-dark.png).
 - Player, charts, source/download sheets and accessibility renders were regenerated for this change. Fixture artwork remains a placeholder.
 - [Fixes and verification limits](../0.1.5-fixes.md).
+
+## 0.1.7 follow-up
+
+- Native [Settings](settings-dark.png), [Downloads](downloads-dark.png) and [track actions](track-menu-dark.png), with an integrated mini-player and direct player download control.
+- Walkthrough: [welcome](walkthrough-welcome.png), [sources](walkthrough-sources.png), [gestures](walkthrough-ready.png); corresponding `*-small.png` files exercise large text on a small viewport and scrollable content.
+- Continuous artwork motion has separate time-advancing widget tests. These still renders use Reduce Motion and cannot demonstrate frame pacing.
+- [Fixes and verification limits](../PLAYER_AND_UI_FIXES_0.1.7.md).

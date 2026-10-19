@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
@@ -8,9 +7,7 @@ import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/download_activity.dart';
 import 'package:musyn/services/playlist_download_service.dart';
 import 'package:musyn/services/settings_manager.dart';
-import 'package:musyn/theme/app_themes.dart';
-import 'package:musyn/theme/musyn_style.dart';
-import 'package:musyn/utilities/mediaitem.dart' show mapToMediaItem;
+import 'package:musyn/utilities/mediaitem.dart';
 import 'package:musyn/widgets/content_state.dart';
 import 'package:musyn/widgets/mini_player_bottom_space.dart';
 import 'package:musyn/widgets/song_artwork.dart';
@@ -25,384 +22,128 @@ class DownloadsPage extends StatefulWidget {
 class _DownloadsPageState extends State<DownloadsPage> {
   String _query = '';
   final _search = TextEditingController();
+  bool _alphabetical = false;
+  bool _history = false;
   @override
   void dispose() {
     _search.dispose();
     super.dispose();
   }
 
-  bool _alphabetical = false;
+  void _options() => showCupertinoModalPopup<void>(
+    context: context,
+    builder: (sheet) => CupertinoActionSheet(
+      title: const Text('Downloads'),
+      actions: [
+        CupertinoActionSheetAction(
+          onPressed: () {
+            Navigator.pop(sheet);
+            setState(() => _alphabetical = !_alphabetical);
+          },
+          child: Text(_alphabetical ? 'Sort by newest' : 'Sort by title'),
+        ),
+        CupertinoActionSheetAction(
+          onPressed: () {
+            Navigator.pop(sheet);
+            setState(() => _history = !_history);
+          },
+          child: Text(
+            _history ? 'Hide recent transfers' : 'Show recent transfers',
+          ),
+        ),
+        CupertinoActionSheetAction(
+          onPressed: () {
+            Navigator.pop(sheet);
+            downloadActivity.clearFinished();
+          },
+          child: const Text('Clear finished'),
+        ),
+      ],
+      cancelButton: CupertinoActionSheetAction(
+        onPressed: () => Navigator.pop(sheet),
+        child: const Text('Cancel'),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => CupertinoPageScaffold(
-    backgroundColor: musynCanvas(isAppDarkMode(context)),
     child: AnimatedBuilder(
       animation: Listenable.merge([
         downloadActivity.jobs,
-        offlineMode,
         userOfflineSongs,
+        offlineMode,
         offlinePlaylistService.activeDownloadIds,
       ]),
       builder: (context, _) {
-        final saved = userOfflineSongs.value
-            .whereType<Map>()
+        final saved =
+            userOfflineSongs.value
+                .whereType<Map>()
+                .where(
+                  (song) => '${song['title']} ${song['artist']}'
+                      .toLowerCase()
+                      .contains(_query.toLowerCase()),
+                )
+                .toList()
+              ..sort(
+                (a, b) => _alphabetical
+                    ? '${a['title']}'.toLowerCase().compareTo(
+                        '${b['title']}'.toLowerCase(),
+                      )
+                    : (num.tryParse('${b['dateAdded']}') ?? 0).compareTo(
+                        num.tryParse('${a['dateAdded']}') ?? 0,
+                      ),
+              );
+        final jobs = downloadActivity.jobs.value
             .where(
-              (song) => '${song['title']} ${song['artist']}'
-                  .toLowerCase()
-                  .contains(_query.toLowerCase()),
+              (job) =>
+                  _history ||
+                  job.active ||
+                  job.stage == DownloadStage.failed ||
+                  job.stage == DownloadStage.cancelled,
             )
             .toList();
-        if (_alphabetical) {
-          saved.sort(
-            (a, b) => '${a['title']}'.toLowerCase().compareTo(
-              '${b['title']}'.toLowerCase(),
-            ),
-          );
-        } else {
-          saved.sort(
-            (a, b) => (num.tryParse('${b['dateAdded']}') ?? 0).compareTo(
-              num.tryParse('${a['dateAdded']}') ?? 0,
-            ),
-          );
-        }
-        final jobs = downloadActivity.jobs.value;
         return CustomScrollView(
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
             CupertinoSliverNavigationBar(
+              largeTitle: const Text('Downloads'),
+              border: null,
               leading: Navigator.canPop(context)
                   ? CupertinoNavigationBarBackButton(
-                      color: CupertinoTheme.of(context).primaryColor,
                       onPressed: () => Navigator.maybePop(context),
                     )
                   : null,
-              largeTitle: const Text(
-                'Downloads',
-                style: TextStyle(
-                  fontFamily: MusynStyle.displayFont,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              border: null,
               trailing: CupertinoButton(
                 padding: EdgeInsets.zero,
-                onPressed: () => setState(() => _alphabetical = !_alphabetical),
-                child: Icon(
-                  CupertinoIcons.sort_down,
-                  semanticLabel: _alphabetical
-                      ? 'Sort by newest'
-                      : 'Sort by title',
-                  color: CupertinoTheme.of(context).primaryColor,
+                key: const ValueKey('download-options'),
+                onPressed: _options,
+                child: const Icon(
+                  CupertinoIcons.ellipsis,
+                  semanticLabel: 'Download settings',
                 ),
               ),
             ),
-            if (offlinePlaylistService.activeDownloadIds.value.isNotEmpty)
+            if (userOfflineSongs.value.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 4,
-                  ),
-                  child: Column(
-                    children: [
-                      for (final id
-                          in offlinePlaylistService.activeDownloadIds.value)
-                        ValueListenableBuilder(
-                          valueListenable: offlinePlaylistService
-                              .getProgressNotifier(id),
-                          builder: (context, progress, _) {
-                            final fraction = progress.total > 0
-                                ? (progress.completed / progress.total).clamp(
-                                    0.0,
-                                    1.0,
-                                  )
-                                : 0.0;
-                            final isDark = isAppDarkMode(context);
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: musynElevatedSurface(isDark),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isDark
-                                      ? const Color(0x14FFFFFF)
-                                      : const Color(0x0A000000),
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: MusynStyle.appleRed.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            CupertinoIcons.music_albums,
-                                            color: MusynStyle.appleRed,
-                                            size: 22,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              offlinePlaylistService
-                                                      .activeTitles[id] ??
-                                                  'Playlist download',
-                                              style: TextStyle(
-                                                fontFamily:
-                                                    MusynStyle.displayFont,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                                letterSpacing: -0.2,
-                                                color: isDark
-                                                    ? CupertinoColors.white
-                                                    : CupertinoColors.black,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '${progress.completed} of ${progress.total} saved · ${progress.failed} failed',
-                                              style: const TextStyle(
-                                                fontFamily: MusynStyle.uiFont,
-                                                fontSize: 12,
-                                                color:
-                                                    CupertinoColors.systemGrey,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      CupertinoButton(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        onPressed: progress.isCancelled
-                                            ? null
-                                            : () => offlinePlaylistService
-                                                  .cancelDownload(context, id),
-                                        child: Text(
-                                          progress.isCancelled
-                                              ? 'Cancelling…'
-                                              : 'Cancel playlist',
-                                          style: const TextStyle(
-                                            fontFamily: MusynStyle.uiFont,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(3.5),
-                                    child: Container(
-                                      height: 7,
-                                      width: double.infinity,
-                                      color: isDark
-                                          ? const Color(0x1FFFFFFF)
-                                          : const Color(0x0F000000),
-                                      child: TweenAnimationBuilder<double>(
-                                        duration: const Duration(
-                                          milliseconds: 250,
-                                        ),
-                                        curve: Curves.easeOutCubic,
-                                        tween: Tween<double>(
-                                          begin: 0,
-                                          end: fraction,
-                                        ),
-                                        builder: (context, val, _) =>
-                                            FractionallySizedBox(
-                                              alignment: Alignment.centerLeft,
-                                              widthFactor: val,
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        3.5,
-                                                      ),
-                                                  gradient:
-                                                      const LinearGradient(
-                                                        colors: [
-                                                          Color(0xFFFF375F),
-                                                          MusynStyle.appleRed,
-                                                        ],
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                    ],
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Text(
+                    '${userOfflineSongs.value.length} songs saved on this iPhone',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: CupertinoColors.secondaryLabel.resolveFrom(
+                        context,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            if (jobs.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Transfer activity',
-                          style: TextStyle(
-                            fontFamily: MusynStyle.displayFont,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                      CupertinoButton(
-                        onPressed: jobs.any((job) => !job.active)
-                            ? downloadActivity.clearFinished
-                            : null,
-                        child: const Text('Clear finished'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverList.builder(
-                itemCount: jobs.length,
-                itemBuilder: (context, index) => _job(jobs[index]),
-              ),
-            ],
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
-                child: Text(
-                  'Saved tracks · ${userOfflineSongs.value.length}',
-                  style: const TextStyle(
-                    fontFamily: MusynStyle.displayFont,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ),
-            ),
-            if (saved.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          color: MusynStyle.appleRed,
-                          borderRadius: BorderRadius.circular(20),
-                          onPressed: () => audioHandler.playPlaylistSong(
-                            playlist: {'title': 'Downloads', 'list': saved},
-                            songIndex: 0,
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                CupertinoIcons.play_fill,
-                                size: 15,
-                                color: CupertinoColors.white,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Play All',
-                                style: TextStyle(
-                                  fontFamily: MusynStyle.uiFont,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: CupertinoColors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          color: isAppDarkMode(context)
-                              ? const Color(0x1FFFFFFF)
-                              : const Color(0x0F000000),
-                          borderRadius: BorderRadius.circular(20),
-                          onPressed: () {
-                            final shuffled = List.from(saved)..shuffle();
-                            audioHandler.playPlaylistSong(
-                              playlist: {
-                                'title': 'Downloads',
-                                'list': shuffled,
-                              },
-                              songIndex: 0,
-                            );
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                CupertinoIcons.shuffle,
-                                size: 16,
-                                color: isAppDarkMode(context)
-                                    ? CupertinoColors.white
-                                    : CupertinoColors.black,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Shuffle',
-                                style: TextStyle(
-                                  fontFamily: MusynStyle.uiFont,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: isAppDarkMode(context)
-                                      ? CupertinoColors.white
-                                      : CupertinoColors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (userOfflineSongs.value.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                   child: CupertinoSearchTextField(
                     controller: _search,
                     placeholder: 'Search downloads',
@@ -410,18 +151,131 @@ class _DownloadsPageState extends State<DownloadsPage> {
                   ),
                 ),
               ),
-            if (saved.isNotEmpty)
-              SliverList.builder(
-                itemCount: saved.length,
-                itemBuilder: (context, index) => SongTile(
-                  song: saved[index],
-                  onTap: () => audioHandler.playPlaylistSong(
-                    playlist: {'title': 'Downloads', 'list': saved},
-                    songIndex: index,
+            ],
+            if (offlinePlaylistService.activeDownloadIds.value.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    for (final id
+                        in offlinePlaylistService.activeDownloadIds.value)
+                      ValueListenableBuilder(
+                        valueListenable: offlinePlaylistService
+                            .getProgressNotifier(id),
+                        builder: (context, progress, _) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(CupertinoIcons.music_albums, size: 24),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      offlinePlaylistService.activeTitles[id] ??
+                                          'Playlist download',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '${progress.completed} of ${progress.total} saved${progress.failed > 0 ? ' · ${progress.failed} failed' : ''}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              CupertinoButton(
+                                onPressed: progress.isCancelled
+                                    ? null
+                                    : () => offlinePlaylistService
+                                          .cancelDownload(context, id),
+                                child: Text(
+                                  progress.isCancelled
+                                      ? 'Cancelling…'
+                                      : 'Cancel playlist',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            if (jobs.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _history ? 'Recent transfers' : 'Downloading',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (_history)
+                        CupertinoButton(
+                          onPressed: downloadActivity.clearFinished,
+                          child: const Text('Clear finished'),
+                        ),
+                    ],
                   ),
                 ),
-              )
-            else
+              ),
+              SliverList.builder(
+                itemCount: jobs.length,
+                itemBuilder: (_, index) => _transfer(jobs[index]),
+              ),
+            ],
+            if (saved.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: Row(
+                    children: [
+                      CupertinoButton(
+                        onPressed: () => _play(saved),
+                        child: const Row(
+                          children: [
+                            Icon(CupertinoIcons.play_fill, size: 18),
+                            SizedBox(width: 8),
+                            Text('Play All'),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      CupertinoButton(
+                        onPressed: () {
+                          final shuffled = List<Map>.from(saved)..shuffle();
+                          _play(shuffled);
+                        },
+                        child: const Icon(
+                          CupertinoIcons.shuffle,
+                          semanticLabel: 'Shuffle downloads',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverList.builder(
+                itemCount: saved.length,
+                itemBuilder: (_, index) => SongTile(
+                  song: saved[index],
+                  onTap: () => _play(saved, index: index),
+                ),
+              ),
+            ] else
               SliverToBoxAdapter(
                 child: ContentState(
                   icon: CupertinoIcons.arrow_down_circle,
@@ -430,7 +284,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
                       : 'Take your music with you',
                   message: _query.isNotEmpty
                       ? 'Try another title or artist.'
-                      : 'Download a track from its options menu. Saved music plays without a connection.',
+                      : 'Tap Download on the Musyn player. Your saved music is always here, even offline.',
                   actionLabel: _query.isNotEmpty
                       ? 'Clear filter'
                       : offlineMode.value
@@ -452,6 +306,19 @@ class _DownloadsPageState extends State<DownloadsPage> {
                   },
                 ),
               ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Musyn · Voryn Labs',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                  ),
+                ),
+              ),
+            ),
             const SliverMiniPlayerBottomSpace(),
           ],
         );
@@ -459,357 +326,115 @@ class _DownloadsPageState extends State<DownloadsPage> {
     ),
   );
 
-  Widget _job(DownloadJob job) => _DownloadJobCard(job: job);
-}
-
-class _DownloadJobCard extends StatefulWidget {
-  const _DownloadJobCard({required this.job});
-  final DownloadJob job;
-
-  @override
-  State<_DownloadJobCard> createState() => _DownloadJobCardState();
-}
-
-class _DownloadJobCardState extends State<_DownloadJobCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1400),
-  );
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
+  void _play(List<Map> saved, {int index = 0}) {
+    unawaited(
+      audioHandler.playPlaylistSong(
+        playlist: {'title': 'Downloads', 'list': saved},
+        songIndex: index,
+      ),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final job = widget.job;
-    final animate =
-        job.stage == DownloadStage.downloading &&
-        job.progress == null &&
-        !MediaQuery.disableAnimationsOf(context);
-    if (animate && !_pulseController.isAnimating)
-      _pulseController.repeat(reverse: true);
-    if (!animate && _pulseController.isAnimating) _pulseController.stop();
-    final isDark = isAppDarkMode(context);
-    final title = job.song['title']?.toString() ?? 'Track';
-    final artist = job.song['artist']?.toString() ?? 'Musyn';
-    final progress = job.progress;
-
-    final stage = switch (job.stage) {
-      DownloadStage.queued => 'Waiting to download',
-      DownloadStage.downloading =>
-        job.received > 0
-            ? '${(job.received / 1048576).toStringAsFixed(1)} MB downloaded'
-            : 'Downloading audio',
+  Widget _transfer(DownloadJob job) {
+    final failed =
+        job.stage == DownloadStage.failed ||
+        job.stage == DownloadStage.cancelled;
+    final label = switch (job.stage) {
+      DownloadStage.queued => 'Waiting',
       DownloadStage.cancelling => 'Cancelling…',
-      DownloadStage.saved => 'Saved to device',
       DownloadStage.failed => 'Download failed',
-      DownloadStage.cancelled => 'Download cancelled',
+      DownloadStage.cancelled => 'Cancelled',
+      DownloadStage.saved => 'Saved to device',
+      DownloadStage.downloading =>
+        job.progress == null
+            ? 'Downloading…'
+            : '${(job.progress! * 100).floor()}%',
     };
-
-    final provider = job.resolvedSource ?? job.source;
-    final isSaavn = provider == 'saavn' || provider == 'jiosaavn';
-    final sourceBadge = isSaavn
-        ? 'JioSaavn'
-        : provider == 'youtube'
-        ? 'YouTube'
-        : 'Automatic';
-    final qualityBadge = job.bitrate != null
-        ? '${job.bitrate} kbps'
-        : job.quality != null
-        ? 'up to ${job.quality} kbps'
-        : null;
-    final badgeColor = isSaavn
-        ? CupertinoColors.systemGreen
-        : provider == 'youtube'
-        ? const Color(0xFFFF0033)
-        : CupertinoColors.systemGrey;
-
+    final provider = switch (job.resolvedSource ?? job.source) {
+      'saavn' || 'jiosaavn' => 'JioSaavn',
+      'youtube' => 'YouTube Music',
+      _ => 'Automatic source',
+    };
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: musynElevatedSurface(isDark),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0F000000),
-            width: 0.5,
+      padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+      child: Row(
+        children: [
+          SongArtworkWidget(
+            size: 44,
+            metadata: mapToMediaItem(job.song),
+            borderRadius: 8,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? const Color(0x28000000) : const Color(0x0A000000),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(
-                    width: 50,
-                    height: 50,
-                    child: SongArtworkWidget(
-                      metadata: mapToMediaItem(job.song),
-                      size: 50,
-                    ),
+                Text(
+                  job.song['title']?.toString() ?? 'Track',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: MusynStyle.displayFont,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.3,
-                          color: isDark
-                              ? CupertinoColors.white
-                              : CupertinoColors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: MusynStyle.uiFont,
-                          fontSize: 13,
-                          color: CupertinoColors.systemGrey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (job.active && job.canCancel)
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: job.stage == DownloadStage.cancelling
-                        ? null
-                        : () => downloadActivity.cancel(job.id),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0x24FFFFFF)
-                            : const Color(0x12000000),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontFamily: MusynStyle.uiFont,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: CupertinoColors.systemGrey,
-                        ),
-                      ),
-                    ),
-                  )
-                else if (job.stage == DownloadStage.failed ||
-                    job.stage == DownloadStage.cancelled)
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      downloadActivity.dismiss(job.id);
-                      unawaited(
-                        makeSongOffline(
-                          job.song,
-                          source: job.source,
-                          quality: job.quality,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: MusynStyle.appleRed.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            CupertinoIcons.arrow_clockwise,
-                            size: 12,
-                            color: MusynStyle.appleRed,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Retry',
-                            style: TextStyle(
-                              fontFamily: MusynStyle.uiFont,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: MusynStyle.appleRed,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSaavn
-                            ? CupertinoIcons.waveform
-                            : CupertinoIcons.play_rectangle_fill,
-                        size: 11,
-                        color: badgeColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        [
-                          sourceBadge,
-                          if (qualityBadge != null) qualityBadge,
-                        ].join(' · '),
-                        style: TextStyle(
-                          fontFamily: MusynStyle.uiFont,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: badgeColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    stage,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: MusynStyle.uiFont,
-                      fontSize: 12,
-                      color: CupertinoColors.systemGrey,
-                    ),
-                  ),
-                ),
-                if (progress != null && job.stage == DownloadStage.downloading)
-                  Text(
-                    '${(progress * 100).floor()}%',
-                    style: TextStyle(
-                      fontFamily: MusynStyle.uiFont,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isDark
-                          ? CupertinoColors.white
-                          : CupertinoColors.black,
-                    ),
-                  ),
-              ],
-            ),
-            if (job.active && !job.canCancel)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  'Part of a playlist download',
+                const SizedBox(height: 4),
+                Text(
+                  '$label · $provider',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 12,
-                    color: CupertinoColors.systemGrey,
+                    fontSize: 13,
+                    color: failed
+                        ? CupertinoColors.systemRed
+                        : CupertinoColors.secondaryLabel.resolveFrom(context),
                   ),
                 ),
-              ),
-            if (job.stage == DownloadStage.downloading)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    height: 8,
-                    width: double.infinity,
-                    color: isDark
-                        ? const Color(0x29FFFFFF)
-                        : const Color(0x14000000),
-                    child: progress == null
-                        ? AnimatedBuilder(
-                            animation: _pulseController,
-                            builder: (context, _) => FractionallySizedBox(
-                              alignment: Alignment(
-                                -1.0 + (_pulseController.value * 2.0),
-                                0,
-                              ),
-                              widthFactor: 0.40,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(4),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0x33FF2D55),
-                                      MusynStyle.appleRed,
-                                      Color(0x33FF2D55),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                        : TweenAnimationBuilder<double>(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOutCubic,
-                            tween: Tween<double>(
-                              begin: 0,
-                              end: progress.clamp(0.0, 1.0),
-                            ),
-                            builder: (context, val, _) => FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: val,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(4),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFF375F),
-                                      MusynStyle.appleRed,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                if (job.stage == DownloadStage.downloading &&
+                    job.progress != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 7),
+                    child: SizedBox(
+                      height: 2,
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: job.progress,
+                        child: ColoredBox(
+                          color: CupertinoTheme.of(context).primaryColor,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+              ],
+            ),
+          ),
+          if (job.active && job.canCancel)
+            Semantics(
+              label: 'Cancel download',
+              button: true,
+              child: CupertinoButton(
+                key: ValueKey('cancel-download-${job.id}'),
+                onPressed: job.stage == DownloadStage.cancelling
+                    ? null
+                    : () => downloadActivity.cancel(job.id),
+                child: const Icon(CupertinoIcons.xmark_circle),
               ),
-          ],
-        ),
+            )
+          else if (failed)
+            CupertinoButton(
+              onPressed: () {
+                downloadActivity.dismiss(job.id);
+                unawaited(
+                  makeSongOffline(
+                    job.song,
+                    source: job.source,
+                    quality: job.quality,
+                  ),
+                );
+              },
+              child: const Text('Retry'),
+            ),
+        ],
       ),
     );
   }
