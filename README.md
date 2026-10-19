@@ -2,7 +2,7 @@
 <h1 align="center">Musyn</h1>
 <p align="center"><strong>Music, in your rhythm.</strong><br>An iPhone music player by <a href="https://voryn-labs.github.io/">Voryn Labs</a>.</p>
 <p align="center">
-<a href="https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.6"><img alt="Version 0.1.6 preview" src="https://img.shields.io/badge/version-0.1.6_preview-FFC5A7?style=flat-square"></a>
+<a href="https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.6"><img alt="Version 0.1.6" src="https://img.shields.io/badge/version-0.1.6-FFC5A7?style=flat-square"></a>
 <a href="https://github.com/Voryn-Labs/Musyn/actions/workflows/build-ios.yml"><img alt="iOS build" src="https://github.com/Voryn-Labs/Musyn/actions/workflows/build-ios.yml/badge.svg"></a>
 <a href="https://github.com/Voryn-Labs/Musyn/releases"><img alt="Release asset downloads" src="https://img.shields.io/github/downloads/Voryn-Labs/Musyn/total?label=release%20asset%20downloads&style=flat-square"></a>
 <img alt="GPL 3.0" src="https://img.shields.io/badge/license-GPL--3.0-222222?style=flat-square">
@@ -25,9 +25,9 @@ AAC is compressed audio; 320 kbps is **not lossless**. Provider availability and
 
 These are automated Flutter renders with fictional sample tracks and placeholder artwork. They show layout, not a device playback test. [More previews](docs/ui-review/README.md).
 
-## Install the 0.1.6 preview
+## Install Musyn 0.1.6
 
-The current preview is **0.1.6 (7)**. GitHub excludes pre-releases from its `/releases/latest` shortcut; use the versioned release link below.
+The current release is **0.1.6 (7)**: [latest release](https://github.com/Voryn-Labs/Musyn/releases/latest).
 
 Requires **iOS 15+**. Download `Musyn.ipa` and its SHA-256 checksum from the [0.1.6 release](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.6). The IPA is **unsigned**. Use your own signing identity with a compatible installer, or import it into a compatible LiveContainer version. AltStore PAL cannot install this unsigned build. Installer and host restrictions still apply.
 
@@ -45,7 +45,7 @@ python3 scripts/verify_branding.py
 flutter build ios --release --no-codesign
 ```
 
-Pinned CI toolchain: Flutter 3.47.7 / Dart 3.13.5. iOS builds require full Xcode. Native dependencies use Swift Package Manager. GitHub Actions builds and verifies the IPA, generates its source feed from the actual binary, and publishes a preview only when requested. Existing releases are never silently replaced. See [build/release notes](docs/BUILD.md), [flow map](UI-FLOW-MAP.md) and [verification](VERIFICATION.md).
+Pinned CI toolchain: Flutter 3.47.7 / Dart 3.13.5. iOS builds require full Xcode. Native dependencies use Swift Package Manager. GitHub Actions builds and verifies the IPA, generates its source feed from the actual binary, and publishes a regular release only when requested. Existing releases are never silently replaced. See [build/release notes](docs/BUILD.md), [flow map](UI-FLOW-MAP.md) and [verification](VERIFICATION.md).
 
 Automated tests cover playback coordination and UI flows. Physical iPhone lock-screen playback, interruptions, real provider availability and installer behavior still require acceptance; no universal reliability claim is made.
 

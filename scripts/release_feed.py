@@ -20,7 +20,7 @@ feed = json.loads(Path('source.json').read_text())
 url = f'https://github.com/Voryn-Labs/Musyn/releases/download/{args.tag}/Musyn.ipa'
 release = {'version': version, 'buildVersion': str(info['CFBundleVersion']), 'date': datetime.datetime.now(datetime.timezone.utc).isoformat(),
            'downloadURL': url, 'size': args.ipa.stat().st_size, 'minOSVersion': '15.0',
-           'localizedDescription': 'The first Musyn preview by Voryn Labs. Multi-source playback, offline downloads, synced lyrics and a focused player.'}
+           'localizedDescription': 'Musyn by Voryn Labs. Multi-source playback, offline downloads, synced lyrics and a focused player.'}
 feed['apps'] = [{'name': 'Musyn', 'bundleIdentifier': info['CFBundleIdentifier'],
     'developerName': 'Voryn Labs', 'subtitle': 'Music, in your rhythm.',
     'localizedDescription': 'A focused iPhone music player with YouTube Music, JioSaavn AAC, synced lyrics and offline downloads. Sign or import the unsigned IPA with a compatible installer.',

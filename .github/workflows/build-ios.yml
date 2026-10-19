@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish the 0.1 preview and update the installer source
+        description: Publish the release and update the installer source
         type: boolean
         default: false
   push:
@@ -56,7 +56,7 @@ jobs:
             source.json
             apps.json
           if-no-files-found: error
-      - name: Publish preview
+      - name: Publish release
         if: inputs.publish || startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -68,7 +68,7 @@ jobs:
           fi
           NOTES="docs/releases/${RELEASE_TAG#v}.md"
           [ -f "$NOTES" ] || NOTES="docs/releases/0.1.0.md"
-          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn ${RELEASE_TAG#v} — Voryn Labs" --notes-file "$NOTES" --prerelease build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
+          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn ${RELEASE_TAG#v} — Voryn Labs" --notes-file "$NOTES" --latest build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add source.json apps.json
