@@ -17,4 +17,6 @@ Local validation: static analysis is clean; branding and plist checks pass; the 
 
 The logs also show native AAC durations at roughly twice the catalog duration. Existing canonical duration and end-of-track guards are retained. This change does not claim to repair a decoder or sample-rate problem without a device reproduction.
 
-Release validation: 175 Flutter tests passed locally, including the full queue/favorites/download suite. Static analysis, branding verification and both iOS plist checks passed. New downloaded artwork uses the same high-resolution square-cover preparation. Native build verification follows on the release workflow.
+Release validation: 175 Flutter tests passed locally, including the full queue/favorites/download suite. Static analysis, branding verification and both iOS plist checks passed. New downloaded artwork uses the same high-resolution square-cover preparation. The release workflow subsequently completed native compilation, packaging and publication successfully.
+
+Verified release: [iOS build 39312408361](https://github.com/Voryn-Labs/Musyn/actions/runs/39312408361), built from `b43f8050217b74e0c8be3a76576ee65b9dd518d0`. Downloaded `Musyn.ipa` is a valid ZIP, version 0.1.6 (7), bundle `com.vorynlabs.musyn`, 11,947,810 bytes. SHA-256: `ef6eeb5b786c28e9f9c1317af9da6da8781e39fc575b82cd166bf49aa97ec82c`. The downloaded checksum and release feed both match the IPA. The shared website catalog was not refreshed.
