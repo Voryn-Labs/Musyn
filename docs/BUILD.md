@@ -25,3 +25,8 @@ Brand assets are in `assets/branding`. The source icon is opaque 1024×1024;
 iOS applies its own icon mask. Native launch and Flutter initialization show the
 same folded music mark. Version changes must update pubspec and
 `lib/constants/version.dart` together; the branding verifier checks this.
+
+The public installer URL is **https://voryn-labs.github.io/source.json**, which
+lists Musyn and Cloudified together. This repository's generated JSON is an input
+to that catalog. After publishing an app release, manually run **Update iOS source**
+in `Voryn-Labs/Voryn-Labs.github.io`. There is no scheduled source refresh.

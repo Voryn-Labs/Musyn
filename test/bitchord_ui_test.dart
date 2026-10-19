@@ -218,7 +218,7 @@ void main() {
   }
 
   Future<void> capture(WidgetTester tester, String name) async {
-    if (!const bool.fromEnvironment('MUSIFIED_RENDER_UI')) return;
+    if (!const bool.fromEnvironment('MUSYN_RENDER_UI')) return;
     final boundary = tester.renderObject<RenderRepaintBoundary>(
       find.byKey(const ValueKey('capture')),
     );

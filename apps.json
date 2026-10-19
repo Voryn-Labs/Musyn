@@ -21,7 +21,8 @@
           "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.1.0/Musyn.ipa",
           "size": 11912622,
           "minOSVersion": "15.0",
-          "localizedDescription": "The first Musyn preview by Voryn Labs. Multi-source playback, offline downloads, synced lyrics and a focused player."
+          "localizedDescription": "The first Musyn preview by Voryn Labs. Multi-source playback, offline downloads, synced lyrics and a focused player.",
+          "buildVersion": "1"
         }
       ],
       "version": "0.1.0",
@@ -29,7 +30,11 @@
       "versionDescription": "The first Musyn preview by Voryn Labs. Multi-source playback, offline downloads, synced lyrics and a focused player.",
       "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.1.0/Musyn.ipa",
       "size": 11912622,
-      "minOSVersion": "15.0"
+      "minOSVersion": "15.0",
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {}
+      }
     }
   ],
   "news": []

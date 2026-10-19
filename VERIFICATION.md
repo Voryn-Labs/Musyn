@@ -57,7 +57,7 @@ PUB_CACHE=/private/tmp/musified-pub-cache \
 ```
 
 For optional fixture renders, run the UI test with
-`--dart-define=MUSIFIED_RENDER_UI=true test/bitchord_ui_test.dart`.
+`--dart-define=MUSYN_RENDER_UI=true test/bitchord_ui_test.dart`.
 These renders do not prove native iOS audio, lock-screen reliability, AirPlay,
 or frame pacing. Tests mock playback/native services and do not download music.
 
@@ -88,7 +88,7 @@ states and scope boundaries, and `docs/ui-review/README.md` for previews.
   transfer progress, individual/batch cancellation, collection pin/delete,
   playlist creation inside a folder, settings choices and responsive layouts.
 - Renders regenerated with `flutter test --no-pub
-  --dart-define=MUSIFIED_RENDER_UI=true`; render fixtures are local/test data.
+  --dart-define=MUSYN_RENDER_UI=true`; render fixtures are local/test data.
 - `flutter analyze --no-pub`: **No issues found**.
 - `git diff --check`: passed. Import/export reachability traced from `main.dart`:
   no unreachable handwritten app modules after removing twelve obsolete files.
@@ -116,3 +116,48 @@ session-only; durable OS-managed background downloads were not added.
 
 Changes remain local on `codex/bitchord-ui-parity`; no commit or push was made in
 this continuation.
+
+## 19 October 2026 — Musyn 0.1 public release
+
+This section supersedes the earlier local-only status and test counts. The app
+is now **Musyn by Voryn Labs**, package `musyn`, iOS bundle
+`com.vorynlabs.musyn`, version **0.1.0 (1)**. It starts with a fresh app identity;
+no legacy URL schemes or migration are included. Upstream license and author
+credits remain in `docs/CREDITS.md`.
+
+- Changes are committed to the public `Voryn-Labs/Musyn` repository on `main`.
+- GitHub checks pass on Linux. macOS analysis and the complete **151-test** suite
+  also pass. The 53 UI tests use San Francisco on macOS and a licensed Roboto
+  fallback on Linux, avoiding Flutter's square Ahem test glyphs. Portable-font
+  UI coverage was also verified locally.
+- [Native release build 39232222864](https://github.com/Voryn-Labs/Musyn/actions/runs/39232222864)
+  succeeded with Flutter 3.47.7 and Xcode on macOS. All native plugins use Swift
+  Package Manager; the leftover CocoaPods Podfile was removed to prevent an
+  unnecessary, empty Pods integration and manifest-check failure.
+- The workflow packaged **Musyn.ipa (11,912,622 bytes)** and generated the public
+  installer feeds from its actual Info.plist and size. The 0.1 prerelease includes
+  the unsigned IPA, SHA-256 and both source JSON files. The feed is populated only
+  after a real build; existing release assets are never silently overwritten.
+- The icon, native launch screen and Flutter initialization screen share the new
+  folded music mark. Startup has bounded initialization, visible progress and a
+  retry state. Distribution identity, launch XML, icon sizes/opacity and feeds
+  pass `scripts/verify_branding.py`.
+- The Voryn Labs product and privacy pages are deployed, including actual GitHub
+  IPA download counts, source copying and installer links. Website registry,
+  analytics consistency, links/assets and counter pagination/error fixtures pass.
+- Earlier public builds were retired to recoverable GitHub release drafts so the
+  public release list starts with Musyn 0.1. Git history and attribution remain.
+
+A successful unsigned native build does not establish real-device playback
+reliability. The physical iPhone checklist above remains required for lock-screen
+transitions, interruptions, real source switching, offline playback and installer
+acceptance. Addons, lossless and durable OS-managed background downloads remain
+outside this release's scope.
+
+The studio installer URL is `https://voryn-labs.github.io/source.json`, combining
+Cloudified and Musyn. Its **Update iOS source** workflow is manual only: the owner
+runs it after publishing new versions. The catalog verifies that both IPA assets
+are published, uploaded and match their declared sizes/checksums before replacing
+the last working feed. No timer or release-triggered refresh is configured.
+The public Musyn IPA was downloaded independently; SHA-256, ZIP integrity, native
+arm64 binary, iPhoneOS platform, bundle/version/build and feed size all passed.

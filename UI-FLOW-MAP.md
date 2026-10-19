@@ -1,6 +1,6 @@
 # UI flow and recovery map
 
-Updated 19 October 2026. Implemented in the Musified Flutter app; addon integration
+Updated 19 October 2026. Implemented in the Musyn Flutter app; addon integration
 and lossless playback remain outside scope. This maps supported screens to real
 services and recovery actions. It does not certify native iOS playback or exact
 BitChord visual/motion parity.
