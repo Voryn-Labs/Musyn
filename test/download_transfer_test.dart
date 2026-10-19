@@ -87,6 +87,25 @@ void main() {
     );
   }
 
+  test(
+    'offline playback minimum is checked before replacing a saved copy',
+    () async {
+      final previous = List.filled(60000, 7);
+      await file.writeAsBytes(previous);
+      await expectLater(
+        writeDownloadAtomically(
+          destination: file,
+          bytes: Stream.value(List.filled(40000, 1)),
+          expectedBytes: 40000,
+          minimumBytes: 51201,
+          cancellation: DownloadCancellation(),
+        ),
+        throwsA(isA<HttpException>()),
+      );
+      expect(await file.readAsBytes(), previous);
+    },
+  );
+
   test('successful transfer commits the exact bytes', () async {
     final bytes = List.filled(9000, 7);
     final progress = <(int, int?)>[];

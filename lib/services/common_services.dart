@@ -579,12 +579,14 @@ bool isPlaylistFullyOffline(List songs) {
   );
 }
 
+const minimumOfflineAudioBytes = 51201;
+
 bool _isPlayableAudioFile(String? path) {
   if (path == null || path.isEmpty) return false;
   try {
     final file = File(path);
     // 50 KB minimum — 8 KB was too low and marked truncated files as valid.
-    return file.existsSync() && file.lengthSync() > 51200;
+    return file.existsSync() && file.lengthSync() >= minimumOfflineAudioBytes;
   } catch (e) {
     logger.log('_isPlayableAudioFile check failed', error: e);
     return false;
@@ -1477,6 +1479,7 @@ Future<bool> _makeSongOffline(
           }
           await writeDownloadAtomically(
             destination: audioFile,
+            minimumBytes: minimumOfflineAudioBytes,
             bytes: response.stream,
             cancellation: cancellation,
             expectedBytes: response.contentLength,
@@ -1539,6 +1542,7 @@ Future<bool> _makeSongOffline(
         downloadedSource = 'youtube';
         audioBitrateKbps = audioManifest.bitrate.kiloBitsPerSecond.round();
         audioCodec = audioManifest.audioCodec;
+        if (audioCodec.toLowerCase().startsWith('video/')) return false;
         onResolved?.call('youtube', audioBitrateKbps);
 
         final streamDuration = youtubeStreamDurationSeconds(audioManifest.url);
@@ -1553,6 +1557,7 @@ Future<bool> _makeSongOffline(
         );
         await writeDownloadAtomically(
           destination: audioFile,
+          minimumBytes: minimumOfflineAudioBytes,
           bytes: stream,
           cancellation: cancellation,
           expectedBytes: audioManifest.size.totalBytes,

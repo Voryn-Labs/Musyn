@@ -4,41 +4,35 @@ import 'package:musyn/theme/musyn_style.dart';
 /// Visual tokens for live / synced lyrics.
 ///
 /// Active line: center-aligned, highlighted in accent pink, bold, large.
-/// Past lines:  muted ~40% — clearly read, clearly behind.
-/// Future lines: very dim ~22% — readable but receding.
+/// Past lines: readable, muted text behind the current line.
+/// Future lines: receding text with enough contrast to follow along.
 class LyricsTheme {
-  LyricsTheme({
-    required this.isDark,
-    required Color accent,
-  }) : accent = accent == CupertinoColors.activeBlue
-      ? MusynStyle.appleRed
-      : accent;
+  LyricsTheme({required this.isDark, required Color accent})
+    : accent = accent == CupertinoColors.activeBlue
+          ? MusynStyle.appleRed
+          : accent;
 
   final bool isDark;
   final Color accent;
 
-  Color get canvas => isDark ? const Color(0xFF0A0A0E) : const Color(0xFFF2F2F7);
+  Color get canvas =>
+      isDark ? const Color(0xFF0A0A0E) : const Color(0xFFF2F2F7);
 
-  Color get onCanvas =>
-      isDark ? CupertinoColors.white : CupertinoColors.black;
+  Color get onCanvas => isDark ? CupertinoColors.white : CupertinoColors.black;
 
   /// Active line matches Apple Music signature high-contrast typography.
   Color get activeColor => onCanvas;
 
   /// Past lines — clearly visible but receded.
-  Color get pastColor =>
-      onCanvas.withValues(alpha: isDark ? 0.40 : 0.36);
+  Color get pastColor => onCanvas.withValues(alpha: isDark ? 0.55 : 0.50);
 
   /// Future / upcoming lines — very dim.
-  Color get futureColor =>
-      onCanvas.withValues(alpha: isDark ? 0.22 : 0.18);
+  Color get futureColor => onCanvas.withValues(alpha: 0.42);
 
   // Keep muted/faint/hairline/chipFill for other widgets that use LyricsTheme.
-  Color get muted =>
-      onCanvas.withValues(alpha: isDark ? 0.45 : 0.40);
+  Color get muted => onCanvas.withValues(alpha: isDark ? 0.45 : 0.40);
 
-  Color get faint =>
-      onCanvas.withValues(alpha: isDark ? 0.28 : 0.25);
+  Color get faint => onCanvas.withValues(alpha: isDark ? 0.28 : 0.25);
 
   Color get hairline =>
       isDark ? const Color(0x1AFFFFFF) : const Color(0x14000000);
@@ -46,19 +40,13 @@ class LyricsTheme {
   Color get chipFill =>
       isDark ? const Color(0x22FFFFFF) : const Color(0x12000000);
 
-  Color lineColor({
-    required bool isActive,
-    required bool isPast,
-  }) {
+  Color lineColor({required bool isActive, required bool isPast}) {
     if (isActive) return activeColor;
     if (isPast) return pastColor;
     return futureColor;
   }
 
-  double fontSize({
-    required bool isActive,
-    required LyricsLayout layout,
-  }) {
+  double fontSize({required bool isActive, required LyricsLayout layout}) {
     switch (layout) {
       case LyricsLayout.compact:
         return isActive ? 21 : 15;
@@ -92,12 +80,7 @@ class LyricsTheme {
       decoration: TextDecoration.none,
       // Soft pink glow on active line in full-screen.
       shadows: isActive && layout == LyricsLayout.stage
-          ? [
-              Shadow(
-                color: activeColor.withValues(alpha: 0.35),
-                blurRadius: 24,
-              ),
-            ]
+          ? [Shadow(color: activeColor.withValues(alpha: 0.35), blurRadius: 24)]
           : null,
     );
   }

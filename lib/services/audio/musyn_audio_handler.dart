@@ -2509,6 +2509,9 @@ class MusynAudioHandler extends PlaybackController {
       return null;
     }
     _playback.sourceSwitchInFlight = true;
+    // A new explicit source choice supersedes recommendation requests made for
+    // the previous selection, including requests that have not returned yet.
+    ++_selectionRevision;
     logger.log(
       'Source switch $previousSource → $source',
       data: {'ytid': ytid, 'title': song['title']},
