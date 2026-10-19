@@ -1,7 +1,37 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musyn/utilities/youtube_playlist_parser.dart';
 
 void main() {
+  test(
+    'live India chart shelves stay separate from songs and artist rankings',
+    () {
+      final response = Map<String, dynamic>.from(
+        jsonDecode(
+              File(
+                'test/fixtures/youtube_charts_india.json',
+              ).readAsStringSync(),
+            )
+            as Map,
+      );
+      final charts = YouTubePlaylistParser.officialCharts(
+        response,
+        country: 'IN',
+      );
+      expect(charts, hasLength(10));
+      expect(charts.where((c) => c['chartGroup'] == 'videos'), hasLength(2));
+      expect(charts.where((c) => c['chartGroup'] == 'languages'), hasLength(7));
+      expect(charts.first['title'], 'Top 100 Music Videos India');
+      expect(charts.every((c) => c['chartCountry'] == 'IN'), isTrue);
+      expect(YouTubePlaylistParser.topSongsId(charts), isNull);
+      expect(
+        charts.any((c) => c['title'].toString().contains('Alka')),
+        isFalse,
+      );
+    },
+  );
+
   test('chart playlist with a preview video remains a playlist', () {
     final response = <String, dynamic>{
       'items': [

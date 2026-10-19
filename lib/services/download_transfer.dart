@@ -78,8 +78,10 @@ Future<void> writeDownloadAtomically({
     }
     if (expectedBytes != null &&
         expectedBytes > 0 &&
-        received < (expectedBytes * 0.90)) {
-      throw const HttpException('Incomplete audio download: truncated stream');
+        received != expectedBytes) {
+      throw const HttpException(
+        'Incomplete audio download: byte count mismatch',
+      );
     }
     await temporary.rename(destination.path);
   } finally {

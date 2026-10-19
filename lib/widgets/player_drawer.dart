@@ -1,17 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 
-/// Reusable BitChord bottom drawer shell (matching BitChord's PlayerDrawer.kt).
-///
-/// Features:
-/// - 26dp top rounded corners
-/// - 50% dark backdrop scrim
-/// - Dark frosted acrylic material
-/// - Centered grab handle pill with vertical drag-down to dismiss
-/// - Standardized typography, spacing, and 16dp rounded card rows
+/// Shared, scrollable player sheet. Its surface includes the home-indicator inset.
 class PlayerDrawer extends StatefulWidget {
   const PlayerDrawer({
     super.key,
@@ -20,166 +13,158 @@ class PlayerDrawer extends StatefulWidget {
     required this.children,
     this.trailingHeader,
   });
-
   final String title;
   final String? subtitle;
   final List<Widget> children;
   final Widget? trailingHeader;
-
-  static const double topRadius = 26;
-  static const double rowRadius = 16;
-
+  static const double topRadius = 24;
+  static const double rowRadius = 12;
   @override
   State<PlayerDrawer> createState() => _PlayerDrawerState();
 }
 
 class _PlayerDrawerState extends State<PlayerDrawer>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _dragController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 220),
-  );
-  double _dragOffset = 0;
-
+  late final _drag = AnimationController.unbounded(vsync: this);
   @override
   void dispose() {
-    _dragController.dispose();
+    _drag.dispose();
     super.dispose();
   }
 
-  void _onVerticalDragUpdate(DragUpdateDetails details) {
-    if (details.delta.dy > 0 || _dragOffset > 0) {
-      setState(() {
-        _dragOffset = (_dragOffset + details.delta.dy).clamp(0.0, 400.0);
-      });
+  void _settle([double velocity = 0]) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _drag.value = 0;
+      return;
     }
-  }
-
-  void _onVerticalDragEnd(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (_dragOffset > 90 || velocity > 350) {
-      HapticFeedback.lightImpact();
-      Navigator.of(context).pop();
-    } else {
-      setState(() {
-        _dragOffset = 0;
-      });
-    }
+    _drag.animateWith(
+      SpringSimulation(
+        const SpringDescription(mass: 1, stiffness: 380, damping: 36),
+        _drag.value,
+        0,
+        velocity,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = isAppDarkMode(context);
-    final sheetBg = isDark
-        ? const Color(0xF518181A)
-        : const Color(0xF5F7F7F8);
-    final titleColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-    const secondaryColor = CupertinoColors.systemGrey;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
-      curve: Curves.easeOutCubic,
-      transform: Matrix4.translationValues(0, _dragOffset, 0),
-      child: SafeArea(
-        top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+    final dark = isAppDarkMode(context);
+    return AnimatedBuilder(
+      animation: _drag,
+      builder: (_, child) =>
+          Transform.translate(offset: Offset(0, _drag.value), child: child),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .88,
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(PlayerDrawer.topRadius),
           ),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(PlayerDrawer.topRadius),
-            ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: sheetBg,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(PlayerDrawer.topRadius),
-                  ),
-                  border: Border(
-                    top: BorderSide(
-                      color: isDark
-                          ? const Color(0x1AFFFFFF)
-                          : const Color(0x14000000),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
+          child: ColoredBox(
+            color: musynCanvas(dark),
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: DefaultTextStyle(
+                  style: CupertinoTheme.of(context).textTheme.textStyle,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Drag-to-dismiss handle strip
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onVerticalDragUpdate: _onVerticalDragUpdate,
-                        onVerticalDragEnd: _onVerticalDragEnd,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.only(top: 10, bottom: 8),
-                          child: Center(
-                            child: Container(
-                              width: 36,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0x4DFFFFFF)
-                                    : const Color(0x33000000),
-                                borderRadius: BorderRadius.circular(2.5),
-                              ),
+                      Semantics(
+                        label: 'Close sheet',
+                        button: true,
+                        onTap: () => Navigator.pop(context),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onVerticalDragStart: (_) => _drag.stop(),
+                          onVerticalDragUpdate: (d) => _drag.value =
+                              (_drag.value + d.delta.dy).clamp(0, 400),
+                          onVerticalDragCancel: _settle,
+                          onVerticalDragEnd: (d) {
+                            final velocity = d.primaryVelocity ?? 0;
+                            if (_drag.value > 90 || velocity > 500) {
+                              HapticFeedback.lightImpact();
+                              Navigator.pop(context);
+                            } else {
+                              _settle(velocity);
+                            }
+                          },
+                          child: SizedBox(
+                            height: 44,
+                            width: double.infinity,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Center(
+                                  child: Container(
+                                    width: 36,
+                                    height: 5,
+                                    decoration: BoxDecoration(
+                                      color: CupertinoColors.systemGrey3
+                                          .resolveFrom(context),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 8,
+                                  top: 0,
+                                  bottom: 0,
+                                  child:
+                                      widget.trailingHeader ??
+                                      CupertinoButton(
+                                        padding: const EdgeInsets.all(8),
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Icon(
+                                          CupertinoIcons.xmark_circle_fill,
+                                          color: CupertinoColors.systemGrey,
+                                          size: 24,
+                                          semanticLabel: 'Close sheet',
+                                        ),
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                      // Header Row
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 12, 16),
                         child: Row(
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     widget.title,
-                                    style: TextStyle(
-                                      fontFamily: MusynStyle.displayFont,
-                                      fontSize: 18,
+                                    style: const TextStyle(
+                                      fontSize: 20,
                                       fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.3,
-                                      color: titleColor,
-                                      decoration: TextDecoration.none,
                                     ),
                                   ),
                                   if (widget.subtitle != null) ...[
-                                    const SizedBox(height: 2),
+                                    const SizedBox(height: 4),
                                     Text(
                                       widget.subtitle!,
-                                      style: const TextStyle(
-                                        fontFamily: MusynStyle.uiFont,
+                                      style: TextStyle(
                                         fontSize: 13,
-                                        color: secondaryColor,
-                                        decoration: TextDecoration.none,
+                                        color: CupertinoColors.secondaryLabel
+                                            .resolveFrom(context),
                                       ),
                                     ),
                                   ],
                                 ],
                               ),
                             ),
-                            if (widget.trailingHeader != null)
-                              widget.trailingHeader!,
                           ],
                         ),
                       ),
-                      // Children list
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: widget.children,
@@ -197,7 +182,6 @@ class _PlayerDrawerState extends State<PlayerDrawer>
   }
 }
 
-/// BitChord-styled row inside PlayerDrawer (16dp rounded card).
 class PlayerDrawerRow extends StatelessWidget {
   const PlayerDrawerRow({
     super.key,
@@ -211,141 +195,92 @@ class PlayerDrawerRow extends StatelessWidget {
     this.loading = false,
     this.onTap,
   });
-
-  final String title;
-  final String subtitle;
+  final String title, subtitle;
   final IconData icon;
   final Color iconBg;
   final String? badge;
-  final bool selected;
-  final bool enabled;
-  final bool loading;
+  final bool selected, enabled, loading;
   final VoidCallback? onTap;
-
   @override
   Widget build(BuildContext context) {
-    final isDark = isAppDarkMode(context);
-    final cardBg = selected
-        ? (isDark
-            ? MusynStyle.appleRed.withValues(alpha: 0.16)
-            : MusynStyle.appleRed.withValues(alpha: 0.10))
-        : (isDark
-            ? const Color(0x1AFFFFFF)
-            : const Color(0x0A000000));
-    final borderColor = selected
-        ? MusynStyle.appleRed.withValues(alpha: 0.35)
-        : (isDark
-            ? const Color(0x14FFFFFF)
-            : const Color(0x0F000000));
-    final titleColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-    const secondaryColor = CupertinoColors.systemGrey;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: enabled && !loading ? onTap : null,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 180),
-        opacity: enabled ? 1.0 : 0.42,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(PlayerDrawer.rowRadius),
-            border: Border.all(
-              color: borderColor,
-              width: selected ? 1.0 : 0.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(
-                    icon,
-                    color: CupertinoColors.white,
-                    size: 20,
-                  ),
-                ),
+    final dark = isAppDarkMode(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      enabled: enabled && !loading,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: enabled && !loading ? onTap : null,
+          child: Opacity(
+            opacity: enabled || loading ? 1 : .5,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 68),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: musynElevatedSurface(dark),
+                borderRadius: BorderRadius.circular(PlayerDrawer.rowRadius),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 4,
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: iconBg,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(icon, size: 19, color: CupertinoColors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           title,
                           style: TextStyle(
-                            fontFamily: MusynStyle.displayFont,
                             fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                            color: titleColor,
-                            decoration: TextDecoration.none,
+                            fontWeight: FontWeight.w600,
+                            color: CupertinoColors.label.resolveFrom(context),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: CupertinoColors.secondaryLabel.resolveFrom(
+                              context,
+                            ),
+                          ),
                         ),
                         if (badge != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0x26FFFFFF)
-                                  : const Color(0x1F000000),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              badge!,
-                              style: const TextStyle(
-                                fontFamily: MusynStyle.uiFont,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: secondaryColor,
-                                decoration: TextDecoration.none,
+                          Text(
+                            badge!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: CupertinoColors.secondaryLabel.resolveFrom(
+                                context,
                               ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontFamily: MusynStyle.uiFont,
-                        fontSize: 13,
-                        color: secondaryColor,
-                        decoration: TextDecoration.none,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(width: 8),
+                  if (loading)
+                    const CupertinoActivityIndicator()
+                  else if (selected)
+                    const Icon(
+                      CupertinoIcons.checkmark,
+                      size: 20,
+                      color: MusynStyle.appleRed,
                     ),
-                  ],
-                ),
+                ],
               ),
-              if (loading)
-                const CupertinoActivityIndicator()
-              else if (selected)
-                const Icon(
-                  CupertinoIcons.checkmark_circle_fill,
-                  size: 22,
-                  color: MusynStyle.appleRed,
-                ),
-            ],
+            ),
           ),
         ),
       ),

@@ -67,6 +67,26 @@ void main() {
     },
   );
 
+  for (final received in [9500, 10500]) {
+    test(
+      'known 10000-byte transfer rejects $received bytes and keeps old audio',
+      () async {
+        await file.writeAsBytes(List.filled(10000, 7));
+        await expectLater(
+          writeDownloadAtomically(
+            destination: file,
+            bytes: Stream.value(List.filled(received, 1)),
+            expectedBytes: 10000,
+            cancellation: DownloadCancellation(),
+          ),
+          throwsA(isA<HttpException>()),
+        );
+        expect(await file.readAsBytes(), List.filled(10000, 7));
+        expect(await File('${file.path}.part').exists(), isFalse);
+      },
+    );
+  }
+
   test('successful transfer commits the exact bytes', () async {
     final bytes = List.filled(9000, 7);
     final progress = <(int, int?)>[];

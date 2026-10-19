@@ -25,8 +25,7 @@ import 'package:musyn/widgets/section_header.dart';
 import 'package:musyn/widgets/song_actions_sheet.dart';
 import 'package:musyn/widgets/song_tile.dart';
 
-export 'package:musyn/services/discovery_state.dart'
-    show searchHistoryNotifier;
+export 'package:musyn/services/discovery_state.dart' show searchHistoryNotifier;
 
 enum _SearchFilter { all, songs, artists, playlists }
 
@@ -470,11 +469,22 @@ class _SearchPageState extends State<SearchPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSearchHistory(isDark),
-            const ContentState(
-              icon: CupertinoIcons.search,
-              title: 'Find your next favorite',
-              message:
-                  'Search for a song, artist or playlist, or browse the catalogues below.',
+            const Padding(
+              padding: EdgeInsets.fromLTRB(4, 20, 4, 6),
+              child: Text(
+                'Find your next favorite',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 20),
+              child: Text(
+                'Search both catalogues, or browse below.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                ),
+              ),
             ),
             const DiscoveryLinks(),
             const MiniPlayerBottomSpace(),

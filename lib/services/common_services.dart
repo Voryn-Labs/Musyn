@@ -740,7 +740,9 @@ Future<List<Map<String, dynamic>>> getSimilarSongs(
       }
     }
 
-    final fallbackQuery = (artist != null && artist.isNotEmpty) ? artist : title;
+    final fallbackQuery = (artist != null && artist.isNotEmpty)
+        ? artist
+        : title;
     if (fallbackQuery != null && fallbackQuery.isNotEmpty) {
       try {
         final searchRes = await fetchSongsList(fallbackQuery);
@@ -1326,6 +1328,8 @@ Future<bool> makeSongOffline(
         cancellation: token,
         onProgress: (received, total) =>
             downloadActivity.progress(job, received, total),
+        onResolved: (source, bitrate) =>
+            downloadActivity.resolved(job, source, bitrate),
       );
     });
     return success;
@@ -1359,6 +1363,7 @@ Future<bool> _makeSongOffline(
   String? quality,
   required DownloadCancellation cancellation,
   void Function(int received, int? total)? onProgress,
+  void Function(String source, int? bitrate)? onResolved,
 }) async {
   try {
     final normalizedSource = source == 'jiosaavn'
@@ -1455,6 +1460,7 @@ Future<bool> _makeSongOffline(
         downloadedSource = 'jiosaavn';
         audioBitrateKbps = saavnSource['bitrate'] as int?;
         audioCodec = saavnSource['format'] as String?;
+        onResolved?.call('jiosaavn', audioBitrateKbps);
         final url = saavnSource['url'] as String;
 
         final req = http.Request('GET', Uri.parse(url));
@@ -1493,7 +1499,8 @@ Future<bool> _makeSongOffline(
           youtubeId = offlineSong['resolvedYoutubeId']?.toString() ?? '';
           offlineSong.remove('forceSource');
           if (!isValidYoutubeVideoId(youtubeId)) {
-            final query = '${offlineSong['title']} ${offlineSong['artist']}'.trim();
+            final query = '${offlineSong['title']} ${offlineSong['artist']}'
+                .trim();
             if (query.isNotEmpty) {
               try {
                 final searchRes = await cancellation.race(
@@ -1501,7 +1508,16 @@ Future<bool> _makeSongOffline(
                 );
                 for (final cand in searchRes) {
                   final candId = cand['ytid']?.toString();
-                  if (candId != null && isValidYoutubeVideoId(candId)) {
+                  if (candId != null &&
+                      isValidYoutubeVideoId(candId) &&
+                      TrackMatcher.isExactMatch(
+                        titleA: offlineSong['title']?.toString() ?? '',
+                        artistA: offlineSong['artist']?.toString() ?? '',
+                        durationA: offlineSong['duration'],
+                        titleB: cand['title']?.toString() ?? '',
+                        artistB: cand['artist']?.toString() ?? '',
+                        durationB: cand['duration'],
+                      )) {
                     youtubeId = candId;
                     offlineSong['resolvedYoutubeId'] = candId;
                     break;
@@ -1523,6 +1539,7 @@ Future<bool> _makeSongOffline(
         downloadedSource = 'youtube';
         audioBitrateKbps = audioManifest.bitrate.kiloBitsPerSecond.round();
         audioCodec = audioManifest.audioCodec;
+        onResolved?.call('youtube', audioBitrateKbps);
 
         final streamDuration = youtubeStreamDurationSeconds(audioManifest.url);
         if (streamDuration != null) {

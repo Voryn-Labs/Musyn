@@ -75,6 +75,52 @@ class YouTubePlaylistParser {
     return result;
   }
 
+  /// Only chart shelves from FEmusic_charts, never radios, artist rankings or
+  /// recommendation cards elsewhere in the response. The request uses English.
+  static List<Map<String, dynamic>> officialCharts(
+    Map<String, dynamic> response, {
+    required String country,
+  }) {
+    final result = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final shelf in renderers(response, 'musicCarouselShelfRenderer')) {
+      final header = renderers(
+        shelf['header'],
+        'musicCarouselShelfBasicHeaderRenderer',
+      ).firstOrNull;
+      final heading = text(header?['title']).toLowerCase();
+      for (final chart in charts({'contents': shelf['contents']})) {
+        final title = chart['title'].toString().toLowerCase();
+        final group = heading.contains('language')
+            ? 'languages'
+            : title.contains('video')
+            ? 'videos'
+            : title.contains('song')
+            ? 'songs'
+            : title.contains('trending')
+            ? 'trending'
+            : null;
+        if (group == null || !seen.add(chart['ytid'] as String)) continue;
+        result.add({...chart, 'chartGroup': group, 'chartCountry': country});
+      }
+    }
+    // Put weekly national charts before daily/trending and language collections.
+    int priority(Map chart) {
+      if (chart['chartGroup'] == 'songs') return 0;
+      if (chart['chartGroup'] == 'videos') {
+        return chart['title'].toString().toLowerCase().contains('daily')
+            ? 2
+            : 1;
+      }
+      return chart['chartGroup'] == 'trending' ? 3 : 4;
+    }
+
+    return [
+      for (var rank = 0; rank <= 4; rank++)
+        ...result.where((chart) => priority(chart) == rank),
+    ];
+  }
+
   static List<Map<String, dynamic>> moodCategories(
     Map<String, dynamic> response,
   ) {

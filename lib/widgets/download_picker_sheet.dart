@@ -120,7 +120,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 borderRadius: BorderRadius.circular(10),
                 child: SongArtworkWidget(
                   metadata: mapToMediaItem(widget.song),
-                  size: 48,
+                  size: 40,
                   errorWidgetIconSize: 22,
                 ),
               ),
@@ -164,7 +164,6 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
         // Sources
         PlayerDrawerRow(
           title: 'JioSaavn',
-          badge: '320 kbps',
           subtitle: !jiosaavnEnabled.value
               ? 'Enable JioSaavn in Settings to use this source'
               : _isCheckingSaavn
@@ -172,7 +171,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
               : (_availabilityUnknown
                     ? 'Availability confirmed during download'
                     : _isSaavnAvailable
-                    ? 'AAC · up to 320 kbps (High Fidelity)'
+                    ? 'AAC · up to 320 kbps'
                     : 'Unavailable on JioSaavn for this track'),
           icon: CupertinoIcons.waveform,
           iconBg: CupertinoColors.systemGreen,
@@ -190,8 +189,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
 
         PlayerDrawerRow(
           title: 'YouTube Music',
-          badge: '160k AAC',
-          subtitle: 'AAC · Adaptive Stream',
+          subtitle: 'AAC or Opus · best available within your limit',
           icon: CupertinoIcons.play_rectangle_fill,
           iconBg: const Color(0xFFFF0033),
           selected: _selectedSource == 'youtube',
@@ -214,7 +212,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
           runSpacing: 4,
           children: [
             const Text(
-              'AUDIO QUALITY',
+              'QUALITY LIMIT',
               style: TextStyle(
                 fontFamily: MusynStyle.uiFont,
                 fontSize: 12,
@@ -231,7 +229,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                '$_selectedQuality kbps',
+                'Up to $_selectedQuality kbps',
                 style: const TextStyle(
                   fontFamily: MusynStyle.uiFont,
                   fontSize: 11,

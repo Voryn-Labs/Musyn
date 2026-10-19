@@ -10,6 +10,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:musyn/extensions/l10n.dart';
 import 'package:musyn/localization/app_localizations.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/audio/remote_favorites.dart';
 import 'package:musyn/services/audio_service.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
@@ -167,9 +168,7 @@ class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
         statusBarColor: const Color(0x00000000),
         systemNavigationBarColor: const Color(0x00000000),
         systemNavigationBarContrastEnforced: true,
-        statusBarBrightness: overlayBrightness == Brightness.dark
-            ? Brightness.light
-            : Brightness.dark,
+        statusBarBrightness: overlayBrightness,
         statusBarIconBrightness: overlayBrightness == Brightness.dark
             ? Brightness.light
             : Brightness.dark,
@@ -355,6 +354,10 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
     }
   }
   audioHandlerReady.value = audioHandlerInstance != null;
+  if (defaultTargetPlatform == TargetPlatform.iOS &&
+      audioHandlerInstance != null) {
+    remoteFavorites.start(audioHandlerInstance!);
+  }
 
   // Phase 4: router - MUST always run
   try {

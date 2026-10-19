@@ -51,6 +51,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadTrending({bool refresh = false}) async {
     final request = ++_feedRequest;
+    final country = chartCountry.value;
     setState(() {
       _isLoading = true;
       _feedFailed = false;
@@ -89,7 +90,7 @@ class _HomePageState extends State<HomePage> {
           if (charts.isEmpty) {
             failed = true;
           } else {
-            ytChartPlaylists.value = charts;
+            if (country == chartCountry.value) ytChartPlaylists.value = charts;
           }
         }),
       ]);

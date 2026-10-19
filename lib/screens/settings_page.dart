@@ -1055,7 +1055,7 @@ class SettingsPage extends StatelessWidget {
               subtitle: switch (entry.key) {
                 'auto' => 'Dynamically picks best available source per track',
                 'youtube' => 'Prioritizes YouTube Music audio stream',
-                'jiosaavn' => 'Prioritizes JioSaavn high-fidelity AAC (320kbps)',
+                'jiosaavn' => 'Prefers JioSaavn AAC, up to 320 kbps',
                 _ => '',
               },
               icon: switch (entry.key) {
@@ -1070,7 +1070,8 @@ class SettingsPage extends StatelessWidget {
                 'jiosaavn' => CupertinoColors.systemGreen,
                 _ => MusynStyle.appleRed,
               },
-              selected: current == entry.key ||
+              selected:
+                  current == entry.key ||
                   (current == 'saavn' && entry.key == 'jiosaavn'),
               onTap: () {
                 Navigator.pop(sheet);

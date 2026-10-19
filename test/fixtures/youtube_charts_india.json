@@ -1,0 +1,1246 @@
+{
+  "contents": [
+    {
+      "musicCarouselShelfRenderer": {
+        "header": {
+          "musicCarouselShelfBasicHeaderRenderer": {
+            "title": {
+              "runs": [
+                {
+                  "text": "Video charts"
+                }
+              ]
+            },
+            "accessibilityData": {
+              "accessibilityData": {
+                "label": "Video charts"
+              }
+            },
+            "headerStyle": "MUSIC_CAROUSEL_SHELF_BASIC_HEADER_STYLE_DISPLAY_TWO",
+            "trackingParams": "CN8DEIi8BCITCJXWie23xpcDFQW3VgEdF9Emnw=="
+          }
+        },
+        "contents": [
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Trending 20 India",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CNADEKCzAhgAIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLOLAK5uy_lSTp1DIuzZBUyee3kDsXwPgP25WdfwB40",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CNADEKCzAhgAIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CNADEKCzAhgAIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLOLAK5uy_lSTp1DIuzZBUyee3kDsXwPgP25WdfwB40",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Daily Top Music Videos - India",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CMEDEKCzAhgBIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn5oibdgJt8Hy0-dr2B7kSs2",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CMEDEKCzAhgBIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CMEDEKCzAhgBIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn5oibdgJt8Hy0-dr2B7kSs2",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top 100 Music Videos India",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CLIDEKCzAhgCIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn40WjZ6utkIuj2rNg-7iGsq",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CLIDEKCzAhgCIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CLIDEKCzAhgCIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn40WjZ6utkIuj2rNg-7iGsq",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "musicCarouselShelfRenderer": {
+        "header": {
+          "musicCarouselShelfBasicHeaderRenderer": {
+            "title": {
+              "runs": [
+                {
+                  "text": "Languages"
+                }
+              ]
+            },
+            "accessibilityData": {
+              "accessibilityData": {
+                "label": "Languages"
+              }
+            },
+            "headerStyle": "MUSIC_CAROUSEL_SHELF_BASIC_HEADER_STYLE_DISPLAY_TWO",
+            "trackingParams": "CLADEIi8BCITCJXWie23xpcDFQW3VgEdF9Emnw=="
+          }
+        },
+        "contents": [
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top Weekly Videos Tamil",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CKEDEKCzAhgAIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn4WX22qg1Po7qKOwOb4H6Sk",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CKEDEKCzAhgAIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CKEDEKCzAhgAIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn4WX22qg1Po7qKOwOb4H6Sk",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top Weekly Videos Haryanvi",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CJIDEKCzAhgBIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn4tiNLMZVGGt2Kghgw__2u0",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CJIDEKCzAhgBIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CJIDEKCzAhgBIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn4tiNLMZVGGt2Kghgw__2u0",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top Weekly Videos Punjabi",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CIMDEKCzAhgCIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn5JXkyIohg2RstsbL2SnRew",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CIMDEKCzAhgCIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CIMDEKCzAhgCIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn5JXkyIohg2RstsbL2SnRew",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top Weekly Videos Bhojpuri",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CPQCEKCzAhgDIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn4ivDqrsepD3tvHsp0KTDRM",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CPQCEKCzAhgDIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CPQCEKCzAhgDIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn4ivDqrsepD3tvHsp0KTDRM",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top Weekly Videos International",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "COUCEKCzAhgEIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "COUCEKCzAhgEIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "COUCEKCzAhgEIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top Weekly Videos Hindi",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CNYCEKCzAhgFIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn5RgLW0Sb_zECecWdH_4zOX",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CNYCEKCzAhgFIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CNYCEKCzAhgFIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn5RgLW0Sb_zECecWdH_4zOX",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicTwoRowItemRenderer": {
+              "title": {
+                "runs": [
+                  {
+                    "text": "Top Weekly Videos Telugu",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CMcCEKCzAhgGIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "VLPL4fGSI1pDJn5ALuqpEj_YZ8mEyw9WN8jd",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "Chart"
+                  },
+                  {
+                    "text": " • "
+                  },
+                  {
+                    "text": "YouTube Charts",
+                    "navigationEndpoint": {
+                      "clickTrackingParams": "CMcCEKCzAhgGIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                      "browseEndpoint": {
+                        "browseId": "FEmusic_charts",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "navigationEndpoint": {
+                "clickTrackingParams": "CMcCEKCzAhgGIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "VLPL4fGSI1pDJn5ALuqpEj_YZ8mEyw9WN8jd",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "musicCarouselShelfRenderer": {
+        "header": {
+          "musicCarouselShelfBasicHeaderRenderer": {
+            "title": {
+              "runs": [
+                {
+                  "text": "Top artists"
+                }
+              ]
+            },
+            "accessibilityData": {
+              "accessibilityData": {
+                "label": "Top artists"
+              }
+            },
+            "headerStyle": "MUSIC_CAROUSEL_SHELF_BASIC_HEADER_STYLE_DISPLAY_TWO",
+            "trackingParams": "CMUCEIi8BCITCJXWie23xpcDFQW3VgEdF9Emnw=="
+          }
+        },
+        "contents": [
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CL0CEMn0AhgAIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCptBkLZ6XRxoyn8SkUMc_Iw",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CLUCEMn0AhgBIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UC13ToEQgfmTe8_GW19LYtCg",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CK0CEMn0AhgCIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCDxKh1gFWeYsqePvgVzmPoQ",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CKUCEMn0AhgDIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCrC-7fsdTCYeaRBpwA6j-Eg",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CJ0CEMn0AhgEIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCQd9dydn5gaib_uuVVkYZTQ",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CJUCEMn0AhgFIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCYMthbEErlf2Jq10A9tcEbA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CI0CEMn0AhgGIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCbRSywya_rl8YS15Lo9ttsA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CIUCEMn0AhgHIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCsC4u-BJAd4OX1hJXtwXSOQ",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CP0BEMn0AhgIIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCCTN01plFzn4npREHKT2_9Q",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CPUBEMn0AhgJIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCN9zAwrHTeVTYYbkS2wniAg",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CO0BEMn0AhgKIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCOq_phR9Fi_eUwNweVXlQIw",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "COUBEMn0AhgLIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCGwpP-ryVtsEacuXAuBrIMw",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CN0BEMn0AhgMIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCxpu57trwVlTicWq1MEZ5qg",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CNUBEMn0AhgNIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCl4iPtukwe7m0kIxUMskkgA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CM0BEMn0AhgOIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCK-E95XlAlzJtXKIrF4-hjA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CMUBEMn0AhgPIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCDXM9wN1M6h7A9QGlaPbHEw",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CL0BEMn0AhgQIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCGPCYz1FTl_dvFFnzQTQzjw",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CLUBEMn0AhgRIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCFDWzvAKhh_lQ9ckpeOdfGA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CK0BEMn0AhgSIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCJPuVnth4cFX-2QJ6HxciaA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CKUBEMn0AhgTIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCtocwMlGa1iISe3rJWRR_-A",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CJ0BEMn0AhgUIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCtJe0RYzgPddQXKtWduxz_w",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CJUBEMn0AhgVIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCtIiZrzDsXk_rWeynT1ho4g",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CI0BEMn0AhgWIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UC41L0sFqy6_Q43RGgUnJ75Q",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CIUBEMn0AhgXIhMIldaJ7bfGlwMVBbdWAR0X0SafygEEZtTK1g==",
+                "browseEndpoint": {
+                  "browseId": "UCIOXXUXQ8y5ivei97JkiBAw",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CH0QyfQCGBgiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UC9zDx294XYTU45hW04d0yQg",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CHUQyfQCGBkiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCSmK5WX5U4gdtebWjoL81og",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CG0QyfQCGBoiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCVGomUS__PL0c4jDXa0QwXA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CGUQyfQCGBsiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UC84y82gFQuX0jeqRSrkdERQ",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CF0QyfQCGBwiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCWXJyrk1diAufFuTHCTfQ2A",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CFUQyfQCGB0iEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UC9VthIFaCM85yb8BBluF1Ag",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CE0QyfQCGB4iEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCSPd0Wvy-02QYbZM5QckSag",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CEUQyfQCGB8iEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCeBxx7m7yrwSyvpVpKcMI8w",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CD0QyfQCGCAiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCsmm-jjSLILh12mZ2aR6Qrg",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CDUQyfQCGCEiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCwzzSiogpjsYBMoyVcwDXwQ",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CC0QyfQCGCIiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCbp5cZLtFE6y7XdhvJeT0Qw",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CCUQyfQCGCMiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UC4nQHrz0kvM7LGc7GOnc72g",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CB0QyfQCGCQiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCHxwQajTiv8div1Fe-yvWpA",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CBUQyfQCGCUiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCdWuR07og626xwU93eSCh9A",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CA0QyfQCGCYiEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UC3VtuPvpusldjIkDk1GaO0A",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "clickTrackingParams": "CAUQyfQCGCciEwiV1ontt8aXAxUFt1YBHRfRJp_KAQRm1MrW",
+                "browseEndpoint": {
+                  "browseId": "UCb1SUoajGn8MrwgQDXZIt5A",
+                  "browseEndpointContextSupportedConfigs": {
+                    "browseEndpointContextMusicConfig": {
+                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

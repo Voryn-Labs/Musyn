@@ -65,6 +65,7 @@ class MusynAudioHandler extends PlaybackController {
   bool _userPaused = false;
   bool _recoveringStall = false;
   bool _backgroundFetchInProgress = false;
+  int? _foregroundRecommendationRevision;
   Timer? _stallWatch;
   Duration? _stallPosition;
   DateTime _stallMark = DateTime.now();
@@ -120,6 +121,16 @@ class MusynAudioHandler extends PlaybackController {
                   catalog > const Duration(seconds: 5) &&
                   displayDuration > catalog + const Duration(seconds: 5)) {
                 displayDuration = catalog;
+              }
+              final freshTrack =
+                  _hub.queue.loadingIndex >= 0 &&
+                  !_playback.sourceSwitchInFlight;
+              if (freshTrack) {
+                return PositionData(
+                  Duration.zero,
+                  Duration.zero,
+                  catalog ?? Duration.zero,
+                );
               }
               var displayPosition = position;
               if (catalog != null &&
@@ -783,8 +794,7 @@ class MusynAudioHandler extends PlaybackController {
           _currentLoadingTransitionId >= 0 &&
           _playback.installedSourceTransitionId !=
               _currentLoadingTransitionId &&
-          !_playback.sourceSwitchInFlight &&
-          audioPlayer.audioSource == null;
+          !_playback.sourceSwitchInFlight;
       final currentPosition = loadingFreshTrack
           ? Duration.zero
           : audioPlayer.position;
@@ -923,6 +933,10 @@ class MusynAudioHandler extends PlaybackController {
           }
 
           for (final song in songsToAdd) {
+            if (selection != _selectionRevision ||
+                offlineMode.value ||
+                !playNextSongAutomatically.value)
+              return;
             final alreadyInQueue = _hub.queue.items.any(
               (item) => item['ytid'] == song['ytid'],
             );
@@ -1907,7 +1921,8 @@ class MusynAudioHandler extends PlaybackController {
     if (_completion.isEventPendingFresh) return;
 
     final state = audioPlayer.processingState;
-    if (state == ProcessingState.buffering || state == ProcessingState.loading) {
+    if (state == ProcessingState.buffering ||
+        state == ProcessingState.loading) {
       // Actively buffering or loading stream from the network; not a frozen stall.
       _stallMark = DateTime.now();
       return;
@@ -2345,6 +2360,7 @@ class MusynAudioHandler extends PlaybackController {
         includeMediaItem: true,
         mediaId: mediaId,
         transitionId: effectiveTransitionId,
+        freshTrack: !_playback.sourceSwitchInFlight,
       );
 
       final playback = await _playback
@@ -2652,25 +2668,42 @@ class MusynAudioHandler extends PlaybackController {
           includeMediaItem: true,
         );
         await _requestQueueIndex(0);
-      } else if (playNextSongAutomatically.value && !offlineMode.value) {
-        // Queue ran dry (e.g. rapid skips faster than background prefetch).
-        // Fetch next recommendation immediately and advance so playback never halts.
-        final baseSong = _getCurrentSongForRecommendations();
-        if (baseSong != null) {
-          final ytid = baseSong['ytid']?.toString() ?? '';
-          final title = baseSong['title']?.toString();
-          final artist = baseSong['artist']?.toString();
-          final songToAdd = await getSimilarSong(
-            ytid,
-            title: title,
-            artist: artist,
-          ).timeout(const Duration(seconds: 4), onTimeout: () => null);
-          if (songToAdd != null) {
-            await _insertRecommendedSong(songToAdd);
-            if (_hub.queue.currentIndex < _hub.queue.items.length - 1) {
-              await _requestQueueIndex(_hub.queue.currentIndex + 1);
+      } else if (playNextSongAutomatically.value &&
+          !offlineMode.value &&
+          _foregroundRecommendationRevision != _selectionRevision) {
+        final selection = _selectionRevision;
+        final pausedAtRequest = _userPaused;
+        final originalEntry = currentSong?['queueEntryId'];
+        _foregroundRecommendationRevision = selection;
+        try {
+          // Queue ran dry (e.g. rapid skips faster than background prefetch).
+          // Fetch next recommendation immediately and advance so playback never halts.
+          final baseSong = _getCurrentSongForRecommendations();
+          if (baseSong != null) {
+            final ytid = baseSong['ytid']?.toString() ?? '';
+            final title = baseSong['title']?.toString();
+            final artist = baseSong['artist']?.toString();
+            final songToAdd = await getSimilarSong(
+              ytid,
+              title: title,
+              artist: artist,
+            ).timeout(const Duration(seconds: 4), onTimeout: () => null);
+            if (songToAdd != null &&
+                selection == _selectionRevision &&
+                originalEntry == currentSong?['queueEntryId'] &&
+                playNextSongAutomatically.value &&
+                !offlineMode.value &&
+                _userPaused == pausedAtRequest) {
+              await _insertRecommendedSong(songToAdd);
+              if (selection == _selectionRevision &&
+                  _hub.queue.currentIndex < _hub.queue.items.length - 1) {
+                await _requestQueueIndex(_hub.queue.currentIndex + 1);
+              }
             }
           }
+        } finally {
+          if (_foregroundRecommendationRevision == selection)
+            _foregroundRecommendationRevision = null;
         }
       }
 

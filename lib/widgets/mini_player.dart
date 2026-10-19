@@ -266,7 +266,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         final hasNext = audioHandler.hasNext;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          padding: const EdgeInsets.fromLTRB(8, 4, 8, 2),
           child: AnimatedBuilder(
             animation: Listenable.merge([_scaleAnimation, _swipeController]),
             builder: (context, child) => Transform.scale(
@@ -293,26 +293,15 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                 onHorizontalDragUpdate: _handleHorizontalDragUpdate,
                 onHorizontalDragEnd: _handleHorizontalDragEnd,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(MusynStyle.radiusPill),
+                  borderRadius: BorderRadius.circular(12),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                     child: Container(
                       height: MiniPlayer.playerHeight,
                       decoration: BoxDecoration(
                         color: bg,
-                        borderRadius: BorderRadius.circular(
-                          MusynStyle.radiusPill,
-                        ),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: border, width: 0.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: CupertinoColors.black.withValues(
-                              alpha: isDark ? 0.4 : 0.08,
-                            ),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
                       ),
                       child: Stack(
                         children: [
@@ -413,7 +402,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                                   else
                                     CupertinoButton(
                                       padding: const EdgeInsets.all(8),
-                                      minimumSize: const Size(40, 40),
+                                      minimumSize: const Size(44, 44),
                                       onPressed: () {
                                         HapticFeedback.selectionClick();
                                         if (isPlaying) {
@@ -433,7 +422,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                                   if (hasNext)
                                     CupertinoButton(
                                       padding: const EdgeInsets.all(8),
-                                      minimumSize: const Size(40, 40),
+                                      minimumSize: const Size(44, 44),
                                       onPressed: () {
                                         HapticFeedback.selectionClick();
                                         audioHandler.skipToNext();

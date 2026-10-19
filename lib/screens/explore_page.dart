@@ -178,22 +178,16 @@ class _ExplorePageState extends State<ExplorePage> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            ColoredBox(
-                              color: Color(
-                                category['stripeColor'] as int? ??
-                                    colors[index % colors.length].toARGB32(),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: FractionallySizedBox(
-                                widthFactor: .72,
-                                heightFactor: 1,
-                                child: ColoredBox(
-                                  color: CupertinoColors.black.withValues(
-                                    alpha: .18,
-                                  ),
+                            ColoredBox(color: colors[index % colors.length]),
+                            Positioned(
+                              right: 12,
+                              bottom: 10,
+                              child: Icon(
+                                CupertinoIcons.music_note_2,
+                                color: CupertinoColors.white.withValues(
+                                  alpha: .16,
                                 ),
+                                size: 40,
                               ),
                             ),
                             Padding(

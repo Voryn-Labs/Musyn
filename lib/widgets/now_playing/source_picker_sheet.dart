@@ -57,7 +57,8 @@ void showAudioSourcePicker(
           } else {
             updateSheet(() {
               pendingSource = null;
-              sourceError = 'Could not switch source. Choose a source to retry.';
+              sourceError =
+                  'Could not switch source. Choose a source to retry.';
             });
           }
         }
@@ -66,7 +67,7 @@ void showAudioSourcePicker(
           title: 'Playback Source',
           subtitle: pendingSource != null
               ? 'Switching source…'
-              : (sourceError ?? 'Select streaming provider or offline storage'),
+              : (sourceError ?? 'Choose where this track plays'),
           trailingHeader: CupertinoButton(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             onPressed: () => Navigator.pop(ctx),
@@ -103,7 +104,7 @@ void showAudioSourcePicker(
                     borderRadius: BorderRadius.circular(10),
                     child: SongArtworkWidget(
                       metadata: metadata,
-                      size: 48,
+                      size: 40,
                       errorWidgetIconSize: 22,
                     ),
                   ),
@@ -149,9 +150,8 @@ void showAudioSourcePicker(
             ),
             PlayerDrawerRow(
               title: 'JioSaavn',
-              badge: '320k Lossless',
               subtitle: jiosaavnEnabled.value
-                  ? 'AAC · up to 320 kbps (High Fidelity)'
+                  ? 'AAC · up to 320 kbps'
                   : 'Enable JioSaavn in Settings to use this source',
               icon: CupertinoIcons.waveform,
               iconBg: CupertinoColors.systemGreen,
@@ -162,8 +162,7 @@ void showAudioSourcePicker(
             ),
             PlayerDrawerRow(
               title: 'YouTube Music',
-              badge: '160k AAC',
-              subtitle: 'AAC · Adaptive Stream',
+              subtitle: 'AAC or Opus · quality varies by track',
               icon: CupertinoIcons.play_rectangle_fill,
               iconBg: const Color(0xFFFF0033),
               selected: currentSource == 'youtube',
@@ -175,8 +174,8 @@ void showAudioSourcePicker(
               badge: 'Offline',
               subtitle: hasDownload
                   ? (isOffline
-                      ? 'Playing locally from this device'
-                      : 'Play the downloaded copy')
+                        ? 'Playing locally from this device'
+                        : 'Play the downloaded copy')
                   : 'Download this track to use offline',
               icon: CupertinoIcons.arrow_down_circle_fill,
               iconBg: CupertinoColors.systemBlue,

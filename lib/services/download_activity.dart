@@ -11,6 +11,8 @@ class DownloadJob {
     required this.canCancel,
     this.source,
     this.quality,
+    this.resolvedSource,
+    this.bitrate,
     this.stage = DownloadStage.queued,
     this.received = 0,
     this.total,
@@ -21,6 +23,8 @@ class DownloadJob {
   final bool canCancel;
   final String? source;
   final String? quality;
+  final String? resolvedSource;
+  final int? bitrate;
   final DownloadStage stage;
   final int received;
   final int? total;
@@ -30,18 +34,25 @@ class DownloadJob {
       stage == DownloadStage.cancelling;
   double? get progress =>
       total != null && total! > 0 ? (received / total!).clamp(0.0, 1.0) : null;
-  DownloadJob update({DownloadStage? stage, int? received, int? total}) =>
-      DownloadJob(
-        id: id,
-        song: song,
-        cancellation: cancellation,
-        canCancel: canCancel,
-        source: source,
-        quality: quality,
-        stage: stage ?? this.stage,
-        received: received ?? this.received,
-        total: total ?? this.total,
-      );
+  DownloadJob update({
+    DownloadStage? stage,
+    int? received,
+    int? total,
+    String? resolvedSource,
+    int? bitrate,
+  }) => DownloadJob(
+    id: id,
+    song: song,
+    cancellation: cancellation,
+    canCancel: canCancel,
+    source: source,
+    quality: quality,
+    resolvedSource: resolvedSource ?? this.resolvedSource,
+    bitrate: bitrate ?? this.bitrate,
+    stage: stage ?? this.stage,
+    received: received ?? this.received,
+    total: total ?? this.total,
+  );
 }
 
 /// Session-only transfer visibility. Finished history is bounded; files and
@@ -79,6 +90,13 @@ class DownloadActivity {
       _entries[id] = job.update(stage: DownloadStage.downloading);
       _publish();
     }
+  }
+
+  void resolved(int id, String source, int? bitrate) {
+    final job = _entries[id];
+    if (job == null || !job.active) return;
+    _entries[id] = job.update(resolvedSource: source, bitrate: bitrate);
+    _publish();
   }
 
   void progress(int id, int received, int? total) {

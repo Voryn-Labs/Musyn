@@ -76,48 +76,6 @@ class LyricsStage extends StatelessWidget {
             },
           ),
         ),
-        // Top vignette - subtle darkening so top text recedes without hiding artwork aura
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 120,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    CupertinoColors.black.withValues(alpha: 0.45),
-                    CupertinoColors.black.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        // Bottom vignette - subtle darkening above player controls
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 110,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    CupertinoColors.black.withValues(alpha: 0.45),
-                    CupertinoColors.black.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -145,28 +103,29 @@ class _StageLine extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedPadding(
-        duration: const Duration(milliseconds: 380),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 380),
         curve: Curves.easeOutCubic,
-        padding: EdgeInsets.symmetric(
-          vertical: isCurrent ? 18 : 9,
-        ),
+        padding: EdgeInsets.symmetric(vertical: isCurrent ? 18 : 9),
         child: AnimatedScale(
-          duration: const Duration(milliseconds: 400),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 400),
           curve: Curves.easeOutCubic,
           scale: isCurrent ? 1.0 : 0.94,
           alignment: Alignment.centerLeft,
           child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 340),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 340),
             curve: Curves.easeOutCubic,
             style: theme.lineStyle(
               isActive: isCurrent,
               isPast: isPast,
               layout: LyricsLayout.stage,
             ),
-            child: Text(
-              line.text,
-              textAlign: TextAlign.left,
-            ),
+            child: Text(line.text, textAlign: TextAlign.left),
           ),
         ),
       ),

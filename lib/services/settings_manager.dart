@@ -90,6 +90,16 @@ var sleepTimerNotifier = ValueNotifier<Duration?>(null);
 
 final announcementURL = ValueNotifier<String?>(null);
 
+const chartCountries = {
+  'IN': 'India',
+  'ZZ': 'Global',
+  'US': 'United States',
+  'GB': 'United Kingdom',
+};
+final chartCountry = ValueNotifier<String>(
+  _safeBoxGet<String>('chartCountry', 'IN'),
+);
+
 // JioSaavn settings
 //
 // These previously called `Hive.box('settings')` directly instead of going
@@ -208,6 +218,10 @@ void reloadSettingsFromStorage() {
   preferredSource.value = settings.get('preferredSource', defaultValue: 'auto');
   downloadSource.value = settings.get('downloadSource', defaultValue: 'best');
   downloadQuality.value = settings.get('downloadQuality', defaultValue: '320');
+  final savedCountry = settings.get('chartCountry', defaultValue: 'IN');
+  chartCountry.value = chartCountries.containsKey(savedCountry)
+      ? savedCountry
+      : 'IN';
 
   ytAutoSyncLikes.value = settings.get('ytAutoSyncLikes', defaultValue: true);
   ytAutoSyncPlaylists.value = settings.get(

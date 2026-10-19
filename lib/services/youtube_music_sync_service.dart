@@ -272,15 +272,20 @@ class YouTubeMusicSyncService {
   }
 
   Future<List<Map<String, dynamic>>> fetchTrendingTracks() async {
+    final country = chartCountry.value;
     try {
-      final charts = await fetchChartPlaylists();
+      final charts = await fetchChartPlaylists(country: country);
+      if (country != chartCountry.value) return [];
       final chartId = YouTubePlaylistParser.topSongsId(charts);
       if (chartId == null) {
         trendingSongs.value = [];
-        trendingError.value = 'Song charts are unavailable. Pull to refresh.';
+        // A region may expose only music-video charts. That is availability,
+        // not a failed network request; never substitute random videos.
+        trendingError.value = null;
         return [];
       }
       final tracks = await fetchPlaylistTracks(chartId);
+      if (country != chartCountry.value) return [];
       final ranked = tracks.take(20).toList();
       for (var i = 0; i < ranked.length; i++) {
         ranked[i] = {...ranked[i], 'chartId': chartId, 'chartRank': i + 1};
@@ -292,27 +297,41 @@ class YouTubeMusicSyncService {
       return ranked;
     } catch (e) {
       logger.log('Error fetching chart tracks: $e');
-      trendingError.value = 'Unable to refresh song charts.';
+      if (country == chartCountry.value)
+        trendingError.value = 'Unable to refresh song charts.';
       return [];
     }
   }
 
-  Future<List<Map<String, dynamic>>>? _chartRequest;
+  final _chartRequests = <String, Future<List<Map<String, dynamic>>>>{};
 
-  Future<List<Map<String, dynamic>>> fetchChartPlaylists() {
-    return _chartRequest ??= _fetchChartPlaylists().whenComplete(() {
-      _chartRequest = null;
+  Future<List<Map<String, dynamic>>> fetchChartPlaylists({String? country}) {
+    final selected = country ?? chartCountry.value;
+    final region = chartCountries.containsKey(selected) ? selected : 'IN';
+    return _chartRequests.putIfAbsent(
+      region,
+      () => _fetchChartPlaylists(
+        region,
+      ).whenComplete(() => _chartRequests.remove(region)),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchChartPlaylists(
+    String country,
+  ) async {
+    final response = await _browsePost({
+      'context': {
+        'client': {
+          ..._remixContext['client']!,
+          'gl': country == 'ZZ' ? 'US' : country,
+        },
+      },
+      'browseId': 'FEmusic_charts',
+      'formData': {
+        'selectedValues': [country],
+      },
     });
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchChartPlaylists() async {
-    try {
-      final response = await _browsePost({'browseId': 'FEmusic_charts'});
-      return YouTubePlaylistParser.charts(response);
-    } catch (e) {
-      logger.log('Error fetching chart playlists: $e');
-      return [];
-    }
+    return YouTubePlaylistParser.officialCharts(response, country: country);
   }
 
   /// Server-defined Explore destinations: no search phrases masquerading as charts.

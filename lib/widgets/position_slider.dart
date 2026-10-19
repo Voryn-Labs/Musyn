@@ -6,7 +6,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/models/position_data.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
-import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/formatter.dart';
 import 'package:rxdart/rxdart.dart';
@@ -23,6 +22,7 @@ class _PositionSliderState extends State<PositionSlider> {
   bool _isDragging = false;
   double _dragValue = 0;
   Object? _currentMediaId;
+  bool _cancelled = false;
   PositionData _positionData = PositionData(
     Duration.zero,
     Duration.zero,
@@ -58,12 +58,8 @@ class _PositionSliderState extends State<PositionSlider> {
           );
         }
 
-        if (!mediaChanged) {
-          _positionData = positionSnapshot;
-        }
+        _positionData = positionSnapshot;
 
-        final processingState =
-            audioHandler.playbackState.valueOrNull?.processingState;
         final metadataDuration = mediaItem?.duration;
         final displayDuration =
             (metadataDuration != null && metadataDuration > Duration.zero)
@@ -72,9 +68,7 @@ class _PositionSliderState extends State<PositionSlider> {
                   ? _positionData.duration
                   : Duration.zero);
         final displayPositionData = PositionData(
-          processingState == AudioProcessingState.loading
-              ? Duration.zero
-              : _positionData.position,
+          _positionData.position,
           _positionData.bufferedPosition,
           displayDuration,
         );
@@ -86,28 +80,72 @@ class _PositionSliderState extends State<PositionSlider> {
             ? _dragValue
             : displayPositionData.position.inMilliseconds.toDouble();
 
-        final isDark = isAppDarkMode(context);
-
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _AppleMusicScrubber(
-              value: currentValue.clamp(0.0, maxDuration),
-              max: maxDuration,
-              isDragging: _isDragging,
-              isDark: isDark,
-              onChanged: (value) {
-                setState(() {
-                  _isDragging = true;
-                  _dragValue = value;
-                });
+            Listener(
+              onPointerDown: (_) => _cancelled = false,
+              onPointerCancel: (_) {
+                _cancelled = true;
+                if (mounted) setState(() => _isDragging = false);
               },
-              onChangeEnd: (value) {
-                audioHandler.seek(Duration(milliseconds: value.round()));
-                setState(() {
-                  _isDragging = false;
-                });
-              },
+              child: LayoutBuilder(
+                builder: (context, box) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: displayDuration == Duration.zero
+                      ? null
+                      : (details) {
+                          final fraction =
+                              ((details.localPosition.dx - 22) /
+                                      (box.maxWidth - 44))
+                                  .clamp(0.0, 1.0);
+                          unawaited(
+                            audioHandler.seek(
+                              Duration(
+                                milliseconds: (fraction * maxDuration).round(),
+                              ),
+                            ),
+                          );
+                        },
+                  child: SizedBox(
+                    height: 44,
+                    width: double.infinity,
+                    child: CupertinoSlider(
+                      value: currentValue.clamp(0.0, maxDuration),
+                      max: maxDuration,
+                      activeColor: MusynStyle.appleRed,
+                      onChangeStart: displayDuration == Duration.zero
+                          ? null
+                          : (value) {
+                              unawaited(HapticFeedback.selectionClick());
+                              setState(() {
+                                _isDragging = true;
+                                _dragValue = value;
+                              });
+                            },
+                      onChanged: displayDuration == Duration.zero
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _isDragging = true;
+                                _dragValue = value;
+                              });
+                            },
+                      onChangeEnd: displayDuration == Duration.zero
+                          ? null
+                          : (value) {
+                              if (_cancelled) return;
+                              setState(() => _isDragging = false);
+                              unawaited(
+                                audioHandler.seek(
+                                  Duration(milliseconds: value.round()),
+                                ),
+                              );
+                            },
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 2),
             _buildPositionRow(context, displayPositionData),
@@ -180,125 +218,6 @@ class _PositionSliderState extends State<PositionSlider> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _AppleMusicScrubber extends StatelessWidget {
-  const _AppleMusicScrubber({
-    required this.value,
-    required this.max,
-    required this.isDragging,
-    required this.isDark,
-    required this.onChanged,
-    required this.onChangeEnd,
-  });
-
-  final double value;
-  final double max;
-  final bool isDragging;
-  final bool isDark;
-  final ValueChanged<double> onChanged;
-  final ValueChanged<double> onChangeEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final totalWidth = constraints.maxWidth;
-        final progress = (max > 0 ? (value / max) : 0.0).clamp(0.0, 1.0);
-        final thumbDiameter = isDragging ? 18.0 : 13.0;
-        final trackHeight = isDragging ? 5.0 : 4.0;
-        final activeWidth = totalWidth * progress;
-
-        void handleTouch(Offset localPosition) {
-          final ratio = (localPosition.dx / totalWidth).clamp(0.0, 1.0);
-          onChanged(ratio * max);
-        }
-
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: (details) {
-            unawaited(HapticFeedback.selectionClick());
-            handleTouch(details.localPosition);
-          },
-          onHorizontalDragUpdate: (details) {
-            handleTouch(details.localPosition);
-          },
-          onHorizontalDragEnd: (_) {
-            onChangeEnd(value);
-          },
-          onHorizontalDragCancel: () {
-            onChangeEnd(value);
-          },
-          onTapDown: (details) {
-            unawaited(HapticFeedback.selectionClick());
-            handleTouch(details.localPosition);
-          },
-          onTapUp: (details) {
-            handleTouch(details.localPosition);
-            onChangeEnd(value);
-          },
-          child: SizedBox(
-            width: totalWidth,
-            height: 28,
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              clipBehavior: Clip.none,
-              children: [
-                // Inactive background track
-                Center(
-                  child: Container(
-                    height: trackHeight,
-                    width: totalWidth,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0x38FFFFFF)
-                          : const Color(0x26000000),
-                      borderRadius: BorderRadius.circular(trackHeight / 2),
-                    ),
-                  ),
-                ),
-                // Active progress track
-                Positioned(
-                  left: 0,
-                  top: (28 - trackHeight) / 2,
-                  child: Container(
-                    height: trackHeight,
-                    width: activeWidth,
-                    decoration: BoxDecoration(
-                      color: MusynStyle.appleRed,
-                      borderRadius: BorderRadius.circular(trackHeight / 2),
-                    ),
-                  ),
-                ),
-                // Native Apple Music sleek white scrubber thumb
-                Positioned(
-                  left: (activeWidth - (thumbDiameter / 2))
-                      .clamp(0.0, totalWidth - thumbDiameter),
-                  top: (28 - thumbDiameter) / 2,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 120),
-                    width: thumbDiameter,
-                    height: thumbDiameter,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: CupertinoColors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0x44000000),
-                          blurRadius: 4,
-                          offset: Offset(0, 1.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

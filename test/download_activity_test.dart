@@ -5,6 +5,29 @@ import 'package:musyn/services/download_transfer.dart';
 import 'package:musyn/utilities/library_ranking.dart';
 
 void main() {
+  test(
+    'actual transfer source and bitrate override catalogue and requested limit',
+    () {
+      final activity = DownloadActivity();
+      final id = activity.begin(
+        {'catalogOrigin': 'saavn'},
+        DownloadCancellation(),
+        source: 'youtube',
+        quality: '160',
+      );
+      expect(activity.jobs.value.single.source, 'youtube');
+      expect(activity.jobs.value.single.resolvedSource, isNull);
+      expect(activity.jobs.value.single.bitrate, isNull);
+      activity.start(id);
+      activity.resolved(id, 'youtube', 129);
+      activity.progress(id, 40, 100);
+      activity.finish(id, true);
+      expect(activity.jobs.value.single.resolvedSource, 'youtube');
+      expect(activity.jobs.value.single.bitrate, 129);
+      expect(activity.jobs.value.single.quality, '160');
+    },
+  );
+
   test('individual cancellation cannot cancel a shared playlist token', () {
     final activity = DownloadActivity();
     final batch = DownloadCancellation();

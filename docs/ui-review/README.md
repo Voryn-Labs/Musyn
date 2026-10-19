@@ -37,3 +37,10 @@ The `*-small-large-text-*` renders cover Home, Search, Charts, Settings, Downloa
 and Explore at 320×568 and 1.8× text in both themes. These are scrolled/tested
 layouts, not claims that all content fits above the fold. Review the route and
 action inventory in `../../UI-FLOW-MAP.md`.
+
+## 0.1.5 screenshot follow-up
+
+- [iPhone shell — Home](iphone-home-dark.png), [Explore](iphone-explore-dark.png), [Library](iphone-library-dark.png), [Search](iphone-search-dark.png): 402×874 with 59-point top and 34-point bottom safe areas.
+- [Compact lyrics controls](lyrics-dark.png).
+- Player, charts, source/download sheets and accessibility renders were regenerated for this change. Fixture artwork remains a placeholder.
+- [Fixes and verification limits](../0.1.5-fixes.md).

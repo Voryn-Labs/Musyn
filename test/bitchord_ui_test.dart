@@ -234,6 +234,102 @@ void main() {
     });
   }
 
+  testWidgets('iPhone safe areas reserve content above player and tabs', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 59, bottom: 34);
+    tester.view.viewPadding = const FakeViewPadding(top: 59, bottom: 34);
+    addTearDown(tester.view.reset);
+    final router = GoRouter(
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (_, _, shell) => BottomNavigationPage(child: shell),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (_, _) => HomePage(loadFeed: () async {}),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/explore',
+                  builder: (_, _) => ExplorePage(
+                    loadCategories: () async => [
+                      for (final name in [
+                        'Chill',
+                        'Commute',
+                        'Energize',
+                        'Feel good',
+                        'Focus',
+                        'Gaming',
+                        'Party',
+                        'Romance',
+                        'Sad',
+                        'Sleep',
+                      ])
+                        {'title': name, 'browseId': name},
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/library',
+                  builder: (_, _) => const LibraryPage(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(path: '/search', builder: (_, _) => const SearchPage()),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      CupertinoApp.router(
+        routerConfig: router,
+        theme: buildCupertinoTheme(brightness: Brightness.dark),
+        builder: (_, child) =>
+            RepaintBoundary(key: const ValueKey('capture'), child: child!),
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (final path in ['/', '/explore', '/library', '/search']) {
+      router.go(path);
+      await tester.pumpAndSettle();
+      final viewport = find.descendant(
+        of: find.byType(BottomNavigationPage),
+        matching: find.byType(StatefulNavigationShell),
+      );
+      expect(
+        tester.getBottomRight(viewport).dy,
+        lessThanOrEqualTo(tester.getTopLeft(find.byType(MiniPlayer)).dy),
+      );
+      expect(
+        tester.getBottomRight(find.byType(BitChordTabBar)).dy,
+        lessThanOrEqualTo(840),
+      );
+      expect(tester.takeException(), isNull);
+      await capture(
+        tester,
+        'iphone-${path == '/' ? 'home' : path.substring(1)}-dark',
+      );
+    }
+    await tester.pumpWidget(const SizedBox());
+    router.dispose();
+  });
+
   testWidgets('four reference tabs select by tap and drag', (tester) async {
     var selected = 0;
     await render(
@@ -252,7 +348,11 @@ void main() {
     }
     await tester.tap(find.text('Explore'));
     expect(selected, 1);
-    await tester.drag(find.text('Home'), const Offset(240, 0));
+    await tester.drag(
+      find.text('Home'),
+      tester.getCenter(find.text('Search')) -
+          tester.getCenter(find.text('Home')),
+    );
     expect(selected, 3);
     await capture(tester, 'navigation-dark');
   });
@@ -636,6 +736,63 @@ void main() {
     await capture(tester, 'artist-dark');
   });
 
+  testWidgets('lyrics keeps a continuous background and compact controls', (
+    tester,
+  ) async {
+    lastFetchedLyrics = 'Musyn Sessions - Midnight in motion';
+    lyrics.value =
+        '[00:00.00]Midnight in motion\n[00:12.00]A quiet melody\n[00:42.00]In your rhythm\n[01:10.00]Another day begins';
+    await render(tester, const NowPlayingPage(), size: const Size(402, 874));
+    await tester.tap(find.bySemanticsLabel('Lyrics'));
+    await tester.pumpAndSettle();
+    expect(find.text('Midnight in motion'), findsWidgets);
+    expect(find.byIcon(CupertinoIcons.volume_up), findsNothing);
+    expect(find.bySemanticsLabel('Next track'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await capture(tester, 'lyrics-dark');
+    lastFetchedLyrics = null;
+    lyrics.value = null;
+  });
+
+  testWidgets(
+    'chart Play is actionable and duplicate taps do not restart loading',
+    (tester) async {
+      final pending = Completer<void>();
+      var calls = 0;
+      await render(
+        tester,
+        ChartsPage(
+          loadYoutube: () async => [
+            {
+              'ytid': 'PLchart',
+              'title': 'Weekly music videos',
+              'chartGroup': 'videos',
+              'chartCountry': 'IN',
+            },
+          ],
+          loadSaavn: () async => [],
+          playChart: (_) {
+            calls++;
+            return pending.future;
+          },
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Music-video charts'), findsOneWidget);
+      expect(
+        find.textContaining('song chart is not currently available'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byIcon(CupertinoIcons.play_circle_fill));
+      await tester.pump();
+      expect(calls, 1);
+      expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+      pending.complete();
+      await tester.pumpAndSettle();
+      expect(find.byIcon(CupertinoIcons.play_circle_fill), findsOneWidget);
+    },
+  );
+
   testWidgets('charts isolate provider failures and retry real collections', (
     tester,
   ) async {
@@ -650,6 +807,7 @@ void main() {
             {
               'ytid': 'PLchart',
               'title': 'Top songs',
+              'chartGroup': 'songs',
               'subtitle': 'YouTube Music',
             },
           ];

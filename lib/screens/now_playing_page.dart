@@ -15,6 +15,7 @@ import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/async_loader.dart';
 import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/mediaitem.dart';
+import 'package:musyn/widgets/content_state.dart';
 import 'package:musyn/widgets/download_picker_sheet.dart';
 import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
 import 'package:musyn/widgets/now_playing/synced_lyrics_view.dart';
@@ -158,7 +159,9 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                       child: LayoutBuilder(
                         builder: (context, box) {
                           final wide = box.maxWidth > box.maxHeight * 1.3;
-                          final reduced = MediaQuery.disableAnimationsOf(context);
+                          final reduced = MediaQuery.disableAnimationsOf(
+                            context,
+                          );
 
                           // Wide/Landscape layout
                           if (wide) {
@@ -184,18 +187,24 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                                   child: KeyedSubtree(
                                     key: ValueKey(_pane),
                                     child: switch (_pane) {
-                                      _PlayerPane.main =>
-                                        _mainSleeve(item, box, reduced),
-                                      _PlayerPane.lyrics =>
-                                        _lyricsStage(item),
-                                      _PlayerPane.queue =>
-                                        _queueStage(item),
+                                      _PlayerPane.main => _mainSleeve(
+                                        item,
+                                        box,
+                                        reduced,
+                                      ),
+                                      _PlayerPane.lyrics => _lyricsStage(item),
+                                      _PlayerPane.queue => _queueStage(item),
                                     },
                                   ),
                                 ),
                               ),
                               _credits(item),
-                              _deck(item, compact: box.maxHeight < 620),
+                              _deck(
+                                item,
+                                compact:
+                                    box.maxHeight < 620 ||
+                                    _pane != _PlayerPane.main,
+                              ),
                             ],
                           );
                         },
@@ -226,10 +235,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
+              return FadeTransition(opacity: animation, child: child);
             },
             child: KeyedSubtree(
               key: ValueKey(_pane),
@@ -244,10 +250,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
         Expanded(
           child: SingleChildScrollView(
             child: Column(
-              children: [
-                _credits(item),
-                _deck(item, compact: true),
-              ],
+              children: [_credits(item), _deck(item, compact: true)],
             ),
           ),
         ),
@@ -273,18 +276,21 @@ class _NowPlayingPageState extends State<NowPlayingPage>
         _sleeveX.stop();
       },
       onPanUpdate: (details) {
-        if (!_downward && details.delta.dx.abs() > details.delta.dy.abs() * 1.1) {
+        if (!_downward &&
+            details.delta.dx.abs() > details.delta.dy.abs() * 1.1) {
           _horizontalDrag += details.delta.dx;
           _sleeveX.value = _horizontalDrag * 0.45;
         } else {
           _coverDrag += details.delta.dy;
           if (_coverDrag > 0 && !_downward) _downward = true;
           if (_downward) {
-            _dismissUpdate(DragUpdateDetails(
-              globalPosition: details.globalPosition,
-              delta: details.delta,
-              primaryDelta: details.delta.dy,
-            ));
+            _dismissUpdate(
+              DragUpdateDetails(
+                globalPosition: details.globalPosition,
+                delta: details.delta,
+                primaryDelta: details.delta.dy,
+              ),
+            );
           } else {
             setState(() {});
           }
@@ -294,10 +300,9 @@ class _NowPlayingPageState extends State<NowPlayingPage>
         final vx = details.velocity.pixelsPerSecond.dx;
         final vy = details.velocity.pixelsPerSecond.dy;
         if (_downward) {
-          _dismissEnd(DragEndDetails(
-            velocity: details.velocity,
-            primaryVelocity: vy,
-          ));
+          _dismissEnd(
+            DragEndDetails(velocity: details.velocity, primaryVelocity: vy),
+          );
         } else if (_coverDrag < -72 || vy < -400) {
           HapticFeedback.lightImpact();
           setState(() => _pane = _PlayerPane.queue);
@@ -391,93 +396,21 @@ class _NowPlayingPageState extends State<NowPlayingPage>
       onHorizontalDragCancel: () => _backDrag = 0,
       child: AsyncLoader<String?>(
         future: _lyrics!,
-        emptyWidget: Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 36),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0x1AFFFFFF),
-                width: 0.5,
-              ),
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  CupertinoIcons.quote_bubble,
-                  size: 38,
-                  color: CupertinoColors.systemGrey,
-                ),
-                SizedBox(height: 14),
-                Text(
-                  'No Lyrics Available',
-                  style: TextStyle(
-                    fontFamily: MusynStyle.displayFont,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: CupertinoColors.white,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Enjoy the audio stream for this track',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 13,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                ),
-              ],
-            ),
+        emptyWidget: const SingleChildScrollView(
+          child: ContentState(
+            icon: CupertinoIcons.quote_bubble,
+            title: 'No lyrics available',
+            message: 'Lyrics have not been found for this track.',
           ),
         ),
-        errorBuilder: (_, _, _) => Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 36),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0x1AFFFFFF),
-                width: 0.5,
-              ),
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  CupertinoIcons.exclamationmark_bubble,
-                  size: 38,
-                  color: CupertinoColors.systemGrey,
-                ),
-                SizedBox(height: 14),
-                Text(
-                  'Could Not Load Lyrics',
-                  style: TextStyle(
-                    fontFamily: MusynStyle.displayFont,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: CupertinoColors.white,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Tap the lyrics bubble to return to player',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 13,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                ),
-              ],
+        errorBuilder: (_, _, _) => SingleChildScrollView(
+          child: ContentState(
+            icon: CupertinoIcons.exclamationmark_bubble,
+            title: 'Could not load lyrics',
+            message: 'Your music is still playing.',
+            actionLabel: 'Retry lyrics',
+            onAction: () => setState(
+              () => _lyrics = getSongLyrics(item.artist, item.title),
             ),
           ),
         ),
@@ -544,7 +477,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   // TRACK CREDITS (TITLE, ARTIST, LIKE, MENU)
   // ---------------------------------------------------------------------------
   Widget _credits(MediaItem item) => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 8, 16, 12),
+    padding: const EdgeInsets.fromLTRB(24, 8, 16, 4),
     child: Row(
       children: [
         Expanded(
@@ -557,7 +490,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                 overflow: TextOverflow.ellipsis,
                 style: MusynStyle.playerTitle(
                   CupertinoTheme.of(context).textTheme.textStyle.color!,
-                ),
+                ).copyWith(fontSize: _pane == _PlayerPane.main ? 22 : 16),
               ),
               const SizedBox(height: 3),
               GestureDetector(
@@ -591,8 +524,8 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: MusynStyle.playerArtist(
-                      CupertinoColors.systemGrey,
-                    ),
+                      CupertinoColors.secondaryLabel.resolveFrom(context),
+                    ).copyWith(fontSize: _pane == _PlayerPane.main ? 16 : 13),
                   ),
                 ),
               ),
@@ -643,11 +576,11 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               CupertinoIcons.backward_end_fill,
               'Previous track',
               () => unawaited(audioHandler.skipToPrevious()),
-              size: compact ? 40 : 48,
-              touch: compact ? 64 : 76,
+              size: compact ? 28 : 34,
+              touch: compact ? 48 : 60,
             ),
             buildPlaybackIconButton(
-              compact ? 58 : 70,
+              compact ? 38 : 50,
               CupertinoTheme.of(context).textTheme.textStyle.color!,
               const Color(0x00000000),
               padding: const EdgeInsets.all(8),
@@ -656,52 +589,51 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               CupertinoIcons.forward_end_fill,
               'Next track',
               () => unawaited(audioHandler.skipToNext()),
-              size: compact ? 40 : 48,
-              touch: compact ? 64 : 76,
+              size: compact ? 28 : 34,
+              touch: compact ? 48 : 60,
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        StreamBuilder<double>(
-          initialData: audioHandler.audioPlayer.volume,
-          stream: audioHandler.audioPlayer.volumeStream,
-          builder: (_, snapshot) => Row(
-            children: [
-              const Icon(
-                CupertinoIcons.volume_down,
-                size: 20,
-                color: CupertinoColors.systemGrey,
-              ),
-              Expanded(
-                child: CupertinoSlider(
-                  value: (snapshot.data ?? 1).clamp(0.0, 1.0),
-                  onChanged: (value) =>
-                      unawaited(audioHandler.audioPlayer.setVolume(value)),
+        if (_pane == _PlayerPane.main) ...[
+          const SizedBox(height: 4),
+          StreamBuilder<double>(
+            initialData: audioHandler.audioPlayer.volume,
+            stream: audioHandler.audioPlayer.volumeStream,
+            builder: (_, snapshot) => Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.volume_down,
+                  size: 20,
+                  color: CupertinoColors.systemGrey,
                 ),
-              ),
-              const Icon(
-                CupertinoIcons.volume_up,
-                size: 20,
-                color: CupertinoColors.systemGrey,
-              ),
-            ],
+                Expanded(
+                  child: CupertinoSlider(
+                    value: (snapshot.data ?? 1).clamp(0.0, 1.0),
+                    onChanged: (value) =>
+                        unawaited(audioHandler.audioPlayer.setVolume(value)),
+                  ),
+                ),
+                const Icon(
+                  CupertinoIcons.volume_up,
+                  size: 20,
+                  color: CupertinoColors.systemGrey,
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
+        ],
+        const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _button(
-              CupertinoIcons.quote_bubble,
-              'Lyrics',
-              () {
-                HapticFeedback.selectionClick();
-                setState(() => _pane = _pane == _PlayerPane.lyrics
+            _button(CupertinoIcons.quote_bubble, 'Lyrics', () {
+              HapticFeedback.selectionClick();
+              setState(
+                () => _pane = _pane == _PlayerPane.lyrics
                     ? _PlayerPane.main
-                    : _PlayerPane.lyrics);
-              },
-              selected: _pane == _PlayerPane.lyrics,
-            ),
+                    : _PlayerPane.lyrics,
+              );
+            }, selected: _pane == _PlayerPane.lyrics),
             Flexible(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -726,25 +658,24 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                       CupertinoIcons.arrow_down_circle,
                       'Download options',
                       () => unawaited(
-                        showDownloadPicker(
-                          context,
-                          mediaItemToMap(item),
-                          (source, quality) async {
-                            final ok = await makeSongOffline(
-                              mediaItemToMap(item),
-                              source: source,
-                              quality: quality,
+                        showDownloadPicker(context, mediaItemToMap(item), (
+                          source,
+                          quality,
+                        ) async {
+                          final ok = await makeSongOffline(
+                            mediaItemToMap(item),
+                            source: source,
+                            quality: quality,
+                          );
+                          if (mounted) {
+                            showToast(
+                              context,
+                              ok
+                                  ? 'Saved to downloads'
+                                  : 'Download failed. Try again.',
                             );
-                            if (mounted) {
-                              showToast(
-                                context,
-                                ok
-                                    ? 'Saved to downloads'
-                                    : 'Download failed. Try again.',
-                              );
-                            }
-                          },
-                        ),
+                          }
+                        }),
                       ),
                       touch: 58,
                     ),
@@ -752,24 +683,19 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                 ),
               ),
             ),
-            _button(
-              CupertinoIcons.list_bullet,
-              'Queue',
-              () {
-                HapticFeedback.selectionClick();
-                setState(() => _pane = _pane == _PlayerPane.queue
+            _button(CupertinoIcons.list_bullet, 'Queue', () {
+              HapticFeedback.selectionClick();
+              setState(
+                () => _pane = _pane == _PlayerPane.queue
                     ? _PlayerPane.main
-                    : _PlayerPane.queue);
-              },
-              selected: _pane == _PlayerPane.queue,
-            ),
+                    : _PlayerPane.queue,
+              );
+            }, selected: _pane == _PlayerPane.queue),
           ],
         ),
       ],
     ),
   );
-
-
 
   String _qualityLabel(MediaItem item) {
     final extras = item.extras ?? {};

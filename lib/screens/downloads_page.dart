@@ -101,15 +101,23 @@ class _DownloadsPageState extends State<DownloadsPage> {
             if (offlinePlaylistService.activeDownloadIds.value.isNotEmpty)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 4,
+                  ),
                   child: Column(
                     children: [
-                      for (final id in offlinePlaylistService.activeDownloadIds.value)
+                      for (final id
+                          in offlinePlaylistService.activeDownloadIds.value)
                         ValueListenableBuilder(
-                          valueListenable: offlinePlaylistService.getProgressNotifier(id),
+                          valueListenable: offlinePlaylistService
+                              .getProgressNotifier(id),
                           builder: (context, progress, _) {
                             final fraction = progress.total > 0
-                                ? (progress.completed / progress.total).clamp(0.0, 1.0)
+                                ? (progress.completed / progress.total).clamp(
+                                    0.0,
+                                    1.0,
+                                  )
                                 : 0.0;
                             final isDark = isAppDarkMode(context);
                             return Container(
@@ -119,7 +127,9 @@ class _DownloadsPageState extends State<DownloadsPage> {
                                 color: musynElevatedSurface(isDark),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                  color: isDark
+                                      ? const Color(0x14FFFFFF)
+                                      : const Color(0x0A000000),
                                   width: 0.5,
                                 ),
                               ),
@@ -132,8 +142,12 @@ class _DownloadsPageState extends State<DownloadsPage> {
                                         width: 44,
                                         height: 44,
                                         decoration: BoxDecoration(
-                                          color: MusynStyle.appleRed.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(10),
+                                          color: MusynStyle.appleRed.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: const Center(
                                           child: Icon(
@@ -146,16 +160,22 @@ class _DownloadsPageState extends State<DownloadsPage> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              offlinePlaylistService.activeTitles[id] ?? 'Playlist download',
+                                              offlinePlaylistService
+                                                      .activeTitles[id] ??
+                                                  'Playlist download',
                                               style: TextStyle(
-                                                fontFamily: MusynStyle.displayFont,
+                                                fontFamily:
+                                                    MusynStyle.displayFont,
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w600,
                                                 letterSpacing: -0.2,
-                                                color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                                                color: isDark
+                                                    ? CupertinoColors.white
+                                                    : CupertinoColors.black,
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -166,19 +186,26 @@ class _DownloadsPageState extends State<DownloadsPage> {
                                               style: const TextStyle(
                                                 fontFamily: MusynStyle.uiFont,
                                                 fontSize: 12,
-                                                color: CupertinoColors.systemGrey,
+                                                color:
+                                                    CupertinoColors.systemGrey,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
                                       CupertinoButton(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
                                         onPressed: progress.isCancelled
                                             ? null
-                                            : () => offlinePlaylistService.cancelDownload(context, id),
+                                            : () => offlinePlaylistService
+                                                  .cancelDownload(context, id),
                                         child: Text(
-                                          progress.isCancelled ? 'Cancelling…' : 'Cancel playlist',
+                                          progress.isCancelled
+                                              ? 'Cancelling…'
+                                              : 'Cancel playlist',
                                           style: const TextStyle(
                                             fontFamily: MusynStyle.uiFont,
                                             fontSize: 13,
@@ -194,26 +221,38 @@ class _DownloadsPageState extends State<DownloadsPage> {
                                     child: Container(
                                       height: 7,
                                       width: double.infinity,
-                                      color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0F000000),
+                                      color: isDark
+                                          ? const Color(0x1FFFFFFF)
+                                          : const Color(0x0F000000),
                                       child: TweenAnimationBuilder<double>(
-                                        duration: const Duration(milliseconds: 250),
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
                                         curve: Curves.easeOutCubic,
-                                        tween: Tween<double>(begin: 0, end: fraction),
-                                        builder: (context, val, _) => FractionallySizedBox(
-                                          alignment: Alignment.centerLeft,
-                                          widthFactor: val,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(3.5),
-                                              gradient: const LinearGradient(
-                                                colors: [
-                                                  Color(0xFFFF375F),
-                                                  MusynStyle.appleRed,
-                                                ],
+                                        tween: Tween<double>(
+                                          begin: 0,
+                                          end: fraction,
+                                        ),
+                                        builder: (context, val, _) =>
+                                            FractionallySizedBox(
+                                              alignment: Alignment.centerLeft,
+                                              widthFactor: val,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        3.5,
+                                                      ),
+                                                  gradient:
+                                                      const LinearGradient(
+                                                        colors: [
+                                                          Color(0xFFFF375F),
+                                                          MusynStyle.appleRed,
+                                                        ],
+                                                      ),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ),
                                       ),
                                     ),
                                   ),
@@ -290,7 +329,11 @@ class _DownloadsPageState extends State<DownloadsPage> {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(CupertinoIcons.play_fill, size: 15, color: CupertinoColors.white),
+                              Icon(
+                                CupertinoIcons.play_fill,
+                                size: 15,
+                                color: CupertinoColors.white,
+                              ),
                               SizedBox(width: 6),
                               Text(
                                 'Play All',
@@ -316,7 +359,10 @@ class _DownloadsPageState extends State<DownloadsPage> {
                           onPressed: () {
                             final shuffled = List.from(saved)..shuffle();
                             audioHandler.playPlaylistSong(
-                              playlist: {'title': 'Downloads', 'list': shuffled},
+                              playlist: {
+                                'title': 'Downloads',
+                                'list': shuffled,
+                              },
                               songIndex: 0,
                             );
                           },
@@ -338,8 +384,8 @@ class _DownloadsPageState extends State<DownloadsPage> {
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: isAppDarkMode(context)
-                                    ? CupertinoColors.white
-                                    : CupertinoColors.black,
+                                      ? CupertinoColors.white
+                                      : CupertinoColors.black,
                                 ),
                               ),
                             ],
@@ -429,7 +475,7 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
   late final AnimationController _pulseController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat(reverse: true);
+  );
 
   @override
   void dispose() {
@@ -440,6 +486,13 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
+    final animate =
+        job.stage == DownloadStage.downloading &&
+        job.progress == null &&
+        !MediaQuery.disableAnimationsOf(context);
+    if (animate && !_pulseController.isAnimating)
+      _pulseController.repeat(reverse: true);
+    if (!animate && _pulseController.isAnimating) _pulseController.stop();
     final isDark = isAppDarkMode(context);
     final title = job.song['title']?.toString() ?? 'Track';
     final artist = job.song['artist']?.toString() ?? 'Musyn';
@@ -457,12 +510,23 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
       DownloadStage.cancelled => 'Download cancelled',
     };
 
-    final isSaavn = job.source == 'saavn' ||
-        job.source == 'jiosaavn' ||
-        job.song['catalogOrigin'] == 'saavn';
-    final sourceBadge = isSaavn ? 'JioSaavn' : 'YouTube';
-    final qualityBadge = job.quality != null ? '${job.quality}k' : (isSaavn ? '320k' : '160k');
-    final badgeColor = isSaavn ? CupertinoColors.systemGreen : const Color(0xFFFF0033);
+    final provider = job.resolvedSource ?? job.source;
+    final isSaavn = provider == 'saavn' || provider == 'jiosaavn';
+    final sourceBadge = isSaavn
+        ? 'JioSaavn'
+        : provider == 'youtube'
+        ? 'YouTube'
+        : 'Automatic';
+    final qualityBadge = job.bitrate != null
+        ? '${job.bitrate} kbps'
+        : job.quality != null
+        ? 'up to ${job.quality} kbps'
+        : null;
+    final badgeColor = isSaavn
+        ? CupertinoColors.systemGreen
+        : provider == 'youtube'
+        ? const Color(0xFFFF0033)
+        : CupertinoColors.systemGrey;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -513,7 +577,9 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.3,
-                          color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                          color: isDark
+                              ? CupertinoColors.white
+                              : CupertinoColors.black,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -537,9 +603,14 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
                         ? null
                         : () => downloadActivity.cancel(job.id),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0x24FFFFFF) : const Color(0x12000000),
+                        color: isDark
+                            ? const Color(0x24FFFFFF)
+                            : const Color(0x12000000),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
@@ -568,7 +639,10 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: MusynStyle.appleRed.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(12),
@@ -601,7 +675,10 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2.5,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(6),
@@ -610,13 +687,18 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isSaavn ? CupertinoIcons.waveform : CupertinoIcons.play_rectangle_fill,
+                        isSaavn
+                            ? CupertinoIcons.waveform
+                            : CupertinoIcons.play_rectangle_fill,
                         size: 11,
                         color: badgeColor,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '$sourceBadge · $qualityBadge',
+                        [
+                          sourceBadge,
+                          if (qualityBadge != null) qualityBadge,
+                        ].join(' · '),
                         style: TextStyle(
                           fontFamily: MusynStyle.uiFont,
                           fontSize: 11,
@@ -647,7 +729,9 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
                       fontFamily: MusynStyle.uiFont,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                      color: isDark
+                          ? CupertinoColors.white
+                          : CupertinoColors.black,
                     ),
                   ),
               ],
@@ -672,12 +756,17 @@ class _DownloadJobCardState extends State<_DownloadJobCard>
                   child: Container(
                     height: 8,
                     width: double.infinity,
-                    color: isDark ? const Color(0x29FFFFFF) : const Color(0x14000000),
+                    color: isDark
+                        ? const Color(0x29FFFFFF)
+                        : const Color(0x14000000),
                     child: progress == null
                         ? AnimatedBuilder(
                             animation: _pulseController,
                             builder: (context, _) => FractionallySizedBox(
-                              alignment: Alignment(-1.0 + (_pulseController.value * 2.0), 0),
+                              alignment: Alignment(
+                                -1.0 + (_pulseController.value * 2.0),
+                                0,
+                              ),
                               widthFactor: 0.40,
                               child: Container(
                                 decoration: BoxDecoration(
