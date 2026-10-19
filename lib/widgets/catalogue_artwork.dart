@@ -22,7 +22,7 @@ class CatalogueArtwork extends StatelessWidget {
     return Image(
       image: ResizeImage.resizeIfNeeded(
         memCacheWidth,
-        memCacheHeight,
+        null,
         ArtworkProvider.get(imageUrl),
       ),
       fit: fit,

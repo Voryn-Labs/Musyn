@@ -4,6 +4,43 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+/// Upgrades streaming thumbnail URLs to square, high-resolution formats.
+String upgradeArtworkUrl(String url, {int targetSize = 400}) {
+  if (url.isEmpty || url == 'null') return url;
+
+  var upgraded = url;
+  if (upgraded.contains('googleusercontent.com') ||
+      upgraded.contains('ggpht.com')) {
+    if (upgraded.contains('=')) {
+      upgraded = upgraded
+          .replaceAll(
+            RegExp(r'=w\d+(?:-h\d+)?(?:-[a-zA-Z0-9]+)*'),
+            '=w$targetSize-h$targetSize-c-l90-rj',
+          )
+          .replaceAll(RegExp(r'=s\d+(?:-[a-zA-Z0-9]+)*'), '=s$targetSize-c');
+    } else {
+      upgraded = '$upgraded=w$targetSize-h$targetSize-c-l90-rj';
+    }
+  }
+
+  if (upgraded.contains('saavncdn.com')) {
+    upgraded = upgraded
+        .replaceAll('50x50.jpg', '500x500.jpg')
+        .replaceAll('150x150.jpg', '500x500.jpg')
+        .replaceAll('500x500.jpg', '500x500.jpg')
+        .replaceAll('1500x1500.jpg', '500x500.jpg');
+  }
+
+  if (upgraded.contains('ytimg.com/vi/') ||
+      upgraded.contains('youtube.com/vi/')) {
+    upgraded = upgraded.replaceAllMapped(
+      RegExp(r'/(default|hqdefault)\.(jpg|webp|jpeg)'),
+      (match) => '/mqdefault.${match[2]}',
+    );
+  }
+
+  return upgraded;
+}
 
 class ArtworkProvider {
   ArtworkProvider._();
@@ -23,7 +60,8 @@ class ArtworkProvider {
     late ImageProvider provider;
     try {
       if (artwork.startsWith('http')) {
-        provider = CachedNetworkImageProvider(artwork);
+        final upgraded = upgradeArtworkUrl(artwork);
+        provider = CachedNetworkImageProvider(upgraded);
       } else if (artwork.startsWith('data:image')) {
         final commaIdx = artwork.indexOf(',');
         if (commaIdx == -1) throw Exception('invalid base64 image');

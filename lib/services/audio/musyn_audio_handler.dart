@@ -66,7 +66,7 @@ class MusynAudioHandler extends PlaybackController {
   bool _recoveringStall = false;
   bool _backgroundFetchInProgress = false;
   Timer? _stallWatch;
-  Duration _stallPosition = Duration.zero;
+  Duration? _stallPosition;
   DateTime _stallMark = DateTime.now();
 
   /// Shared playing indicator for list tiles (avoids per-row mediaItem streams).
@@ -1464,6 +1464,8 @@ class MusynAudioHandler extends PlaybackController {
     final currentTransitionId = _songTransitionCounter;
     _hub.queue.markLoading(index, _hub.queue.songAt(index));
     _currentLoadingTransitionId = currentTransitionId;
+    _stallMark = DateTime.now();
+    _stallPosition = null;
     // Request the session during transition. Device testing is still required:
     // activation alone does not grant background execution during silence.
     unawaited(
@@ -1875,6 +1877,8 @@ class MusynAudioHandler extends PlaybackController {
   }
 
   void _armStallWatch() {
+    _stallMark = DateTime.now();
+    _stallPosition = null;
     _stallWatch ??= Timer.periodic(const Duration(seconds: 2), (_) {
       unawaited(_recoverLockScreenStall());
     });
@@ -1903,6 +1907,12 @@ class MusynAudioHandler extends PlaybackController {
     if (_completion.isEventPendingFresh) return;
 
     final state = audioPlayer.processingState;
+    if (state == ProcessingState.buffering || state == ProcessingState.loading) {
+      // Actively buffering or loading stream from the network; not a frozen stall.
+      _stallMark = DateTime.now();
+      return;
+    }
+
     final position = audioPlayer.position;
     if (audioPlayer.playing && position != _stallPosition) {
       _stallPosition = position;
@@ -1915,7 +1925,9 @@ class MusynAudioHandler extends PlaybackController {
         state == ProcessingState.completed ||
         (state == ProcessingState.idle && audioPlayer.audioSource != null);
     final frozenWhilePlaying =
-        audioPlayer.playing && quietFor > const Duration(seconds: 12);
+        audioPlayer.playing &&
+        state == ProcessingState.ready &&
+        quietFor > const Duration(seconds: 12);
     if (!ended && !frozenWhilePlaying) return;
     if (ended && quietFor < const Duration(seconds: 2)) return;
 
@@ -2330,11 +2342,9 @@ class MusynAudioHandler extends PlaybackController {
       // while YouTube or JioSaavn resolves; stop() here ends the session.
       _emitOptimisticLoadingState(
         song: songData,
-        includeMediaItem: audioPlayer.audioSource == null,
+        includeMediaItem: true,
         mediaId: mediaId,
         transitionId: effectiveTransitionId,
-        // A source switch resumes the same song at its current position.
-        freshTrack: audioPlayer.audioSource == null,
       );
 
       final playback = await _playback
@@ -2624,10 +2634,23 @@ class MusynAudioHandler extends PlaybackController {
   Future<void> skipToNext() async {
     try {
       final base = _navCursor ?? _hub.queue.currentIndex;
-      if (base < _hub.queue.items.length - 1) {
-        await _requestQueueIndex(base + 1);
+      final targetIndex = base + 1;
+      if (targetIndex < _hub.queue.items.length) {
+        final targetSong = _hub.queue.items[targetIndex];
+        _emitOptimisticLoadingState(
+          song: targetSong,
+          queueIndex: targetIndex,
+          includeMediaItem: true,
+        );
+        await _requestQueueIndex(targetIndex);
       } else if (repeatNotifier.value == AudioServiceRepeatMode.all &&
           _hub.queue.items.isNotEmpty) {
+        final targetSong = _hub.queue.items[0];
+        _emitOptimisticLoadingState(
+          song: targetSong,
+          queueIndex: 0,
+          includeMediaItem: true,
+        );
         await _requestQueueIndex(0);
       } else if (playNextSongAutomatically.value && !offlineMode.value) {
         // Queue ran dry (e.g. rapid skips faster than background prefetch).
@@ -2665,13 +2688,25 @@ class MusynAudioHandler extends PlaybackController {
   Future<void> skipToPrevious() async {
     try {
       final base = _navCursor ?? _hub.queue.currentIndex;
-      if (base > 0) {
-        await _requestQueueIndex(base - 1);
+      final targetIndex = base - 1;
+      if (targetIndex >= 0) {
+        final targetSong = _hub.queue.items[targetIndex];
+        _emitOptimisticLoadingState(
+          song: targetSong,
+          queueIndex: targetIndex,
+          includeMediaItem: true,
+        );
+        await _requestQueueIndex(targetIndex);
       } else if (_hub.queue.history.isNotEmpty && _navCursor == null) {
         final lastSong = cloneMap(_hub.queue.history.removeAt(0));
         _hub.queue.items.insert(0, lastSong);
         _hub.queue.currentIndex = 0;
         _updateQueueMediaItems();
+        _emitOptimisticLoadingState(
+          song: lastSong,
+          queueIndex: 0,
+          includeMediaItem: true,
+        );
         await _requestQueueIndex(0);
       }
 

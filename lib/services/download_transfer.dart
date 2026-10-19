@@ -73,9 +73,13 @@ Future<void> writeDownloadAtomically({
     await sink.flush();
     await sink.close();
     cancellation.check();
-    if (received < minimumBytes ||
-        (expectedBytes != null && received != expectedBytes)) {
-      throw const HttpException('Incomplete audio download');
+    if (received < minimumBytes) {
+      throw const HttpException('Incomplete audio download: payload too small');
+    }
+    if (expectedBytes != null &&
+        expectedBytes > 0 &&
+        received < (expectedBytes * 0.90)) {
+      throw const HttpException('Incomplete audio download: truncated stream');
     }
     await temporary.rename(destination.path);
   } finally {

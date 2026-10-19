@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musyn/services/app_navigation_state.dart';
@@ -52,14 +53,9 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   @override
   Widget build(BuildContext context) {
     final dark = isAppDarkMode(context);
-    return PopScope(
-      canPop: widget.child.currentIndex == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) widget.child.goBranch(0);
-      },
-      child: CupertinoPageScaffold(
-        backgroundColor: musynCanvas(dark),
-        child: Stack(
+    final scaffold = CupertinoPageScaffold(
+      backgroundColor: musynCanvas(dark),
+      child: Stack(
           children: [
             Positioned.fill(
               child: ValueListenableBuilder<bool>(
@@ -132,7 +128,17 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
             ),
           ],
         ),
-      ),
+      );
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return scaffold;
+    }
+    return PopScope(
+      canPop: widget.child.currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.child.goBranch(0);
+      },
+      child: scaffold,
     );
   }
 }

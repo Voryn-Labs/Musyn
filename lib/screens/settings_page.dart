@@ -41,6 +41,12 @@ class SettingsPage extends StatelessWidget {
             ),
             slivers: [
               CupertinoSliverNavigationBar(
+                leading: Navigator.canPop(context)
+                    ? CupertinoNavigationBarBackButton(
+                        color: CupertinoTheme.of(context).primaryColor,
+                        onPressed: () => Navigator.maybePop(context),
+                      )
+                    : null,
                 largeTitle: const Text(
                   'Settings',
                   style: TextStyle(
@@ -58,6 +64,20 @@ class SettingsPage extends StatelessWidget {
                     width: 0.5,
                   ),
                 ),
+                trailing: Navigator.canPop(context)
+                    ? CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.maybePop(context),
+                        child: Text(
+                          'Done',
+                          style: TextStyle(
+                            fontFamily: MusynStyle.uiFont,
+                            fontWeight: FontWeight.w700,
+                            color: CupertinoTheme.of(context).primaryColor,
+                          ),
+                        ),
+                      )
+                    : null,
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -979,7 +999,7 @@ class SettingsPage extends StatelessWidget {
         children: [
           for (final entry in options.entries)
             PlayerDrawerRow(
-              title: '${setting.value == entry.key ? '✓ ' : ''}${entry.value}',
+              title: entry.value,
               subtitle: setting.value == entry.key
                   ? 'Currently selected streaming quality'
                   : 'Tap to select ${entry.value}',

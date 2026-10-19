@@ -1,6 +1,8 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/artwork_provider.dart' show upgradeArtworkUrl;
+export 'package:musyn/utilities/artwork_provider.dart' show upgradeArtworkUrl;
 
 Map mediaItemToMap(MediaItem mediaItem) {
   final extras = mediaItem.extras;
@@ -87,49 +89,11 @@ String? resolveMediaArtworkUrl(Map song, {String? ytid, int targetSize = 400}) {
     return upgradeArtworkUrl(chosen, targetSize: targetSize);
   }
   if (validYoutubeId) {
-    return 'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
+    return 'https://i.ytimg.com/vi/$ytid/mqdefault.jpg';
   }
   return null;
 }
 
-String upgradeArtworkUrl(String url, {int targetSize = 400}) {
-  if (url.isEmpty || url == 'null') return url;
-
-  var upgraded = url;
-  // 1. Google / YouTube Music CDN URLs with sizing parameters (=w120-h120, =s120, etc.)
-  if (upgraded.contains('googleusercontent.com') ||
-      upgraded.contains('ggpht.com')) {
-    upgraded = upgraded
-        .replaceAll(
-          RegExp(r'=w\d+-h\d+(?:-[a-zA-Z0-9]+)*'),
-          '=w$targetSize-h$targetSize-l90-rj',
-        )
-        .replaceAll(RegExp(r'=s\d+(?:-[a-zA-Z0-9]+)*'), '=s$targetSize');
-  }
-
-  // 2. JioSaavn CDN artwork — 500x500 is reliably square on the CDN.
-  if (upgraded.contains('saavncdn.com')) {
-    upgraded = upgraded
-        .replaceAll('50x50.jpg', '500x500.jpg')
-        .replaceAll('150x150.jpg', '500x500.jpg')
-        .replaceAll('500x500.jpg', '500x500.jpg')
-        .replaceAll('1500x1500.jpg', '500x500.jpg');
-  }
-
-  // 3. YouTube ytimg: keep hqdefault (4:3) for square lock-screen crops.
-  // maxresdefault is 16:9 and letterboxes badly on iOS Now Playing art.
-  if (upgraded.contains('ytimg.com/vi/') ||
-      upgraded.contains('youtube.com/vi/')) {
-    upgraded = upgraded.replaceAllMapped(
-      RegExp(
-        r'/(default|mqdefault|sddefault|hq720|maxresdefault)\.(jpg|webp|jpeg)',
-      ),
-      (match) => '/hqdefault.${match[2]}',
-    );
-  }
-
-  return upgraded;
-}
 
 MediaItem mapToMediaItem(Map song) {
   final ytid = song['ytid']?.toString();
@@ -167,7 +131,7 @@ MediaItem mapToMediaItem(Map song) {
             : (ytid != null &&
                       ytid.isNotEmpty &&
                       RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(ytid)
-                  ? Uri.parse('https://i.ytimg.com/vi/$ytid/hqdefault.jpg')
+                  ? Uri.parse('https://i.ytimg.com/vi/$ytid/mqdefault.jpg')
                   : null));
   // ytid is the canonical track identity shared by YouTube and JioSaavn.
   // Provider URLs, source labels, and queue-entry ids must never change it.

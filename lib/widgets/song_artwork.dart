@@ -6,7 +6,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:musyn/utilities/mediaitem.dart'
     show resolveMediaArtworkUrl, upgradeArtworkUrl;
 import 'package:musyn/widgets/no_artwork_cube.dart';
-import 'package:musyn/widgets/spinner.dart';
 
 class SongArtworkWidget extends StatelessWidget {
   const SongArtworkWidget({
@@ -68,12 +67,12 @@ class SongArtworkWidget extends StatelessWidget {
             height: size,
             imageUrl: imageUrl,
             memCacheWidth: cacheDimension,
-            memCacheHeight: cacheDimension,
             fadeInDuration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
                 : const Duration(milliseconds: 300),
             fit: BoxFit.cover,
-            placeholder: (_, __) => const Spinner(),
+            placeholder: (_, __) =>
+                NullArtworkWidget(iconSize: errorWidgetIconSize, size: size),
             errorWidget: (_, __, ___) =>
                 NullArtworkWidget(iconSize: errorWidgetIconSize, size: size),
           );
@@ -94,7 +93,6 @@ class SongArtworkWidget extends StatelessWidget {
                 ),
                 fit: BoxFit.cover,
                 cacheWidth: cacheDimension,
-                cacheHeight: cacheDimension,
                 errorBuilder: (_, __, ___) => networkArtwork,
               ),
             ),

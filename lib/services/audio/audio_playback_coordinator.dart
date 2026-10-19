@@ -470,7 +470,11 @@ class AudioPlaybackCoordinator {
       );
 
       await audioPlayer
-          .setAudioSources([installSource])
+          .setAudioSources(
+            [installSource],
+            initialPosition: Duration.zero,
+            initialIndex: 0,
+          )
           .timeout(
             isOffline ? offlineTransitionTimeout : streamTransitionTimeout,
           );

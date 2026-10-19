@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/widgets/player_drawer.dart';
+import 'package:musyn/widgets/song_artwork.dart';
 
 /// BitChord-styled action sheet for selecting JioSaavn, YouTube Music, or Offline source.
 void showAudioSourcePicker(
@@ -79,6 +81,72 @@ void showAudioSourcePicker(
             ),
           ),
           children: [
+            // Track Preview Header Card
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isAppDarkMode(ctx)
+                    ? const Color(0x14FFFFFF)
+                    : const Color(0x0A000000),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isAppDarkMode(ctx)
+                      ? const Color(0x14FFFFFF)
+                      : const Color(0x0F000000),
+                  width: 0.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SongArtworkWidget(
+                      metadata: metadata,
+                      size: 48,
+                      errorWidgetIconSize: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          metadata.title,
+                          style: TextStyle(
+                            fontFamily: MusynStyle.displayFont,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: isAppDarkMode(ctx)
+                                ? CupertinoColors.white
+                                : CupertinoColors.black,
+                            letterSpacing: -0.3,
+                            decoration: TextDecoration.none,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          metadata.artist?.isEmpty ?? true
+                              ? 'Musyn'
+                              : metadata.artist!,
+                          style: const TextStyle(
+                            fontFamily: MusynStyle.uiFont,
+                            fontSize: 13,
+                            color: CupertinoColors.systemGrey,
+                            decoration: TextDecoration.none,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             PlayerDrawerRow(
               title: 'JioSaavn',
               badge: '320k Lossless',

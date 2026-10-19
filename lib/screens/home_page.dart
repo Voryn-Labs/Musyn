@@ -1026,7 +1026,6 @@ class _CompactTrackRow extends StatelessWidget {
                     ? CatalogueArtwork(
                         imageUrl: imageUrl.toString(),
                         memCacheWidth: 88,
-                        memCacheHeight: 88,
                         errorWidget: (_, __, ___) => ColoredBox(
                           color: musynSecondarySurface(isDark),
                           child: const Icon(
@@ -1143,7 +1142,6 @@ class _HomeSongCard extends StatelessWidget {
                         ? CatalogueArtwork(
                             imageUrl: imageUrl.toString(),
                             memCacheWidth: 280,
-                            memCacheHeight: 280,
                             errorWidget: (_, __, ___) => ColoredBox(
                               color: musynSecondarySurface(isDark),
                               child: const Icon(

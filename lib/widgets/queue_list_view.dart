@@ -496,7 +496,6 @@ class _QueueTile extends StatelessWidget {
                                 imageUrl: image,
                                 fit: BoxFit.cover,
                                 memCacheWidth: 88,
-                                memCacheHeight: 88,
                                 errorWidget: (_, __, ___) =>
                                     const NullArtworkWidget(
                                       iconSize: 18,

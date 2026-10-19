@@ -165,35 +165,37 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                             return _buildLandscapeLayout(item, box, reduced);
                           }
 
-                          // Main Artwork Sleeve View
-                          if (_pane == _PlayerPane.main) {
-                            return Column(
-                              children: [
-                                Expanded(child: _mainSleeve(item, box, reduced)),
-                                _credits(item),
-                                _deck(item, compact: box.maxHeight < 620),
-                              ],
-                            );
-                          }
-
-                          // Full-Stage Synced Lyrics View
-                          if (_pane == _PlayerPane.lyrics) {
-                            return Column(
-                              children: [
-                                _lyricsHeader(item),
-                                Expanded(child: _lyricsStage(item)),
-                                _compactDeck(item),
-                              ],
-                            );
-                          }
-
-                          // Full-Stage Playing Next Queue View
                           return Column(
                             children: [
-                              _queueHeader(item),
+                              // Middle Stage (Sleeve, Lyrics, Queue)
+                              Expanded(
+                                child: AnimatedSwitcher(
+                                  duration: reduced
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 280),
+                                  switchInCurve: Curves.easeOutCubic,
+                                  switchOutCurve: Curves.easeInCubic,
+                                  transitionBuilder: (child, animation) {
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: KeyedSubtree(
+                                    key: ValueKey(_pane),
+                                    child: switch (_pane) {
+                                      _PlayerPane.main =>
+                                        _mainSleeve(item, box, reduced),
+                                      _PlayerPane.lyrics =>
+                                        _lyricsStage(item),
+                                      _PlayerPane.queue =>
+                                        _queueStage(item),
+                                    },
+                                  ),
+                                ),
+                              ),
                               _credits(item),
-                              Expanded(child: _queueStage(item)),
-                              _compactDeck(item),
+                              _deck(item, compact: box.maxHeight < 620),
                             ],
                           );
                         },
@@ -214,45 +216,31 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     BoxConstraints box,
     bool reduced,
   ) {
-    if (_pane == _PlayerPane.lyrics) {
-      return Row(
-        children: [
-          Expanded(child: _lyricsStage(item)),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _lyricsHeader(item),
-                  _credits(item),
-                  _compactDeck(item),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    if (_pane == _PlayerPane.queue) {
-      return Row(
-        children: [
-          Expanded(child: _queueStage(item)),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _queueHeader(item),
-                  _credits(item),
-                  _compactDeck(item),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
     return Row(
       children: [
-        Expanded(child: _mainSleeve(item, box, reduced)),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: reduced
+                ? Duration.zero
+                : const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey(_pane),
+              child: switch (_pane) {
+                _PlayerPane.main => _mainSleeve(item, box, reduced),
+                _PlayerPane.lyrics => _lyricsStage(item),
+                _PlayerPane.queue => _queueStage(item),
+              },
+            ),
+          ),
+        ),
         Expanded(
           child: SingleChildScrollView(
             child: Column(
@@ -278,55 +266,50 @@ class _NowPlayingPageState extends State<NowPlayingPage>
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onVerticalDragStart: (_) {
+      onPanStart: (_) {
         _coverDrag = 0;
+        _horizontalDrag = 0;
         _downward = false;
+        _sleeveX.stop();
       },
-      onVerticalDragUpdate: (details) {
-        _coverDrag += details.delta.dy;
-        if (_coverDrag > 0 && !_downward) _downward = true;
-        if (_downward) {
-          _dismissUpdate(details);
+      onPanUpdate: (details) {
+        if (!_downward && details.delta.dx.abs() > details.delta.dy.abs() * 1.1) {
+          _horizontalDrag += details.delta.dx;
+          _sleeveX.value = _horizontalDrag * 0.45;
         } else {
-          setState(() {});
+          _coverDrag += details.delta.dy;
+          if (_coverDrag > 0 && !_downward) _downward = true;
+          if (_downward) {
+            _dismissUpdate(DragUpdateDetails(
+              globalPosition: details.globalPosition,
+              delta: details.delta,
+              primaryDelta: details.delta.dy,
+            ));
+          } else {
+            setState(() {});
+          }
         }
       },
-      onVerticalDragEnd: (details) {
+      onPanEnd: (details) {
+        final vx = details.velocity.pixelsPerSecond.dx;
+        final vy = details.velocity.pixelsPerSecond.dy;
         if (_downward) {
-          _dismissEnd(details);
-        } else if (_coverDrag < -72 || (details.primaryVelocity ?? 0) < -400) {
+          _dismissEnd(DragEndDetails(
+            velocity: details.velocity,
+            primaryVelocity: vy,
+          ));
+        } else if (_coverDrag < -72 || vy < -400) {
           HapticFeedback.lightImpact();
           setState(() => _pane = _PlayerPane.queue);
-        }
-        setState(() => _coverDrag = 0);
-      },
-      onVerticalDragCancel: () {
-        _sheet?.settle(0);
-        setState(() => _coverDrag = 0);
-      },
-      onHorizontalDragStart: (_) {
-        _sleeveX.stop();
-        _horizontalDrag = 0;
-      },
-      onHorizontalDragUpdate: (details) {
-        _horizontalDrag += details.delta.dx;
-        _sleeveX.value = _horizontalDrag * 0.45;
-      },
-      onHorizontalDragCancel: () {
-        _sleeveX
-          ..stop()
-          ..value = 0;
-        _horizontalDrag = 0;
-      },
-      onHorizontalDragEnd: (details) {
-        final velocity = details.primaryVelocity ?? 0;
-        if (_horizontalDrag < -60 || velocity < -400) {
+        } else if (_horizontalDrag < -50 || vx < -350) {
           HapticFeedback.mediumImpact();
           unawaited(audioHandler.skipToNext());
-        } else if (_horizontalDrag > 60 || velocity > 400) {
+        } else if (_horizontalDrag > 50 || vx > 350) {
           HapticFeedback.mediumImpact();
           unawaited(audioHandler.skipToPrevious());
         }
+        _horizontalDrag = 0;
+        _coverDrag = 0;
         if (reduced) {
           _sleeveX.value = 0;
         } else {
@@ -339,10 +322,18 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               ),
               _sleeveX.value,
               0,
-              velocity * .5,
+              vx * .5,
             ),
           );
         }
+      },
+      onPanCancel: () {
+        _sheet?.settle(0);
+        _sleeveX
+          ..stop()
+          ..value = 0;
+        _horizontalDrag = 0;
+        _coverDrag = 0;
       },
       child: Center(
         child: AnimatedBuilder(
@@ -379,95 +370,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   // ---------------------------------------------------------------------------
   // FULL-STAGE SYNCED LYRICS VIEW
   // ---------------------------------------------------------------------------
-  Widget _lyricsHeader(MediaItem item) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-    child: Row(
-      children: [
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            setState(() => _pane = _PlayerPane.main);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  CupertinoIcons.chevron_left,
-                  size: 15,
-                  color: CupertinoColors.white,
-                ),
-                SizedBox(width: 4),
-                Text(
-                  'Artwork',
-                  style: TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: CupertinoColors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                item.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: MusynStyle.displayFont,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: CupertinoColors.white,
-                ),
-              ),
-              Text(
-                item.artist ?? '',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: MusynStyle.uiFont,
-                  fontSize: 12,
-                  color: CupertinoColors.systemGrey,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => showAudioSourcePicker(context, item),
-          child: Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              CupertinoIcons.antenna_radiowaves_left_right,
-              size: 16,
-              color: CupertinoColors.white,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 
   Widget _lyricsStage(MediaItem item) {
     return GestureDetector(
@@ -592,62 +494,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   // ---------------------------------------------------------------------------
   // FULL-STAGE PLAYING NEXT QUEUE VIEW
   // ---------------------------------------------------------------------------
-  Widget _queueHeader(MediaItem item) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-    child: Row(
-      children: [
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            setState(() => _pane = _PlayerPane.main);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  CupertinoIcons.chevron_left,
-                  size: 15,
-                  color: CupertinoColors.white,
-                ),
-                SizedBox(width: 4),
-                Text(
-                  'Player',
-                  style: TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: CupertinoColors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Text(
-            'Playing Next',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: MusynStyle.displayFont,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: CupertinoColors.white,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        _queueModes(),
-      ],
-    ),
-  );
 
   Widget _queueStage(MediaItem item) {
     return GestureDetector(
@@ -667,7 +513,30 @@ class _NowPlayingPageState extends State<NowPlayingPage>
         _backDrag = 0;
       },
       onHorizontalDragCancel: () => _backDrag = 0,
-      child: const QueueWidget(),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 16, 8),
+            child: Row(
+              children: [
+                const Text(
+                  'Playing Next',
+                  style: TextStyle(
+                    fontFamily: MusynStyle.displayFont,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                    color: CupertinoColors.white,
+                  ),
+                ),
+                const Spacer(),
+                _queueModes(),
+              ],
+            ),
+          ),
+          const Expanded(child: QueueWidget()),
+        ],
+      ),
     );
   }
 
@@ -827,7 +696,9 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               'Lyrics',
               () {
                 HapticFeedback.selectionClick();
-                setState(() => _pane = _PlayerPane.lyrics);
+                setState(() => _pane = _pane == _PlayerPane.lyrics
+                    ? _PlayerPane.main
+                    : _PlayerPane.lyrics);
               },
               selected: _pane == _PlayerPane.lyrics,
             ),
@@ -886,7 +757,9 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               'Queue',
               () {
                 HapticFeedback.selectionClick();
-                setState(() => _pane = _PlayerPane.queue);
+                setState(() => _pane = _pane == _PlayerPane.queue
+                    ? _PlayerPane.main
+                    : _PlayerPane.queue);
               },
               selected: _pane == _PlayerPane.queue,
             ),
@@ -896,69 +769,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     ),
   );
 
-  // ---------------------------------------------------------------------------
-  // COMPACT TRANSPORT DOCK (FOR FULL-STAGE LYRICS & QUEUE)
-  // ---------------------------------------------------------------------------
-  Widget _compactDeck(MediaItem item) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (!(item.extras?['isLive'] ?? false))
-          PositionSlider(qualityLabel: _qualityLabel(item)),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _button(
-              CupertinoIcons.quote_bubble,
-              'Lyrics',
-              () {
-                HapticFeedback.selectionClick();
-                setState(() => _pane = _pane == _PlayerPane.lyrics ? _PlayerPane.main : _PlayerPane.lyrics);
-              },
-              selected: _pane == _PlayerPane.lyrics,
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _button(
-                  CupertinoIcons.backward_end_fill,
-                  'Previous track',
-                  () => unawaited(audioHandler.skipToPrevious()),
-                  size: 34,
-                  touch: 48,
-                ),
-                const SizedBox(width: 8),
-                buildPlaybackIconButton(
-                  52,
-                  CupertinoTheme.of(context).textTheme.textStyle.color!,
-                  const Color(0x00000000),
-                  padding: const EdgeInsets.all(4),
-                ),
-                const SizedBox(width: 8),
-                _button(
-                  CupertinoIcons.forward_end_fill,
-                  'Next track',
-                  () => unawaited(audioHandler.skipToNext()),
-                  size: 34,
-                  touch: 48,
-                ),
-              ],
-            ),
-            _button(
-              CupertinoIcons.list_bullet,
-              'Queue',
-              () {
-                HapticFeedback.selectionClick();
-                setState(() => _pane = _pane == _PlayerPane.queue ? _PlayerPane.main : _PlayerPane.queue);
-              },
-              selected: _pane == _PlayerPane.queue,
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+
 
   String _qualityLabel(MediaItem item) {
     final extras = item.extras ?? {};

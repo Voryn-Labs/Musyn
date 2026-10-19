@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:musyn/services/common_services.dart';
-import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
+import 'package:musyn/widgets/player_drawer.dart';
 
 void showSongInfoDialog(BuildContext context, Map song) async {
   final ytid = song['ytid']?.toString() ?? '';
@@ -14,11 +14,14 @@ void showSongInfoDialog(BuildContext context, Map song) async {
   final artist = song['artist']?.toString() ?? 'Unknown Artist';
 
   var source = 'YouTube Music';
+  var isSaavn = false;
   if (isOffline) {
     final s = offlineSong['downloadSource']?.toString().toLowerCase();
-    source = (s == 'saavn' || s == 'jiosaavn') ? 'JioSaavn 320k' : 'YouTube Music';
+    isSaavn = s == 'saavn' || s == 'jiosaavn';
+    source = isSaavn ? 'JioSaavn 320k Lossless' : 'YouTube Music';
   } else if (song['resolvedSource'] != null) {
-    source = song['resolvedSource'] == 'jiosaavn' ? 'JioSaavn 320k' : 'YouTube Music';
+    isSaavn = song['resolvedSource'] == 'jiosaavn';
+    source = isSaavn ? 'JioSaavn 320k Lossless' : 'YouTube Music';
   }
 
   var bitrate = 'Dynamic / Adaptive';
@@ -62,101 +65,60 @@ void showSongInfoDialog(BuildContext context, Map song) async {
 
   if (!context.mounted) return;
 
-  final isDark = isAppDarkMode(context);
-  final cardBg = isDark ? musynSecondarySurface(isDark) : CupertinoColors.white;
-  const secondaryColor = CupertinoColors.systemGrey;
-  final labelColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-  final separatorColor = isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000);
-
   unawaited(showCupertinoModalPopup<void>(
     context: context,
-    builder: (ctx) => CupertinoActionSheet(
-      title: Column(
-        children: [
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: MusynStyle.displayFont,
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: labelColor,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            artist,
-            style: const TextStyle(
-              fontFamily: MusynStyle.uiFont,
-              fontSize: 14,
-              color: secondaryColor,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              children: [
-                _infoRow('Audio Source', source, isDark, highlightColor: MusynStyle.appleRed),
-                Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),
-                _infoRow('Audio Bitrate', bitrate, isDark),
-                Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),
-                _infoRow('Audio Codec', format, isDark),
-                Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),
-                _infoRow('Storage', isOffline ? 'Downloaded ($fileSize)' : 'Streaming Online', isDark),
-                if (isOffline) ...[
-                  Container(height: 0.5, color: separatorColor, margin: const EdgeInsets.symmetric(vertical: 8)),
-                  _infoRow('Saved Date', dateAdded, isDark),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-      cancelButton: CupertinoActionSheetAction(
-        isDefaultAction: true,
+    barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
+    builder: (ctx) => PlayerDrawer(
+      title: 'Track Details',
+      subtitle: '$title · $artist',
+      trailingHeader: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         onPressed: () => Navigator.pop(ctx),
-        child: const Text('Done'),
-      ),
-    ),
-  ));
-}
-
-Widget _infoRow(String label, String value, bool isDark, {Color? highlightColor}) {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(
-        label,
-        style: const TextStyle(
-          fontFamily: MusynStyle.uiFont,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: CupertinoColors.systemGrey,
-        ),
-      ),
-      Flexible(
-        child: Text(
-          value,
+        child: const Text(
+          'Done',
           style: TextStyle(
             fontFamily: MusynStyle.uiFont,
-            fontSize: 13,
-            fontWeight: highlightColor != null ? FontWeight.w700 : FontWeight.w600,
-            color: highlightColor ?? (isDark ? CupertinoColors.white : CupertinoColors.black),
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: MusynStyle.appleRed,
           ),
-          overflow: TextOverflow.ellipsis,
         ),
       ),
-    ],
-  );
+      children: [
+        PlayerDrawerRow(
+          title: 'Audio Source',
+          subtitle: source,
+          badge: isSaavn ? 'Lossless' : 'Adaptive',
+          icon: isSaavn ? CupertinoIcons.waveform : CupertinoIcons.play_rectangle_fill,
+          iconBg: isSaavn ? CupertinoColors.systemGreen : const Color(0xFFFF0033),
+        ),
+        PlayerDrawerRow(
+          title: 'Audio Bitrate',
+          subtitle: bitrate,
+          icon: CupertinoIcons.speedometer,
+          iconBg: CupertinoColors.systemIndigo,
+        ),
+        PlayerDrawerRow(
+          title: 'Audio Format',
+          subtitle: format,
+          icon: CupertinoIcons.music_note,
+          iconBg: CupertinoColors.systemOrange,
+        ),
+        PlayerDrawerRow(
+          title: 'Storage',
+          subtitle: isOffline ? 'Downloaded to this device ($fileSize)' : 'Streaming Online',
+          badge: isOffline ? 'Offline' : 'Online',
+          icon: isOffline ? CupertinoIcons.arrow_down_circle_fill : CupertinoIcons.cloud,
+          iconBg: isOffline ? CupertinoColors.systemTeal : CupertinoColors.systemBlue,
+        ),
+        if (isOffline)
+          PlayerDrawerRow(
+            title: 'Saved Date',
+            subtitle: dateAdded,
+            icon: CupertinoIcons.calendar,
+            iconBg: CupertinoColors.systemPurple,
+          ),
+      ],
+    ),
+  ));
 }

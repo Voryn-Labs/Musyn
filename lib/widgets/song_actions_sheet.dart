@@ -12,11 +12,11 @@ import 'package:musyn/utilities/mediaitem.dart';
 import 'package:musyn/utilities/playlist_dialogs.dart';
 import 'package:musyn/utilities/song_info_dialog.dart';
 import 'package:musyn/widgets/download_picker_sheet.dart';
+import 'package:musyn/widgets/player_drawer.dart';
 import 'package:musyn/widgets/sleep_timer_picker.dart';
 import 'package:musyn/widgets/song_artwork.dart';
-import 'package:musyn/widgets/track_action_drawer.dart';
 
-/// Shows an Apple Music-style Cupertino action sheet with track preview.
+/// Shows a BitChord-styled drawer with track preview and rounded action cards.
 void showSongActionsSheet(
   BuildContext context, {
   required Map song,
@@ -30,216 +30,228 @@ void showSongActionsSheet(
   final isLiked = isSongAlreadyLiked(ytid);
   final isOffline = isSongAlreadyOffline(ytid);
 
-  final isDark = isAppDarkMode(context);
-
   showCupertinoModalPopup<void>(
     context: context,
     barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
-    builder: (ctx) => TrackActionDrawer(
-      title: Row(
+    builder: (ctx) {
+      final isDark = isAppDarkMode(ctx);
+      final mediaItem = mapToMediaItem(song);
+
+      return PlayerDrawer(
+        title: 'Track Options',
+        subtitle: artist.isNotEmpty ? '$title · $artist' : title,
+        trailingHeader: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text(
+            'Done',
+            style: TextStyle(
+              fontFamily: MusynStyle.uiFont,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: MusynStyle.appleRed,
+            ),
+          ),
+        ),
         children: [
-          SongArtworkWidget(metadata: mapToMediaItem(song), size: 54),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (artist.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    artist,
-                    style: TextStyle(
-                      fontFamily: MusynStyle.uiFont,
-                      fontSize: 13,
-                      color: isDark
-                          ? MusynStyle.darkSecondary
-                          : CupertinoColors.systemGrey,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
+          // Track Preview Card
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000),
+                width: 0.5,
+              ),
             ),
-          ),
-        ],
-      ),
-      actions: [
-        if (isAudioHandlerInitialized &&
-            audioHandler.currentPlayingYtid.value == ytid)
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(ctx);
-              showSleepTimerPicker(context);
-            },
-            child: const Row(
-              children: [
-                Icon(CupertinoIcons.moon_zzz, size: 20),
-                SizedBox(width: 10),
-                Text('Sleep timer'),
-              ],
-            ),
-          ),
-        CupertinoActionSheetAction(
-          onPressed: () {
-            Navigator.pop(ctx);
-            audioHandler.playNext(song);
-            showToast(context, 'Playing next');
-          },
-          child: const Row(
-            children: [
-              Icon(CupertinoIcons.play_rectangle, size: 20),
-              SizedBox(width: 10),
-              Text('Play Next'),
-            ],
-          ),
-        ),
-        CupertinoActionSheetAction(
-          onPressed: () {
-            Navigator.pop(ctx);
-            audioHandler.addToQueue(song);
-            showToast(context, 'Added to queue');
-          },
-          child: const Row(
-            children: [
-              Icon(CupertinoIcons.text_badge_plus, size: 20),
-              SizedBox(width: 10),
-              Text('Add to Queue'),
-            ],
-          ),
-        ),
-        if (!offlineMode.value)
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              unawaited(HapticFeedback.mediumImpact());
-              final nextLiked = !isLiked;
-              await updateSongLikeStatus(ytid, nextLiked, songData: song);
-              if (context.mounted) {
-                showToast(
-                  context,
-                  nextLiked
-                      ? 'Added to Liked Songs'
-                      : 'Removed from Liked Songs',
-                );
-              }
-            },
             child: Row(
               children: [
-                Icon(
-                  isLiked
-                      ? CupertinoIcons.heart_slash_fill
-                      : CupertinoIcons.heart_fill,
-                  size: 20,
-                  color: isLiked
-                      ? CupertinoColors.systemRed
-                      : MusynStyle.appleRed,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SongArtworkWidget(
+                    metadata: mediaItem,
+                    size: 52,
+                    errorWidgetIconSize: 22,
+                  ),
                 ),
-                const SizedBox(width: 10),
-                Text(isLiked ? 'Remove from Favorites' : 'Favorite'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontFamily: MusynStyle.displayFont,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                          color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                          decoration: TextDecoration.none,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        artist.isEmpty ? 'Musyn' : artist,
+                        style: const TextStyle(
+                          fontFamily: MusynStyle.uiFont,
+                          fontSize: 13,
+                          color: CupertinoColors.systemGrey,
+                          decoration: TextDecoration.none,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        if (!offlineMode.value)
-          CupertinoActionSheetAction(
-            onPressed: () {
+
+          if (isAudioHandlerInitialized &&
+              audioHandler.currentPlayingYtid.value == ytid)
+            PlayerDrawerRow(
+              title: 'Sleep timer',
+              subtitle: 'Set a countdown to pause playback',
+              icon: CupertinoIcons.moon_zzz_fill,
+              iconBg: CupertinoColors.systemOrange,
+              onTap: () {
+                Navigator.pop(ctx);
+                showSleepTimerPicker(context);
+              },
+            ),
+
+          PlayerDrawerRow(
+            title: 'Play Next',
+            subtitle: 'Insert directly after current song',
+            icon: CupertinoIcons.play_rectangle_fill,
+            iconBg: CupertinoColors.systemIndigo,
+            onTap: () {
               Navigator.pop(ctx);
-              showAddToPlaylistDialog(context, song: song);
+              audioHandler.playNext(song);
+              showToast(context, 'Playing next');
             },
-            child: const Row(
-              children: [
-                Icon(CupertinoIcons.plus_circle, size: 20),
-                SizedBox(width: 10),
-                Text('Add to a Playlist...'),
-              ],
-            ),
           ),
-        CupertinoActionSheetAction(
-          onPressed: () async {
-            Navigator.pop(ctx);
-            if (isOffline) {
-              await removeSongFromOffline(ytid);
-              if (context.mounted) showToast(context, 'Download removed');
-            } else {
-              await showDownloadPicker(context, song, (source, quality) async {
-                final success = await makeSongOffline(
-                  song,
-                  source: source,
-                  quality: quality,
-                );
-                if (context.mounted)
+
+          PlayerDrawerRow(
+            title: 'Add to Queue',
+            subtitle: 'Append to the end of Playing Next queue',
+            icon: CupertinoIcons.text_badge_plus,
+            iconBg: CupertinoColors.systemTeal,
+            onTap: () {
+              Navigator.pop(ctx);
+              audioHandler.addToQueue(song);
+              showToast(context, 'Added to queue');
+            },
+          ),
+
+          if (!offlineMode.value)
+            PlayerDrawerRow(
+              title: isLiked ? 'Remove from Favorites' : 'Add to Favorites',
+              subtitle: isLiked
+                  ? 'Remove from your liked library'
+                  : 'Save to your liked songs',
+              badge: isLiked ? 'Liked' : null,
+              icon: isLiked
+                  ? CupertinoIcons.heart_slash_fill
+                  : CupertinoIcons.heart_fill,
+              iconBg: isLiked
+                  ? CupertinoColors.systemRed
+                  : MusynStyle.appleRed,
+              onTap: () async {
+                Navigator.pop(ctx);
+                unawaited(HapticFeedback.mediumImpact());
+                final nextLiked = !isLiked;
+                await updateSongLikeStatus(ytid, nextLiked, songData: song);
+                if (context.mounted) {
                   showToast(
                     context,
-                    success
-                        ? 'Downloaded to device'
-                        : 'Download failed. Try again.',
+                    nextLiked
+                        ? 'Added to Liked Songs'
+                        : 'Removed from Liked Songs',
                   );
-              });
-            }
-          },
-          child: Row(
-            children: [
-              Icon(
-                isOffline
-                    ? CupertinoIcons.trash
-                    : CupertinoIcons.arrow_down_circle,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Text(isOffline ? 'Remove Download' : 'Download to Device'),
-            ],
-          ),
-        ),
-        CupertinoActionSheetAction(
-          onPressed: () {
-            Navigator.pop(ctx);
-            showSongInfoDialog(context, song);
-          },
-          child: const Row(
-            children: [
-              Icon(CupertinoIcons.info_circle, size: 20),
-              SizedBox(width: 10),
-              Text('Track Details'),
-            ],
-          ),
-        ),
-        if (canRemove && onRemove != null)
-          CupertinoActionSheetAction(
-            isDestructiveAction: true,
-            onPressed: () {
-              Navigator.pop(ctx);
-              onRemove();
-            },
-            child: const Row(
-              children: [
-                Icon(
-                  CupertinoIcons.delete,
-                  size: 20,
-                  color: CupertinoColors.destructiveRed,
-                ),
-                SizedBox(width: 10),
-                Text('Remove'),
-              ],
+                }
+              },
             ),
+
+          if (!offlineMode.value)
+            PlayerDrawerRow(
+              title: 'Add to Playlist',
+              subtitle: 'Save track into a custom playlist',
+              icon: CupertinoIcons.plus_circle_fill,
+              iconBg: CupertinoColors.systemPurple,
+              onTap: () {
+                Navigator.pop(ctx);
+                showAddToPlaylistDialog(context, song: song);
+              },
+            ),
+
+          PlayerDrawerRow(
+            title: isOffline ? 'Remove Download' : 'Download to Device',
+            subtitle: isOffline
+                ? 'Delete offline copy from local storage'
+                : 'Download high quality AAC for offline listening',
+            badge: isOffline ? 'Saved' : null,
+            icon: isOffline
+                ? CupertinoIcons.trash_fill
+                : CupertinoIcons.arrow_down_circle_fill,
+            iconBg: isOffline
+                ? CupertinoColors.systemRed
+                : CupertinoColors.systemGreen,
+            onTap: () async {
+              Navigator.pop(ctx);
+              if (isOffline) {
+                await removeSongFromOffline(ytid);
+                if (context.mounted) showToast(context, 'Download removed');
+              } else {
+                await showDownloadPicker(context, song, (source, quality) async {
+                  final success = await makeSongOffline(
+                    song,
+                    source: source,
+                    quality: quality,
+                  );
+                  if (context.mounted) {
+                    showToast(
+                      context,
+                      success
+                          ? 'Downloaded to device'
+                          : 'Download failed. Try again.',
+                    );
+                  }
+                });
+              }
+            },
           ),
-      ],
-      cancelButton: CupertinoActionSheetAction(
-        isDefaultAction: true,
-        onPressed: () => Navigator.pop(ctx),
-        child: const Text('Done'),
-      ),
-    ),
+
+          PlayerDrawerRow(
+            title: 'Track Details',
+            subtitle: 'Inspect audio format, bitrate, and source',
+            icon: CupertinoIcons.info_circle_fill,
+            iconBg: CupertinoColors.systemBlue,
+            onTap: () {
+              Navigator.pop(ctx);
+              showSongInfoDialog(context, song);
+            },
+          ),
+
+          if (canRemove && onRemove != null)
+            PlayerDrawerRow(
+              title: 'Remove',
+              subtitle: 'Remove from this playlist or history',
+              icon: CupertinoIcons.delete_solid,
+              iconBg: CupertinoColors.destructiveRed,
+              onTap: () {
+                Navigator.pop(ctx);
+                onRemove();
+              },
+            ),
+        ],
+      );
+    },
   );
 }
