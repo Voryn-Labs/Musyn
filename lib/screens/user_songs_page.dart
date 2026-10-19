@@ -15,6 +15,7 @@ import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/library_ranking.dart';
 import 'package:musyn/widgets/content_state.dart';
 import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/player_drawer.dart';
 import 'package:musyn/widgets/playlist_cube.dart';
 import 'package:musyn/widgets/playlist_page/playlist_action_buttons.dart';
 import 'package:musyn/widgets/playlist_page/playlist_header.dart';
@@ -338,31 +339,54 @@ class _UserSongsPageState extends State<UserSongsPage> {
   void _showSort() {
     showCupertinoModalPopup<void>(
       context: context,
-      builder: (sheet) => CupertinoActionSheet(
-        title: const Text('Sort downloaded tracks'),
-        actions: [
+      barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
+      builder: (sheet) => PlayerDrawer(
+        title: 'Sort Downloaded Tracks',
+        subtitle: 'Choose how your offline tracks are organized',
+        trailingHeader: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          onPressed: () => Navigator.pop(sheet),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(
+              fontFamily: MusynStyle.uiFont,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: MusynStyle.appleRed,
+            ),
+          ),
+        ),
+        children: [
           for (final type in OfflineSortType.values)
-            CupertinoActionSheetAction(
-              isDefaultAction: type == _getCurrentOfflineSortType(),
-              onPressed: () {
+            PlayerDrawerRow(
+              title: switch (type) {
+                OfflineSortType.default_ => 'Default order',
+                OfflineSortType.title => 'Title',
+                OfflineSortType.artist => 'Artist',
+                OfflineSortType.dateAdded => 'Newest first',
+              },
+              subtitle: type == _getCurrentOfflineSortType()
+                  ? 'Currently selected sorting order'
+                  : '',
+              icon: switch (type) {
+                OfflineSortType.default_ => CupertinoIcons.list_bullet,
+                OfflineSortType.title => CupertinoIcons.textformat,
+                OfflineSortType.artist => CupertinoIcons.person_2,
+                OfflineSortType.dateAdded => CupertinoIcons.time,
+              },
+              iconBg: type == _getCurrentOfflineSortType()
+                  ? MusynStyle.appleRed
+                  : CupertinoColors.systemGrey,
+              selected: type == _getCurrentOfflineSortType(),
+              onTap: () {
                 Navigator.pop(sheet);
                 setState(() => offlineSortSetting = type.name);
                 unawaited(
                   addOrUpdateData('settings', 'offlineSortType', type.name),
                 );
               },
-              child: Text(switch (type) {
-                OfflineSortType.default_ => 'Default order',
-                OfflineSortType.title => 'Title',
-                OfflineSortType.artist => 'Artist',
-                OfflineSortType.dateAdded => 'Newest first',
-              }),
             ),
         ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(sheet),
-          child: const Text('Cancel'),
-        ),
       ),
     );
   }

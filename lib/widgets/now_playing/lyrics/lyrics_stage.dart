@@ -47,8 +47,8 @@ class LyricsStage extends StatelessWidget {
               return ListView.builder(
                 controller: scrollController,
                 padding: EdgeInsets.only(
-                  top: viewportHeight * 0.36,
-                  bottom: viewportHeight * 0.36,
+                  top: viewportHeight * 0.22,
+                  bottom: viewportHeight * 0.28,
                   left: 28,
                   right: 28,
                 ),

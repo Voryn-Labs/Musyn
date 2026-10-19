@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/services/settings_manager.dart';
@@ -7,6 +5,7 @@ import 'package:musyn/services/source_resolver.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/mediaitem.dart';
+import 'package:musyn/widgets/player_drawer.dart';
 import 'package:musyn/widgets/song_artwork.dart';
 
 class DownloadPickerSheet extends StatefulWidget {
@@ -91,8 +90,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     final title = widget.song['title']?.toString() ?? 'Track';
     final artist = widget.song['artist']?.toString() ?? '';
     final isDark = isAppDarkMode(context);
-    final cardBg = isDark ? const Color(0x26FFFFFF) : const Color(0x0F000000);
-    final textColor = isDark ? CupertinoColors.white : CupertinoColors.black;
+    final titleColor = isDark ? CupertinoColors.white : CupertinoColors.black;
     const secondaryTextColor = CupertinoColors.systemGrey;
 
     // Sanitize quality for current source
@@ -100,304 +98,30 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
       _selectedQuality = _availableBitrates.last;
     }
 
-    return SafeArea(
-      top: false,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .85,
-        ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 18,
-              right: 18,
-              top: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 18,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0x4DFFFFFF)
-                          : const Color(0x33000000),
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: SongArtworkWidget(
-                        metadata: mapToMediaItem(widget.song),
-                        size: 58,
-                        errorWidgetIconSize: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontFamily: MusynStyle.displayFont,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
-                              letterSpacing: -0.3,
-                              decoration: TextDecoration.none,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            artist.isEmpty ? 'Musyn' : artist,
-                            style: const TextStyle(
-                              fontFamily: MusynStyle.uiFont,
-                              fontSize: 13,
-                              color: secondaryTextColor,
-                              decoration: TextDecoration.none,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                const Text(
-                  'AUDIO PROVIDER',
-                  style: TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: secondaryTextColor,
-                    letterSpacing: 0.6,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildSourceOption(
-                  value: 'saavn',
-                  title: 'JioSaavn',
-                  badge: '320 kbps',
-                  subtitle: !jiosaavnEnabled.value
-                      ? 'Enable JioSaavn in Settings to use this source'
-                      : _isCheckingSaavn
-                      ? 'Checking availability...'
-                      : (_availabilityUnknown
-                            ? 'Availability checked when downloading'
-                            : _isSaavnAvailable
-                            ? 'AAC · up to 320 kbps'
-                            : 'Unavailable on JioSaavn for this track'),
-                  icon: CupertinoIcons.waveform,
-                  iconBg: CupertinoColors.systemGreen,
-                  isEnabled: !_isCheckingSaavn && _isSaavnAvailable,
-                  isDark: isDark,
-                  cardBg: cardBg,
-                  textColor: textColor,
-                  secondaryTextColor: secondaryTextColor,
-                ),
-                _buildSourceOption(
-                  value: 'youtube',
-                  title: 'YouTube Music',
-                  badge: '160k AAC',
-                  subtitle: 'AAC · best available stream',
-                  icon: CupertinoIcons.play_rectangle_fill,
-                  iconBg: const Color(0xFFFF0033),
-                  isEnabled: true,
-                  isDark: isDark,
-                  cardBg: cardBg,
-                  textColor: textColor,
-                  secondaryTextColor: secondaryTextColor,
-                ),
-                const SizedBox(height: 18),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    const Text(
-                      'AUDIO QUALITY',
-                      style: TextStyle(
-                        fontFamily: MusynStyle.uiFont,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: secondaryTextColor,
-                        letterSpacing: 0.6,
-                        decoration: TextDecoration.none,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: MusynStyle.appleRed.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'Up to $_selectedQuality kbps',
-                        style: const TextStyle(
-                          fontFamily: MusynStyle.uiFont,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: MusynStyle.appleRed,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: CupertinoSlidingSegmentedControl<String>(
-                    groupValue: _selectedQuality,
-                    children: {
-                      for (final quality in _availableBitrates)
-                        quality: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            '$quality kbps',
-                            style: const TextStyle(
-                              fontFamily: MusynStyle.uiFont,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                    },
-                    onValueChanged: (quality) {
-                      if (quality == null) return;
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedQuality = quality);
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Downloads are saved to your offline library for instant playback without an active connection.',
-                  style: TextStyle(
-                    fontFamily: MusynStyle.uiFont,
-                    fontSize: 12,
-                    color: secondaryTextColor,
-                    height: 1.35,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  child: CupertinoButton(
-                    color: MusynStyle.appleRed,
-                    borderRadius: BorderRadius.circular(16),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pop(context);
-                      widget.onDownload(_selectedSource, _selectedQuality);
-                    },
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          CupertinoIcons.arrow_down_circle_fill,
-                          color: CupertinoColors.white,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Download Track',
-                          style: TextStyle(
-                            fontFamily: MusynStyle.uiFont,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: CupertinoColors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSourceOption({
-    required String value,
-    required String title,
-    required String subtitle,
-    required String badge,
-    required IconData icon,
-    required Color iconBg,
-    required bool isEnabled,
-    required bool isDark,
-    required Color cardBg,
-    required Color textColor,
-    required Color secondaryTextColor,
-  }) {
-    final selected = _selectedSource == value;
-
-    return GestureDetector(
-      onTap: isEnabled
-          ? () {
-              HapticFeedback.selectionClick();
-              setState(() {
-                _selectedSource = value;
-                if (value == 'youtube' && _selectedQuality == '320') {
-                  _selectedQuality = '160';
-                }
-              });
-            }
-          : null,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 200),
-        opacity: isEnabled ? 1.0 : 0.42,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    return PlayerDrawer(
+      title: 'Download Options',
+      subtitle: 'Save audio locally for offline playback',
+      children: [
+        // Track Preview Header Card
+        Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: selected
-                ? MusynStyle.appleRed.withValues(alpha: 0.12)
-                : cardBg,
-            borderRadius: BorderRadius.circular(14),
+            color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected
-                  ? MusynStyle.appleRed.withValues(alpha: 0.4)
-                  : (isDark ? const Color(0x1AFFFFFF) : const Color(0x14000000)),
-              width: selected ? 1 : 0.5,
+              color: isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000),
+              width: 0.5,
             ),
           ),
           child: Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Center(
-                  child: Icon(icon, color: CupertinoColors.white, size: 19),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SongArtworkWidget(
+                  metadata: mapToMediaItem(widget.song),
+                  size: 48,
+                  errorWidgetIconSize: 22,
                 ),
               ),
               const SizedBox(width: 12),
@@ -405,70 +129,185 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 2,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontFamily: MusynStyle.displayFont,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: selected ? MusynStyle.appleRed : textColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        if (isEnabled)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0x26FFFFFF)
-                                  : const Color(0x1F000000),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              badge,
-                              style: TextStyle(
-                                fontFamily: MusynStyle.uiFont,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: secondaryTextColor,
-                                decoration: TextDecoration.none,
-                              ),
-                            ),
-                          ),
-                      ],
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: MusynStyle.displayFont,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
+                        letterSpacing: -0.3,
+                        decoration: TextDecoration.none,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      subtitle,
-                      style: TextStyle(
+                      artist.isEmpty ? 'Musyn' : artist,
+                      style: const TextStyle(
                         fontFamily: MusynStyle.uiFont,
-                        fontSize: 12,
+                        fontSize: 13,
                         color: secondaryTextColor,
                         decoration: TextDecoration.none,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              Icon(
-                selected
-                    ? CupertinoIcons.checkmark_circle_fill
-                    : CupertinoIcons.circle,
-                color: selected ? MusynStyle.appleRed : secondaryTextColor,
-                size: 20,
-              ),
             ],
           ),
         ),
-      ),
+
+        // Sources
+        PlayerDrawerRow(
+          title: 'JioSaavn',
+          badge: '320 kbps',
+          subtitle: !jiosaavnEnabled.value
+              ? 'Enable JioSaavn in Settings to use this source'
+              : _isCheckingSaavn
+              ? 'Checking availability...'
+              : (_availabilityUnknown
+                    ? 'Availability confirmed during download'
+                    : _isSaavnAvailable
+                    ? 'AAC · up to 320 kbps (High Fidelity)'
+                    : 'Unavailable on JioSaavn for this track'),
+          icon: CupertinoIcons.waveform,
+          iconBg: CupertinoColors.systemGreen,
+          selected: _selectedSource == 'saavn',
+          enabled: !_isCheckingSaavn && _isSaavnAvailable,
+          loading: _isCheckingSaavn,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() {
+              _selectedSource = 'saavn';
+              _selectedQuality = '320';
+            });
+          },
+        ),
+
+        PlayerDrawerRow(
+          title: 'YouTube Music',
+          badge: '160k AAC',
+          subtitle: 'AAC · Adaptive Stream',
+          icon: CupertinoIcons.play_rectangle_fill,
+          iconBg: const Color(0xFFFF0033),
+          selected: _selectedSource == 'youtube',
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() {
+              _selectedSource = 'youtube';
+              if (_selectedQuality == '320') _selectedQuality = '160';
+            });
+          },
+        ),
+
+        const SizedBox(height: 10),
+
+        // Quality selection row
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            const Text(
+              'AUDIO QUALITY',
+              style: TextStyle(
+                fontFamily: MusynStyle.uiFont,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: secondaryTextColor,
+                letterSpacing: 0.6,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: MusynStyle.appleRed.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '$_selectedQuality kbps',
+                style: const TextStyle(
+                  fontFamily: MusynStyle.uiFont,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: MusynStyle.appleRed,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        SizedBox(
+          width: double.infinity,
+          child: CupertinoSlidingSegmentedControl<String>(
+            groupValue: _selectedQuality,
+            children: {
+              for (final quality in _availableBitrates)
+                quality: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    '$quality kbps',
+                    style: const TextStyle(
+                      fontFamily: MusynStyle.uiFont,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+            },
+            onValueChanged: (quality) {
+              if (quality == null) return;
+              HapticFeedback.selectionClick();
+              setState(() => _selectedQuality = quality);
+            },
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        // Download Action Button
+        SizedBox(
+          width: double.infinity,
+          child: CupertinoButton(
+            color: MusynStyle.appleRed,
+            borderRadius: BorderRadius.circular(16),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              Navigator.pop(context);
+              widget.onDownload(_selectedSource, _selectedQuality);
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.arrow_down_circle_fill,
+                  color: CupertinoColors.white,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Download Track',
+                  style: TextStyle(
+                    fontFamily: MusynStyle.uiFont,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: CupertinoColors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -478,34 +317,9 @@ Future<void> showDownloadPicker(
   Map song,
   void Function(String source, String quality) onDownload,
 ) {
-  final isDark = isAppDarkMode(context);
-  final sheetBg = isDark
-      ? const Color(0xF51C1C1E)
-      : const Color(0xF5F2F2F7);
-
   return showCupertinoModalPopup<void>(
     context: context,
-    barrierColor: CupertinoColors.black.withValues(alpha: 0.65),
-    builder: (ctx) => ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: sheetBg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border(
-              top: BorderSide(
-                color: isDark
-                    ? const Color(0x1AFFFFFF)
-                    : const Color(0x14000000),
-                width: 0.5,
-              ),
-            ),
-          ),
-          child: DownloadPickerSheet(song: song, onDownload: onDownload),
-        ),
-      ),
-    ),
+    barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
+    builder: (ctx) => DownloadPickerSheet(song: song, onDownload: onDownload),
   );
 }

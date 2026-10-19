@@ -17,6 +17,7 @@ import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/widgets/mini_player_bottom_space.dart';
+import 'package:musyn/widgets/player_drawer.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -958,31 +959,46 @@ class SettingsPage extends StatelessWidget {
   ) {
     showCupertinoModalPopup<void>(
       context: context,
-      builder: (sheet) => CupertinoActionSheet(
-        title: const Text('Streaming quality'),
-        message: const Text(
-          'Your current track continues playing. Downloads have their own source and quality picker.',
+      barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
+      builder: (sheet) => PlayerDrawer(
+        title: 'Streaming Quality',
+        subtitle: 'Applies to audio stream playback',
+        trailingHeader: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          onPressed: () => Navigator.pop(sheet),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(
+              fontFamily: MusynStyle.uiFont,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: MusynStyle.appleRed,
+            ),
+          ),
         ),
-        actions: [
+        children: [
           for (final entry in options.entries)
-            CupertinoActionSheetAction(
-              onPressed: () async {
+            PlayerDrawerRow(
+              title: '${setting.value == entry.key ? '✓ ' : ''}${entry.value}',
+              subtitle: setting.value == entry.key
+                  ? 'Currently selected streaming quality'
+                  : 'Tap to select ${entry.value}',
+              icon: CupertinoIcons.waveform,
+              iconBg: setting.value == entry.key
+                  ? MusynStyle.appleRed
+                  : CupertinoColors.systemGrey,
+              selected: setting.value == entry.key,
+              onTap: () async {
                 Navigator.pop(sheet);
                 setting.value = entry.key;
-                if (isAudioHandlerInitialized)
+                if (isAudioHandlerInitialized) {
                   audioHandler.clearPreparedStreams();
+                }
                 await addOrUpdateData('settings', key, entry.key);
                 await invalidateAllSongStreamCaches();
               },
-              child: Text(
-                '${setting.value == entry.key ? '✓ ' : ''}${entry.value}',
-              ),
             ),
         ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(sheet),
-          child: const Text('Cancel'),
-        ),
       ),
     );
   }
@@ -990,36 +1006,64 @@ class SettingsPage extends StatelessWidget {
   void _selectProvider(BuildContext context, String current) {
     showCupertinoModalPopup<void>(
       context: context,
-      builder: (sheet) => CupertinoActionSheet(
-        title: const Text('Default audio provider'),
-        message: const Text(
-          'Applies to upcoming tracks. Use the player to switch the current track.',
+      barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
+      builder: (sheet) => PlayerDrawer(
+        title: 'Default Audio Provider',
+        subtitle: 'Applies to upcoming tracks and auto-recommendations',
+        trailingHeader: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          onPressed: () => Navigator.pop(sheet),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(
+              fontFamily: MusynStyle.uiFont,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: MusynStyle.appleRed,
+            ),
+          ),
         ),
-        actions: [
+        children: [
           for (final entry in const {
             'auto': 'Auto',
             'youtube': 'YouTube Music',
             'jiosaavn': 'JioSaavn',
           }.entries)
-            CupertinoActionSheetAction(
-              onPressed: () {
+            PlayerDrawerRow(
+              title:
+                  '${current == entry.key || (current == 'saavn' && entry.key == 'jiosaavn') ? '✓ ' : ''}${entry.value}',
+              subtitle: switch (entry.key) {
+                'auto' => 'Dynamically picks best available source per track',
+                'youtube' => 'Prioritizes YouTube Music audio stream',
+                'jiosaavn' => 'Prioritizes JioSaavn high-fidelity AAC (320kbps)',
+                _ => '',
+              },
+              icon: switch (entry.key) {
+                'auto' => CupertinoIcons.sparkles,
+                'youtube' => CupertinoIcons.play_rectangle_fill,
+                'jiosaavn' => CupertinoIcons.waveform,
+                _ => CupertinoIcons.music_note,
+              },
+              iconBg: switch (entry.key) {
+                'auto' => CupertinoColors.systemIndigo,
+                'youtube' => const Color(0xFFFF0033),
+                'jiosaavn' => CupertinoColors.systemGreen,
+                _ => MusynStyle.appleRed,
+              },
+              selected: current == entry.key ||
+                  (current == 'saavn' && entry.key == 'jiosaavn'),
+              onTap: () {
                 Navigator.pop(sheet);
                 preferredSource.value = entry.key;
                 unawaited(
                   addOrUpdateData('settings', 'preferredSource', entry.key),
                 );
-                if (isAudioHandlerInitialized)
+                if (isAudioHandlerInitialized) {
                   audioHandler.clearPinnedSources();
+                }
               },
-              child: Text(
-                '${current == entry.key || (current == 'saavn' && entry.key == 'jiosaavn') ? '✓ ' : ''}${entry.value}',
-              ),
             ),
         ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(sheet),
-          child: const Text('Cancel'),
-        ),
       ),
     );
   }

@@ -34,6 +34,7 @@ void showSongActionsSheet(
 
   showCupertinoModalPopup<void>(
     context: context,
+    barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
     builder: (ctx) => TrackActionDrawer(
       title: Row(
         children: [
