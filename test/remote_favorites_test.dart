@@ -49,6 +49,17 @@ void main() {
           isTrue,
         );
         expect(userLikedSongsList.value, hasLength(1));
+        // Changes made inside the app also reach the system command immediately.
+        await updateSongLikeStatus('fixture', false);
+        await Future<void>.delayed(Duration.zero);
+        expect(states.last['liked'], isFalse);
+        await updateSongLikeStatus(
+          'fixture',
+          true,
+          songData: {'ytid': 'fixture', 'title': 'Midnight in motion'},
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(states.last['liked'], isTrue);
         handler.mediaItem.add(
           const MediaItem(
             id: 'new-entry',

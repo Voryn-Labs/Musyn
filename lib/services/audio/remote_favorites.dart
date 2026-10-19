@@ -34,7 +34,13 @@ class RemoteFavorites {
       channel
           .invokeMethod<void>('setState', {
             'trackId': id,
-            'liked': id != null && isSongAlreadyLiked(id),
+            // Read the published list directly: its synchronous notification precedes
+            // the lookup-cache refresh inside updateSongLikeStatus.
+            'liked':
+                id != null &&
+                userLikedSongsList.value.whereType<Map>().any(
+                  (song) => song['ytid']?.toString() == id,
+                ),
           })
           .catchError((Object _) {}),
     );
