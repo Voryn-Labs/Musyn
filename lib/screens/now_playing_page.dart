@@ -13,11 +13,9 @@ import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/async_loader.dart';
-import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/mediaitem.dart';
+import 'package:musyn/widgets/audio_route_button.dart';
 import 'package:musyn/widgets/content_state.dart';
-import 'package:musyn/widgets/download_picker_sheet.dart';
-import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
 import 'package:musyn/widgets/now_playing/synced_lyrics_view.dart';
 import 'package:musyn/widgets/playback_icon_button.dart';
 import 'package:musyn/widgets/player_sheet_route.dart';
@@ -28,7 +26,7 @@ import 'package:musyn/widgets/song_artwork.dart';
 
 enum _PlayerPane { main, lyrics, queue }
 
-/// BitChord-inspired unified Now Playing Player with gesture-based navigation,
+/// Music player with gesture-based navigation,
 /// full-height synced lyrics stage, integrated queue, and compact transport dock.
 class NowPlayingPage extends StatefulWidget {
   const NowPlayingPage({super.key, this.navigationBase = '/home'});
@@ -121,7 +119,8 @@ class _NowPlayingPageState extends State<NowPlayingPage>
           _lyricTrack = trackKey;
           _lyrics = null;
         }
-        if (_pane == _PlayerPane.lyrics) {
+        if (_pane == _PlayerPane.lyrics ||
+            MediaQuery.orientationOf(context) == Orientation.landscape) {
           _lyrics ??= getSongLyrics(item.artist, item.title);
         }
         final dark = isAppDarkMode(context);
@@ -225,36 +224,78 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     BoxConstraints box,
     bool reduced,
   ) {
-    return Row(
-      children: [
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: reduced
-                ? Duration.zero
-                : const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-            child: KeyedSubtree(
-              key: ValueKey(_pane),
-              child: switch (_pane) {
-                _PlayerPane.main => _mainSleeve(item, box, reduced),
-                _PlayerPane.lyrics => _lyricsStage(item),
-                _PlayerPane.queue => _queueStage(item),
-              },
+    _lyrics ??= getSongLyrics(item.artist, item.title);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: LayoutBuilder(
+              builder: (context, left) => SingleChildScrollView(
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: math.max(80, left.maxHeight - 180),
+                      child: LayoutBuilder(
+                        builder: (_, cover) =>
+                            _mainSleeve(item, cover, reduced),
+                      ),
+                    ),
+                    _credits(item),
+                    if (!(item.extras?['isLive'] ?? false))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: PositionSlider(
+                          qualityLabel: _qualityLabel(item),
+                        ),
+                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _button(
+                          CupertinoIcons.backward_end_fill,
+                          'Previous track',
+                          () => unawaited(audioHandler.skipToPrevious()),
+                        ),
+                        buildPlaybackIconButton(
+                          28,
+                          CupertinoTheme.of(context).textTheme.textStyle.color!,
+                          const Color(0x00000000),
+                          padding: const EdgeInsets.all(8),
+                        ),
+                        _button(
+                          CupertinoIcons.forward_end_fill,
+                          'Next track',
+                          () => unawaited(audioHandler.skipToNext()),
+                        ),
+                        const AudioRouteButton(),
+                        _button(
+                          CupertinoIcons.list_bullet,
+                          'Queue',
+                          () => setState(
+                            () => _pane = _pane == _PlayerPane.queue
+                                ? _PlayerPane.lyrics
+                                : _PlayerPane.queue,
+                          ),
+                          selected: _pane == _PlayerPane.queue,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [_credits(item), _deck(item, compact: true)],
-            ),
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 5,
+            child: _pane == _PlayerPane.queue
+                ? _queueStage(item)
+                : _lyricsStage(item),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -362,7 +403,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               child: SongArtworkWidget(
                 metadata: item,
                 size: sleeve.toDouble(),
-                borderRadius: 14,
                 errorWidgetIconSize: 64,
               ),
             ),
@@ -452,17 +492,20 @@ class _NowPlayingPageState extends State<NowPlayingPage>
             padding: const EdgeInsets.fromLTRB(20, 4, 16, 8),
             child: Row(
               children: [
-                const Text(
-                  'Playing Next',
-                  style: TextStyle(
-                    fontFamily: MusynStyle.displayFont,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: CupertinoColors.white,
+                const Expanded(
+                  child: Text(
+                    'Playing Next',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: MusynStyle.displayFont,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: CupertinoColors.white,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 _queueModes(),
               ],
             ),
@@ -608,6 +651,9 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                 ),
                 Expanded(
                   child: CupertinoSlider(
+                    activeColor: CupertinoTheme.of(
+                      context,
+                    ).textTheme.textStyle.color,
                     value: (snapshot.data ?? 1).clamp(0.0, 1.0),
                     onChanged: (value) =>
                         unawaited(audioHandler.audioPlayer.setVolume(value)),
@@ -634,55 +680,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                     : _PlayerPane.lyrics,
               );
             }, selected: _pane == _PlayerPane.lyrics),
-            Flexible(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemGrey.withValues(alpha: .16),
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _button(
-                      CupertinoIcons.antenna_radiowaves_left_right,
-                      'Playback source and quality',
-                      () => showAudioSourcePicker(context, item),
-                      touch: 58,
-                    ),
-                    Container(
-                      height: 20,
-                      width: .5,
-                      color: CupertinoColors.systemGrey,
-                    ),
-                    _button(
-                      CupertinoIcons.arrow_down_circle,
-                      'Download options',
-                      () => unawaited(
-                        showDownloadPicker(context, mediaItemToMap(item), (
-                          source,
-                          quality,
-                        ) async {
-                          final ok = await makeSongOffline(
-                            mediaItemToMap(item),
-                            source: source,
-                            quality: quality,
-                          );
-                          if (mounted) {
-                            showToast(
-                              context,
-                              ok
-                                  ? 'Saved to downloads'
-                                  : 'Download failed. Try again.',
-                            );
-                          }
-                        }),
-                      ),
-                      touch: 58,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            const AudioRouteButton(),
             _button(CupertinoIcons.list_bullet, 'Queue', () {
               HapticFeedback.selectionClick();
               setState(

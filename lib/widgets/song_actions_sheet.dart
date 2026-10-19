@@ -12,6 +12,7 @@ import 'package:musyn/utilities/mediaitem.dart';
 import 'package:musyn/utilities/playlist_dialogs.dart';
 import 'package:musyn/utilities/song_info_dialog.dart';
 import 'package:musyn/widgets/download_picker_sheet.dart';
+import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
 import 'package:musyn/widgets/player_drawer.dart';
 import 'package:musyn/widgets/sleep_timer_picker.dart';
 import 'package:musyn/widgets/song_artwork.dart';
@@ -62,7 +63,9 @@ void showSongActionsSheet(
               color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000),
+                color: isDark
+                    ? const Color(0x14FFFFFF)
+                    : const Color(0x0F000000),
                 width: 0.5,
               ),
             ),
@@ -88,7 +91,9 @@ void showSongActionsSheet(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.3,
-                          color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                          color: isDark
+                              ? CupertinoColors.white
+                              : CupertinoColors.black,
                           decoration: TextDecoration.none,
                         ),
                         maxLines: 1,
@@ -160,9 +165,7 @@ void showSongActionsSheet(
               icon: isLiked
                   ? CupertinoIcons.heart_slash_fill
                   : CupertinoIcons.heart_fill,
-              iconBg: isLiked
-                  ? CupertinoColors.systemRed
-                  : MusynStyle.appleRed,
+              iconBg: isLiked ? CupertinoColors.systemRed : MusynStyle.appleRed,
               onTap: () async {
                 Navigator.pop(ctx);
                 unawaited(HapticFeedback.mediumImpact());
@@ -191,6 +194,19 @@ void showSongActionsSheet(
               },
             ),
 
+          if (isAudioHandlerInitialized &&
+              audioHandler.currentPlayingYtid.value == ytid)
+            PlayerDrawerRow(
+              title: 'Playback source',
+              subtitle: 'Change streaming provider or use the offline copy',
+              icon: CupertinoIcons.waveform,
+              iconBg: CupertinoColors.systemPink,
+              onTap: () {
+                Navigator.pop(ctx);
+                showAudioSourcePicker(context, mediaItem);
+              },
+            ),
+
           PlayerDrawerRow(
             title: isOffline ? 'Remove Download' : 'Download to Device',
             subtitle: isOffline
@@ -209,24 +225,46 @@ void showSongActionsSheet(
                 await removeSongFromOffline(ytid);
                 if (context.mounted) showToast(context, 'Download removed');
               } else {
-                await showDownloadPicker(context, song, (source, quality) async {
-                  final success = await makeSongOffline(
-                    song,
-                    source: source,
-                    quality: quality,
+                showToast(context, 'Downloading…');
+                final success = await makeSongOffline(song);
+                if (context.mounted) {
+                  showToast(
+                    context,
+                    success
+                        ? 'Downloaded to device'
+                        : 'Download failed. Try again.',
                   );
-                  if (context.mounted) {
-                    showToast(
-                      context,
-                      success
-                          ? 'Downloaded to device'
-                          : 'Download failed. Try again.',
-                    );
-                  }
-                });
+                }
               }
             },
           ),
+
+          if (!isOffline)
+            PlayerDrawerRow(
+              title: 'Download options',
+              subtitle: 'Override the default source or quality for this track',
+              icon: CupertinoIcons.slider_horizontal_3,
+              iconBg: CupertinoColors.systemGrey,
+              onTap: () {
+                Navigator.pop(ctx);
+                unawaited(
+                  showDownloadPicker(context, song, (source, quality) async {
+                    final ok = await makeSongOffline(
+                      song,
+                      source: source,
+                      quality: quality,
+                    );
+                    if (context.mounted)
+                      showToast(
+                        context,
+                        ok
+                            ? 'Downloaded to device'
+                            : 'Download failed. Try again.',
+                      );
+                  }),
+                );
+              },
+            ),
 
           PlayerDrawerRow(
             title: 'Track Details',

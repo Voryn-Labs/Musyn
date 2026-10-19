@@ -16,7 +16,7 @@ import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/widgets/player_sheet_route.dart';
 import 'package:musyn/widgets/song_artwork.dart';
 
-/// BitChord-inspired iOS floating mini player with horizontal swipe-to-skip
+/// Compact iOS player dock with horizontal swipe-to-skip
 /// and upward drag to expand.
 class MiniPlayer extends StatefulWidget {
   const MiniPlayer({super.key});
@@ -233,7 +233,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         }
 
         final isDark = isAppDarkMode(context);
-        final bg = isDark ? const Color(0xE6161618) : const Color(0xF2FFFFFF);
+        final bg = isDark ? const Color(0xF2232326) : const Color(0xF2F5F5F7);
         final border = isDark
             ? const Color(0x33FFFFFF)
             : const Color(0x1F000000);
@@ -266,7 +266,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         final hasNext = audioHandler.hasNext;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 2),
+          padding: const EdgeInsets.fromLTRB(10, 3, 10, 3),
           child: AnimatedBuilder(
             animation: Listenable.merge([_scaleAnimation, _swipeController]),
             builder: (context, child) => Transform.scale(
@@ -293,14 +293,14 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                 onHorizontalDragUpdate: _handleHorizontalDragUpdate,
                 onHorizontalDragEnd: _handleHorizontalDragEnd,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(18),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                     child: Container(
                       height: MiniPlayer.playerHeight,
                       decoration: BoxDecoration(
                         color: bg,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: border, width: 0.5),
                       ),
                       child: Stack(
@@ -313,14 +313,14 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(1),
                               child: Container(
-                                height: 2,
+                                height: 1.5,
                                 color: isDark
                                     ? const Color(0x22FFFFFF)
                                     : const Color(0x11000000),
                                 alignment: Alignment.centerLeft,
                                 child: FractionallySizedBox(
                                   widthFactor: progress,
-                                  child: Container(color: titleColor),
+                                  child: Container(color: MusynStyle.appleRed),
                                 ),
                               ),
                             ),
@@ -347,8 +347,8 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                                     tag: 'playing-art-${metadata.id}',
                                     child: SongArtworkWidget(
                                       metadata: metadata,
-                                      size: 40,
-                                      borderRadius: 8,
+                                      size: 42,
+                                      borderRadius: 7,
                                     ),
                                   ),
                                   const SizedBox(width: 12),

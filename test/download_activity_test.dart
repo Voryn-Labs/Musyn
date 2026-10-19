@@ -5,6 +5,21 @@ import 'package:musyn/services/download_transfer.dart';
 import 'package:musyn/utilities/library_ranking.dart';
 
 void main() {
+  test('source fallback clears previous provider bitrate and byte total', () {
+    final activity = DownloadActivity();
+    final id = activity.begin({'ytid': 'fixture'}, DownloadCancellation());
+    activity.start(id);
+    activity.resolved(id, 'jiosaavn', 320);
+    activity.progress(id, 900, 1000);
+    activity.retrying(id, 'youtube');
+    final job = activity.jobs.value.single;
+    expect(job.received, 0);
+    expect(job.total, isNull);
+    expect(job.bitrate, isNull);
+    expect(job.resolvedSource, 'youtube');
+    expect(job.stage, DownloadStage.downloading);
+  });
+
   test(
     'actual transfer source and bitrate override catalogue and requested limit',
     () {

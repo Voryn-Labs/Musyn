@@ -6,7 +6,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/models/position_data.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
-import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/formatter.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -113,7 +112,9 @@ class _PositionSliderState extends State<PositionSlider> {
                     child: CupertinoSlider(
                       value: currentValue.clamp(0.0, maxDuration),
                       max: maxDuration,
-                      activeColor: MusynStyle.appleRed,
+                      activeColor: CupertinoTheme.of(
+                        context,
+                      ).textTheme.textStyle.color,
                       onChangeStart: displayDuration == Duration.zero
                           ? null
                           : (value) {

@@ -587,6 +587,52 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
               _buildDivider(isDark),
+              ValueListenableBuilder<String>(
+                valueListenable: downloadSource,
+                builder: (context, value, _) => _buildSettingRow(
+                  icon: CupertinoIcons.arrow_down_circle,
+                  iconBg: CupertinoColors.systemPink,
+                  title: 'Default download source',
+                  subtitle:
+                      'Falls back automatically if a source is unavailable.',
+                  trailingText: const {
+                    'best': 'Automatic',
+                    'saavn': 'JioSaavn',
+                    'jiosaavn': 'JioSaavn',
+                    'youtube': 'YouTube Music',
+                  }[value],
+                  onTap: () => _selectQuality(
+                    context,
+                    downloadSource,
+                    'downloadSource',
+                    const {
+                      'best': 'Automatic',
+                      'saavn': 'JioSaavn',
+                      'youtube': 'YouTube Music',
+                    },
+                  ),
+                  isDark: isDark,
+                ),
+              ),
+              _buildDivider(isDark),
+              ValueListenableBuilder<String>(
+                valueListenable: downloadQuality,
+                builder: (context, value, _) => _buildSettingRow(
+                  icon: CupertinoIcons.waveform,
+                  iconBg: CupertinoColors.systemPink,
+                  title: 'Download quality',
+                  subtitle: 'Uses the closest quality offered by the source.',
+                  trailingText: '$value kbps',
+                  onTap: () => _selectQuality(
+                    context,
+                    downloadQuality,
+                    'downloadQuality',
+                    const {'160': '160 kbps', '320': '320 kbps'},
+                  ),
+                  isDark: isDark,
+                ),
+              ),
+              _buildDivider(isDark),
               ValueListenableBuilder<int>(
                 valueListenable: YtdlpClientSyncService.instance.revision,
                 builder: (context, _, __) {
@@ -981,8 +1027,14 @@ class SettingsPage extends StatelessWidget {
       context: context,
       barrierColor: CupertinoColors.black.withValues(alpha: 0.50),
       builder: (sheet) => PlayerDrawer(
-        title: 'Streaming Quality',
-        subtitle: 'Applies to audio stream playback',
+        title: key == 'downloadSource'
+            ? 'Download source'
+            : key == 'downloadQuality'
+            ? 'Download quality'
+            : 'Streaming Quality',
+        subtitle: key.startsWith('download')
+            ? 'Saved for future downloads. Unavailable sources fall back automatically.'
+            : 'Applies to audio stream playback',
         trailingHeader: CupertinoButton(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           onPressed: () => Navigator.pop(sheet),
@@ -1001,7 +1053,7 @@ class SettingsPage extends StatelessWidget {
             PlayerDrawerRow(
               title: entry.value,
               subtitle: setting.value == entry.key
-                  ? 'Currently selected streaming quality'
+                  ? 'Currently selected'
                   : 'Tap to select ${entry.value}',
               icon: CupertinoIcons.waveform,
               iconBg: setting.value == entry.key
@@ -1011,11 +1063,12 @@ class SettingsPage extends StatelessWidget {
               onTap: () async {
                 Navigator.pop(sheet);
                 setting.value = entry.key;
-                if (isAudioHandlerInitialized) {
+                final affectsPlayback = !key.startsWith('download');
+                if (affectsPlayback && isAudioHandlerInitialized) {
                   audioHandler.clearPreparedStreams();
                 }
                 await addOrUpdateData('settings', key, entry.key);
-                await invalidateAllSongStreamCaches();
+                if (affectsPlayback) await invalidateAllSongStreamCaches();
               },
             ),
         ],

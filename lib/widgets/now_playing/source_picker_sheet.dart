@@ -38,6 +38,18 @@ void showAudioSourcePicker(
       builder: (ctx, updateSheet) {
         Future<void> select(String source) async {
           if (pendingSource != null) return;
+          if (switchSource == null) {
+            final current = audioHandler.mediaItem.valueOrNull;
+            final currentId =
+                current?.extras?['ytid']?.toString() ?? current?.id;
+            if (currentId != ytid) {
+              updateSheet(
+                () => sourceError =
+                    'The track changed. Reopen playback source for the current track.',
+              );
+              return;
+            }
+          }
           if (currentSource == source) {
             Navigator.pop(ctx);
             return;

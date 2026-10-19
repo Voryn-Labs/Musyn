@@ -42,6 +42,7 @@ import 'playback_install_test.dart' show ControlledPlayer;
 
 class UiPlayback extends PlaybackController {
   UiPlayback() {
+    audioPlayer.positionValue = const Duration(seconds: 42);
     mediaItem.add(
       const MediaItem(
         id: 'fixture',
@@ -56,7 +57,7 @@ class UiPlayback extends PlaybackController {
     );
   }
   @override
-  final audioPlayer = ControlledPlayer();
+  final ControlledPlayer audioPlayer = ControlledPlayer();
   @override
   final currentPlayingYtid = ValueNotifier<String?>('fixture');
   @override
@@ -749,6 +750,17 @@ void main() {
     expect(find.byIcon(CupertinoIcons.volume_up), findsNothing);
     expect(find.bySemanticsLabel('Next track'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    final line = tester.widget<Text>(find.text('In your rhythm'));
+    expect(line.textAlign, TextAlign.center);
+    final textStyle = tester.widget<AnimatedDefaultTextStyle>(
+      find
+          .ancestor(
+            of: find.text('In your rhythm'),
+            matching: find.byType(AnimatedDefaultTextStyle),
+          )
+          .first,
+    );
+    expect(textStyle.style.color, const Color(0xFFFF8FB1));
     await capture(tester, 'lyrics-dark');
     lastFetchedLyrics = null;
     lyrics.value = null;
@@ -1364,6 +1376,12 @@ void main() {
       scale: 1.8,
     ),
     (
+      name: 'player-landscape-large-text',
+      size: const Size(568, 320),
+      light: false,
+      scale: 1.8,
+    ),
+    (
       name: 'player-landscape',
       size: const Size(844, 390),
       light: false,
@@ -1371,6 +1389,11 @@ void main() {
     ),
   ]) {
     testWidgets('${entry.name} has no layout exceptions', (tester) async {
+      if (entry.name == 'player-landscape') {
+        lastFetchedLyrics = 'Musyn Sessions - Midnight in motion';
+        lyrics.value =
+            '[00:00.00]Midnight in motion\n[00:12.00]A quiet melody\n[00:42.00]In your rhythm\n[01:10.00]Another day begins';
+      }
       await render(
         tester,
         const NowPlayingPage(),

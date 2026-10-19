@@ -15,10 +15,12 @@ Map mediaItemToMap(MediaItem mediaItem) {
     'title': mediaItem.title,
     'artistId': extras?['artistId'],
     'videoAuthor': extras?['videoAuthor'],
-    'duration': mediaItem.duration?.inSeconds ??
+    'duration':
+        mediaItem.duration?.inSeconds ??
         extras?['catalogDurationSeconds'] ??
         extras?['duration'],
-    'source': extras?['source'] ??
+    'source':
+        extras?['source'] ??
         extras?['catalogOrigin'] ??
         extras?['resolvedSource'] ??
         extras?['downloadSource'],
@@ -89,11 +91,10 @@ String? resolveMediaArtworkUrl(Map song, {String? ytid, int targetSize = 400}) {
     return upgradeArtworkUrl(chosen, targetSize: targetSize);
   }
   if (validYoutubeId) {
-    return 'https://i.ytimg.com/vi/$ytid/mqdefault.jpg';
+    return 'https://i.ytimg.com/vi/$ytid/hqdefault.jpg';
   }
   return null;
 }
-
 
 MediaItem mapToMediaItem(Map song) {
   final ytid = song['ytid']?.toString();
@@ -131,7 +132,7 @@ MediaItem mapToMediaItem(Map song) {
             : (ytid != null &&
                       ytid.isNotEmpty &&
                       RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(ytid)
-                  ? Uri.parse('https://i.ytimg.com/vi/$ytid/mqdefault.jpg')
+                  ? Uri.parse('https://i.ytimg.com/vi/$ytid/hqdefault.jpg')
                   : null));
   // ytid is the canonical track identity shared by YouTube and JioSaavn.
   // Provider URLs, source labels, and queue-entry ids must never change it.
@@ -163,7 +164,8 @@ MediaItem mapToMediaItem(Map song) {
       'videoAuthor': song['videoAuthor'],
       'isLive': song['isLive'],
       'isOffline': isOffline,
-      'source': song['source'] ??
+      'source':
+          song['source'] ??
           song['catalogOrigin'] ??
           song['resolvedSource'] ??
           song['downloadSource'],

@@ -8,7 +8,6 @@ import 'package:musyn/services/audio/playback_source.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/utilities/app_utils.dart';
-import 'package:musyn/utilities/async_operation_queue.dart';
 
 typedef PlaybackLogFn =
     void Function(String message, {Map<String, Object?>? extra});
@@ -23,7 +22,6 @@ class AudioPlaybackCoordinator {
   });
 
   final AudioPlayer audioPlayer;
-  final AsyncOperationQueue _installQueue = AsyncOperationQueue();
   final Duration offlineTransitionTimeout;
   final Duration streamTransitionTimeout;
 
@@ -48,7 +46,7 @@ class AudioPlaybackCoordinator {
   ///
   /// Now we `pause()` instead: the old source stays attached (keeping the
   /// session alive) until `setAudioSources([newSource])` atomically replaces
-  /// it. No overlap, no gap, no session death.
+  /// it. This is used only during explicit failure recovery.
   Future<void> detachCurrentStream() async {
     installedSourceTransitionId = null;
     if (audioPlayer.audioSource == null) return;
@@ -255,7 +253,11 @@ class AudioPlaybackCoordinator {
       if (prepared is Map) candidate.addAll(prepared);
       // Explicit source selection still wins over the prepared descriptor.
       if (streamUrlMatchesPreferredSource(warmed, candidate)) {
-        if (prepared is Map) song.addAll(prepared);
+        if (prepared is Map) {
+          for (final entry in prepared.entries) {
+            if (entry.key is String) song[entry.key as String] = entry.value;
+          }
+        }
         logger.log('Using pre-warmed stream URL for $ytid');
         return warmed;
       }
@@ -375,26 +377,27 @@ class AudioPlaybackCoordinator {
     int? transitionId,
     Duration? resumeAt,
   }) async {
-    return _installQueue.run(
-      () => _setAudioSourceAndPlay(
-        song: song,
-        audioSource: audioSource,
-        songUrl: songUrl,
-        isOffline: isOffline,
-        isStale: isStale,
-        logPlayer: logPlayer,
-        offlineModeEnabled: offlineModeEnabled,
-        shouldPlay: shouldPlay,
-        onDurationKnown: onDurationKnown,
-        onPlaybackStateChanged: onPlaybackStateChanged,
-        ensureActuallyPlaying: ensureActuallyPlaying,
-        onRecentlyPlayed: onRecentlyPlayed,
-        schedulePreload: schedulePreload,
-        mediaId: mediaId,
-        allowOnlineRetry: allowOnlineRetry,
-        transitionId: transitionId,
-        resumeAt: resumeAt,
-      ),
+    // just_audio interrupts an older native load when setAudioSources is
+    // called again. Serializing here prevented that cancellation and made
+    // every quick skip wait for the abandoned network request.
+    return _setAudioSourceAndPlay(
+      song: song,
+      audioSource: audioSource,
+      songUrl: songUrl,
+      isOffline: isOffline,
+      isStale: isStale,
+      logPlayer: logPlayer,
+      offlineModeEnabled: offlineModeEnabled,
+      shouldPlay: shouldPlay,
+      onDurationKnown: onDurationKnown,
+      onPlaybackStateChanged: onPlaybackStateChanged,
+      ensureActuallyPlaying: ensureActuallyPlaying,
+      onRecentlyPlayed: onRecentlyPlayed,
+      schedulePreload: schedulePreload,
+      mediaId: mediaId,
+      allowOnlineRetry: allowOnlineRetry,
+      transitionId: transitionId,
+      resumeAt: resumeAt,
     );
   }
 
@@ -427,29 +430,12 @@ class AudioPlaybackCoordinator {
 
       if (isStale(transitionId)) return false;
 
-      final atNaturalEnd =
-          audioPlayer.processingState == ProcessingState.completed ||
-          (audioPlayer.processingState == ProcessingState.idle &&
-              !audioPlayer.playing &&
-              audioPlayer.audioSource != null);
-
-      // A cancelled skip must not reach stop(). stop() is the lock-screen
-      // kill: iOS will not restart audio after the session goes idle.
-      if (isStale(transitionId)) return false;
-
-      // Manual skip still detaches the current item (a new googlevideo URL
-      // loaded onto a live AVPlayer item returns -1004). Do it only after the
-      // next URL is already resolved, then keep the session active across the
-      // swap. Natural completion must NOT call stop().
-      if (!atNaturalEnd && audioPlayer.audioSource != null) {
-        await detachCurrentStream();
+      // Keep playback intent and the audio session active across replacement.
+      // The native player replaces its item and aborts any previous load;
+      // an extra pause/activation round-trip only adds silence to every skip.
+      if (!shouldPlay() && audioPlayer.playing) {
+        await audioPlayer.pause();
         if (isStale(transitionId)) return false;
-        try {
-          final session = await AudioSession.instance;
-          await session.setActive(true);
-        } catch (e) {
-          logger.log('setActive during source swap failed: $e');
-        }
       }
 
       final installSource = audioSource;
@@ -549,7 +535,7 @@ class AudioPlaybackCoordinator {
       onPlaybackStateChanged();
       // Warm the next track URL while this one is still playing — critical for
       // lock-screen continuity (iOS suspends on silence between tracks).
-      Future.delayed(const Duration(milliseconds: 800), schedulePreload);
+      schedulePreload();
 
       return true;
     } catch (e, stackTrace) {
@@ -642,11 +628,9 @@ class AudioPlaybackCoordinator {
   /// Clears a poisoned AVPlayer session after -1004 / timeout load failures.
   /// Uses pause() (via detachCurrentStream) instead of stop() so the iOS
   /// audio session stays alive and lock-screen controls remain functional.
-  Future<void> recoverPlayerAfterLoadFailure({bool Function()? abandon}) {
-    return _installQueue.run(() async {
-      if (abandon?.call() == true) return;
-      await _recoverPlayerAfterLoadFailure();
-    });
+  Future<void> recoverPlayerAfterLoadFailure({bool Function()? abandon}) async {
+    if (abandon?.call() == true) return;
+    await _recoverPlayerAfterLoadFailure();
   }
 
   Future<void> _recoverPlayerAfterLoadFailure() async {

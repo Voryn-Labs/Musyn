@@ -47,8 +47,8 @@ class LyricsStage extends StatelessWidget {
               return ListView.builder(
                 controller: scrollController,
                 padding: EdgeInsets.only(
-                  top: viewportHeight * 0.22,
-                  bottom: viewportHeight * 0.28,
+                  top: viewportHeight * 0.45,
+                  bottom: viewportHeight * 0.45,
                   left: 28,
                   right: 28,
                 ),
@@ -107,14 +107,13 @@ class _StageLine extends StatelessWidget {
             ? Duration.zero
             : const Duration(milliseconds: 380),
         curve: Curves.easeOutCubic,
-        padding: EdgeInsets.symmetric(vertical: isCurrent ? 18 : 9),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: AnimatedScale(
           duration: MediaQuery.disableAnimationsOf(context)
               ? Duration.zero
               : const Duration(milliseconds: 400),
           curve: Curves.easeOutCubic,
           scale: isCurrent ? 1.0 : 0.94,
-          alignment: Alignment.centerLeft,
           child: AnimatedDefaultTextStyle(
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
@@ -125,7 +124,7 @@ class _StageLine extends StatelessWidget {
               isPast: isPast,
               layout: LyricsLayout.stage,
             ),
-            child: Text(line.text, textAlign: TextAlign.left),
+            child: Text(line.text, textAlign: TextAlign.center),
           ),
         ),
       ),

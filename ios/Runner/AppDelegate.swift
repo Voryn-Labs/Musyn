@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import MediaPlayer
+import AVKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -21,6 +22,7 @@ import MediaPlayer
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MusynRemoteFavorites") else { return }
+    registrar.register(MusynAudioRouteFactory(), withId: "com.vorynlabs.musyn/audio_route")
     let channel = FlutterMethodChannel(
       name: "com.vorynlabs.musyn/remote_favorites", binaryMessenger: registrar.messenger())
     favoritesChannel = channel
@@ -57,4 +59,28 @@ import MediaPlayer
       result(nil)
     }
   }
+}
+
+private final class MusynAudioRouteFactory: NSObject, FlutterPlatformViewFactory {
+  func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+    FlutterStandardMessageCodec.sharedInstance()
+  }
+  func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
+    let dark = (args as? [String: Any])?["dark"] as? Bool ?? true
+    return MusynAudioRouteView(frame: frame, dark: dark)
+  }
+}
+
+private final class MusynAudioRouteView: NSObject, FlutterPlatformView {
+  private let picker: AVRoutePickerView
+  init(frame: CGRect, dark: Bool) {
+    picker = AVRoutePickerView(frame: frame)
+    super.init()
+    picker.tintColor = dark ? .white : .black
+    picker.activeTintColor = .systemPink
+    picker.backgroundColor = .clear
+    picker.prioritizesVideoDevices = false
+    picker.accessibilityLabel = "Audio output"
+  }
+  func view() -> UIView { picker }
 }

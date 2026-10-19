@@ -164,7 +164,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     if (widget.isCompact) return;
     if (_currentIndex < 0 || _currentIndex >= _lineKeys.length) return;
 
-    final duration = instant
+    final duration = instant || MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 420);
     final ctx = _lineKeys[_currentIndex].currentContext;
@@ -181,7 +181,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     if (!_scrollController.hasClients) return;
     const lineHeight = 58.0;
     final vp = _scrollController.position.viewportDimension;
-    final paddingTop = vp * 0.34;
+    final paddingTop = vp * 0.45;
     final targetOffset = (paddingTop + _currentIndex * lineHeight - vp * 0.45)
         .clamp(0.0, _scrollController.position.maxScrollExtent);
 

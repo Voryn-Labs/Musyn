@@ -16,6 +16,12 @@ class ControlledPlayer extends AudioPlayer {
   final seekPositions = <Duration?>[];
   var paused = true;
   AudioSource? source;
+  var _loadRevision = 0;
+  Duration positionValue = Duration.zero;
+  @override
+  Duration get position => positionValue;
+  @override
+  Stream<Duration> get positionStream => Stream.value(positionValue);
   @override
   bool get playing => !paused;
   @override
@@ -32,9 +38,12 @@ class ControlledPlayer extends AudioPlayer {
     Duration? initialPosition,
     ShuffleOrder? shuffleOrder,
   }) async {
+    final revision = ++_loadRevision;
     preloaded = preload;
     installed.add((sources.single as UriAudioSource).uri.toString());
     await loadGate?.future;
+    if (revision != _loadRevision)
+      throw PlayerInterruptedException('superseded');
     source = sources.single;
     return duration;
   }
@@ -150,6 +159,8 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
       latest = 2;
+      final gate = player.loadGate!;
+      player.loadGate = null;
       final second = install(
         coordinator,
         'b',
@@ -157,12 +168,36 @@ void main() {
         shouldPlay: () => false,
         transition: 2,
       );
-      expect(player.installed.length, 1);
-      player.loadGate!.complete();
-      expect(await first, isFalse);
       expect(await second, isTrue);
+      expect(player.installed.length, 2);
+      gate.complete();
+      expect(await first, isFalse);
       expect(player.installed.last, endsWith('/b.m4a'));
       expect(player.playCount, 0);
+      await player.dispose();
+    },
+  );
+  test(
+    'dynamically typed prepared metadata is reused without a provider fallback',
+    () async {
+      final player = ControlledPlayer();
+      final coordinator = AudioPlaybackCoordinator(audioPlayer: player);
+      const url = 'https://aac.saavncdn.com/fixture_320.mp4';
+      final song = <String, dynamic>{
+        'ytid': 'abcdefghijk',
+        'forceSource': 'jiosaavn',
+        '_preloadedStreamUrl': url,
+        '_preloadedStreamMetadata': <dynamic, dynamic>{
+          'resolvedSource': 'jiosaavn',
+          'resolvedBitrate': 320,
+          'resolvedFormat': 'aac',
+          42: 'discard invalid metadata key',
+        },
+      };
+      expect(await coordinator.getPlaybackUrl(song, {}, isOffline: false), url);
+      expect(song['resolvedSource'], 'jiosaavn');
+      expect(song['resolvedBitrate'], 320);
+      expect(song.containsKey(42), isFalse);
       await player.dispose();
     },
   );

@@ -46,7 +46,10 @@ void main() {
               (_) async => null,
             );
         final player = ProbePlayer()..paused = false;
-        final handler = MusynAudioHandler(player: player);
+        final handler = MusynAudioHandler(
+          player: player,
+          prepareArtwork: (_) async => null,
+        );
         try {
           offlineMode.value = false;
           playNextSongAutomatically.value = true;
@@ -124,4 +127,86 @@ void main() {
       },
     );
   }
+  test(
+    'a delayed cover for the previous song cannot replace the selected cover',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'musyn-artwork-race-',
+      );
+      Hive.init(directory.path);
+      for (final box in [
+        'settings',
+        'user',
+        'cache',
+        'youtube_auth',
+        'userNoBackup',
+      ]) {
+        await Hive.openBox(box, bytes: Uint8List(0));
+      }
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('com.ryanheise.audio_session'),
+            (_) async => null,
+          );
+      final covers = <String, Completer<Uri?>>{};
+      final handler = MusynAudioHandler(
+        player: ProbePlayer(),
+        prepareArtwork: (uri) =>
+            covers.putIfAbsent(uri.toString(), Completer<Uri?>.new).future,
+      );
+      try {
+        playNextSongAutomatically.value = false;
+        offlineMode.value = true;
+        final audio = File('${directory.path}/song.m4a');
+        await audio.writeAsBytes(List.filled(60000, 1));
+        final songs = [
+          {
+            'ytid': 'abcdefghijk',
+            'title': 'First song',
+            'artist': 'Artist',
+            'duration': 180,
+            'image': 'https://covers.example/first.jpg',
+            'audioPath': audio.path,
+          },
+          {
+            'ytid': 'lmnopqrstuv',
+            'title': 'Second song',
+            'artist': 'Artist',
+            'duration': 180,
+            'image': 'https://covers.example/second.jpg',
+            'audioPath': audio.path,
+          },
+        ];
+        userOfflineSongs.value = songs;
+        for (final song in songs) {
+          await handler.addToQueue(song);
+        }
+        await handler.skipToQueueItem(1);
+        expect(handler.mediaItem.valueOrNull?.title, 'Second song');
+        covers['https://covers.example/first.jpg']!.complete(
+          Uri.file('${directory.path}/first.png'),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          handler.mediaItem.valueOrNull?.artUri.toString(),
+          'https://covers.example/second.jpg',
+        );
+        covers['https://covers.example/second.jpg']!.complete(
+          Uri.file('${directory.path}/second.png'),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          handler.mediaItem.valueOrNull?.artUri,
+          Uri.file('${directory.path}/second.png'),
+        );
+        expect(handler.mediaItem.valueOrNull?.title, 'Second song');
+      } finally {
+        await handler.dispose();
+        userOfflineSongs.value = [];
+        offlineMode.value = false;
+        await Hive.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
 }

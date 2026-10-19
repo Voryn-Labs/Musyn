@@ -40,6 +40,7 @@ class DownloadJob {
     int? total,
     String? resolvedSource,
     int? bitrate,
+    bool resetTransfer = false,
   }) => DownloadJob(
     id: id,
     song: song,
@@ -47,11 +48,13 @@ class DownloadJob {
     canCancel: canCancel,
     source: source,
     quality: quality,
-    resolvedSource: resolvedSource ?? this.resolvedSource,
-    bitrate: bitrate ?? this.bitrate,
+    resolvedSource: resetTransfer
+        ? resolvedSource
+        : resolvedSource ?? this.resolvedSource,
+    bitrate: resetTransfer ? null : bitrate ?? this.bitrate,
     stage: stage ?? this.stage,
-    received: received ?? this.received,
-    total: total ?? this.total,
+    received: resetTransfer ? 0 : received ?? this.received,
+    total: resetTransfer ? null : total ?? this.total,
   );
 }
 
@@ -96,6 +99,14 @@ class DownloadActivity {
     final job = _entries[id];
     if (job == null || !job.active) return;
     _entries[id] = job.update(resolvedSource: source, bitrate: bitrate);
+    _publish();
+  }
+
+  void retrying(int id, String source) {
+    final job = _entries[id];
+    if (job == null || !job.active || job.cancellation.isCancelled) return;
+    _percent.remove(id);
+    _entries[id] = job.update(resetTransfer: true, resolvedSource: source);
     _publish();
   }
 

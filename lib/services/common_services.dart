@@ -6,8 +6,10 @@ import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:musyn/constants/clients.dart';
 import 'package:musyn/services/artist_service.dart' show ytMusicClient;
+import 'package:musyn/services/audio/player_artwork_cache.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/download_activity.dart';
+import 'package:musyn/services/download_source_policy.dart';
 import 'package:musyn/services/download_transfer.dart';
 import 'package:musyn/services/io_service.dart';
 import 'package:musyn/services/library_state.dart';
@@ -21,7 +23,9 @@ import 'package:musyn/services/youtube_client.dart';
 import 'package:musyn/services/youtube_music_sync_service.dart';
 import 'package:musyn/services/ytdlp_client_sync_service.dart';
 import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/utilities/artwork_provider.dart' show upgradeArtworkUrl;
 import 'package:musyn/utilities/async_operation_queue.dart';
+import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/formatter.dart';
 import 'package:musyn/utilities/track_matcher.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -1311,11 +1315,13 @@ Future<bool> makeSongOffline(
   final id = song is Map ? song['ytid']?.toString() : null;
   if (id == null || id.isEmpty) return false;
   final token = cancellation ?? DownloadCancellation();
+  final selectedSource = source ?? downloadSource.value;
+  final selectedQuality = quality ?? downloadQuality.value;
   final job = downloadActivity.begin(
     song as Map,
     token,
-    source: source,
-    quality: quality,
+    source: selectedSource,
+    quality: selectedQuality,
     canCancel: cancellation == null,
   );
   var success = false;
@@ -1323,15 +1329,29 @@ Future<bool> makeSongOffline(
     success = await _runOfflineAssetOperation(id, () async {
       if (token.isCancelled) return false;
       downloadActivity.start(job);
-      return _makeSongOffline(
-        song,
-        source: source,
-        quality: quality,
-        cancellation: token,
-        onProgress: (received, total) =>
-            downloadActivity.progress(job, received, total),
-        onResolved: (source, bitrate) =>
-            downloadActivity.resolved(job, source, bitrate),
+      return downloadWithSourceFallback(
+        preferred: selectedSource,
+        saavnEnabled: jiosaavnEnabled.value,
+        isCancelled: () => token.isCancelled,
+        onFallback: (provider) {
+          downloadActivity.retrying(
+            job,
+            provider == 'saavn' ? 'jiosaavn' : provider,
+          );
+          showAppToast(
+            'Trying ${provider == 'saavn' ? 'JioSaavn' : 'YouTube Music'} for this download',
+          );
+        },
+        attempt: (provider) => _makeSongOffline(
+          song,
+          source: provider,
+          quality: selectedQuality,
+          cancellation: token,
+          onProgress: (received, total) =>
+              downloadActivity.progress(job, received, total),
+          onResolved: (source, bitrate) =>
+              downloadActivity.resolved(job, source, bitrate),
+        ),
       );
     });
     return success;
@@ -1685,14 +1705,23 @@ Future<bool> _removeSongFromOffline(String songId) async {
 
 Future<File?> _downloadAndSaveArtworkFile(String url, String filePath) async {
   try {
+    final artworkUri = Uri.parse(upgradeArtworkUrl(url, targetSize: 600));
     final response = await http
-        .get(Uri.parse(url))
+        .get(artworkUri)
         .timeout(const Duration(seconds: 4));
 
     if (response.statusCode == 200) {
+      final square = await PlayerArtworkCache.squareCover(
+        response.bodyBytes,
+        videoThumbnail:
+            artworkUri.host.endsWith('ytimg.com') &&
+            (artworkUri.path.contains('/vi/') ||
+                artworkUri.path.contains('/vi_webp/')),
+      );
+      if (square == null) return null;
       final file = File(filePath);
       await file.parent.create(recursive: true);
-      await file.writeAsBytes(response.bodyBytes);
+      await file.writeAsBytes(square);
 
       // Validate that the file was actually written
       if (await file.exists() && await file.length() > 0) {

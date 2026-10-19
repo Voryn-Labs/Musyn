@@ -18,6 +18,7 @@ import 'package:musyn/services/audio/audio_queue_controller.dart';
 import 'package:musyn/services/audio/audio_queue_state.dart';
 import 'package:musyn/services/audio/latest_queue_navigator.dart';
 import 'package:musyn/services/audio/playback_controller.dart';
+import 'package:musyn/services/audio/player_artwork_cache.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/settings_manager.dart';
@@ -28,15 +29,33 @@ import 'package:musyn/utilities/mediaitem.dart';
 import 'package:rxdart/rxdart.dart';
 
 class MusynAudioHandler extends PlaybackController {
-  MusynAudioHandler({AudioPlayer? player}) {
+  MusynAudioHandler({
+    AudioPlayer? player,
+    Future<Uri?> Function(Uri)? prepareArtwork,
+  }) : _prepareArtwork = prepareArtwork ?? PlayerArtworkCache.prepare {
     // This handler owns interruption intent. A second automatic listener in
     // just_audio can resume after a call even when the user pressed Pause.
-    audioPlayer = player ?? AudioPlayer(handleInterruptions: false);
+    audioPlayer =
+        player ??
+        AudioPlayer(
+          handleInterruptions: false,
+          // Native HTTP headers keep background streaming independent of
+          // Dart's localhost proxy. Both providers only need User-Agent.
+          useProxyForRequestHeaders: false,
+          audioLoadConfiguration: const AudioLoadConfiguration(
+            darwinLoadControl: DarwinLoadControl(
+              automaticallyWaitsToMinimizeStalling: false,
+              preferredForwardBufferDuration: Duration(seconds: 5),
+            ),
+          ),
+        );
     _playback = AudioPlaybackCoordinator(audioPlayer: audioPlayer);
     _setupEventSubscriptions();
     _updatePlaybackState();
     _initialize();
   }
+
+  final Future<Uri?> Function(Uri) _prepareArtwork;
 
   @override
   late final AudioPlayer audioPlayer;
@@ -436,6 +455,11 @@ class MusynAudioHandler extends PlaybackController {
   }
 
   void _publishMediaItem(MediaItem item, {bool force = false}) {
+    final remoteCover = item.artUri;
+    final localCover = remoteCover == null
+        ? null
+        : PlayerArtworkCache.cached(remoteCover);
+    if (localCover != null) item = item.copyWith(artUri: localCover);
     final signature = _mediaItemSignature(item);
     if (!force && signature == _lastPublishedMediaSignature) {
       return;
@@ -446,6 +470,18 @@ class MusynAudioHandler extends PlaybackController {
       currentPlayingYtid.value = ytid;
     }
     mediaItem.add(item);
+    final remote = item.artUri;
+    if (remote != null &&
+        (remote.scheme == 'https' || remote.scheme == 'http')) {
+      unawaited(
+        _prepareArtwork(remote).then((local) {
+          if (local == null || mediaItem.isClosed) return;
+          final current = mediaItem.valueOrNull;
+          if (current?.id != item.id || current?.artUri != remote) return;
+          _publishMediaItem(current!.copyWith(artUri: local));
+        }),
+      );
+    }
   }
 
   void _clearPublishedMediaState() {
@@ -520,7 +556,7 @@ class MusynAudioHandler extends PlaybackController {
       return false;
     }
 
-    logger.log('JioSaavn failed — playing YouTube without a search gap');
+    logger.log('JioSaavn failed — resolving alternate YouTube stream');
     final fallback = Map<dynamic, dynamic>.from(song)
       ..['forceSource'] = 'youtube'
       ..remove('resolvedSource')

@@ -21,7 +21,8 @@ class LyricsTheme {
   Color get onCanvas => isDark ? CupertinoColors.white : CupertinoColors.black;
 
   /// Active line matches Apple Music signature high-contrast typography.
-  Color get activeColor => onCanvas;
+  Color get activeColor =>
+      isDark ? const Color(0xFFFF8FB1) : const Color(0xFFAD1648);
 
   /// Past lines — clearly visible but receded.
   Color get pastColor => onCanvas.withValues(alpha: isDark ? 0.55 : 0.50);
@@ -49,9 +50,9 @@ class LyricsTheme {
   double fontSize({required bool isActive, required LyricsLayout layout}) {
     switch (layout) {
       case LyricsLayout.compact:
-        return isActive ? 21 : 15;
+        return isActive ? 21 : 17;
       case LyricsLayout.stage:
-        return isActive ? 34 : 22;
+        return 28;
     }
   }
 
@@ -78,10 +79,6 @@ class LyricsTheme {
       height: layout == LyricsLayout.stage ? 1.25 : 1.20,
       color: color,
       decoration: TextDecoration.none,
-      // Soft pink glow on active line in full-screen.
-      shadows: isActive && layout == LyricsLayout.stage
-          ? [Shadow(color: activeColor.withValues(alpha: 0.35), blurRadius: 24)]
-          : null,
     );
   }
 

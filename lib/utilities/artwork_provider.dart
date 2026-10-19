@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+
 /// Upgrades streaming thumbnail URLs to square, high-resolution formats.
 String upgradeArtworkUrl(String url, {int targetSize = 400}) {
   if (url.isEmpty || url == 'null') return url;
@@ -31,11 +32,12 @@ String upgradeArtworkUrl(String url, {int targetSize = 400}) {
         .replaceAll('1500x1500.jpg', '500x500.jpg');
   }
 
-  if (upgraded.contains('ytimg.com/vi/') ||
-      upgraded.contains('youtube.com/vi/')) {
+  // hqdefault is universally available at 480px. mqdefault was only 320px
+  // wide and was being cropped and enlarged on both the player and lock screen.
+  if (upgraded.contains('ytimg.com/') || upgraded.contains('youtube.com/vi/')) {
     upgraded = upgraded.replaceAllMapped(
-      RegExp(r'/(default|hqdefault)\.(jpg|webp|jpeg)'),
-      (match) => '/mqdefault.${match[2]}',
+      RegExp(r'/(default|mqdefault)\.(jpg|webp|jpeg)'),
+      (match) => '/hqdefault.${match[2]}',
     );
   }
 
