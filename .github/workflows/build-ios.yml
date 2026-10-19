@@ -66,7 +66,9 @@ jobs:
             echo 'This version already exists. Increment the version before publishing.'
             exit 1
           fi
-          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn 0.1 — Voryn Labs" --notes-file docs/releases/0.1.0.md --prerelease build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
+          NOTES="docs/releases/${RELEASE_TAG#v}.md"
+          [ -f "$NOTES" ] || NOTES="docs/releases/0.1.0.md"
+          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn ${RELEASE_TAG#v} — Voryn Labs" --notes-file "$NOTES" --prerelease build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add source.json apps.json
