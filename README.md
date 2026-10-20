@@ -2,12 +2,12 @@
 <h1 align="center">Musyn</h1>
 <p align="center"><strong>Music, in your rhythm.</strong><br>An iPhone music player by <a href="https://voryn-labs.github.io/">Voryn Labs</a>.</p>
 <p align="center">
-<a href="https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.7"><img alt="Version 0.1.7" src="https://img.shields.io/badge/version-0.1.7-FFC5A7?style=flat-square"></a>
+<a href="https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.8"><img alt="Version 0.1.8" src="https://img.shields.io/badge/version-0.1.8-FFC5A7?style=flat-square"></a>
 <a href="https://github.com/Voryn-Labs/Musyn/actions/workflows/build-ios.yml"><img alt="iOS build" src="https://github.com/Voryn-Labs/Musyn/actions/workflows/build-ios.yml/badge.svg"></a>
 <a href="https://github.com/Voryn-Labs/Musyn/releases"><img alt="Release asset downloads" src="https://img.shields.io/github/downloads/Voryn-Labs/Musyn/total?label=release%20asset%20downloads&style=flat-square"></a>
 <img alt="GPL 3.0" src="https://img.shields.io/badge/license-GPL--3.0-222222?style=flat-square">
 </p>
-<p align="center"><a href="https://voryn-labs.github.io/musyn.html">Meet Musyn</a> · <a href="https://github.com/Voryn-Labs/Musyn/releases/download/v0.1.7/Musyn.ipa">Download unsigned IPA</a> · <a href="https://voryn-labs.github.io/source.json">Installer source</a> · <a href="https://voryn-labs.github.io/musyn-privacy.html">Privacy</a></p>
+<p align="center"><a href="https://voryn-labs.github.io/musyn.html">Meet Musyn</a> · <a href="https://github.com/Voryn-Labs/Musyn/releases/download/v0.1.8/Musyn.ipa">Download unsigned IPA</a> · <a href="https://voryn-labs.github.io/source.json">Installer source</a> · <a href="https://voryn-labs.github.io/musyn-privacy.html">Privacy</a></p>
 
 ## A player that keeps the music in view
 
@@ -25,15 +25,15 @@ AAC is compressed audio; 320 kbps is **not lossless**. Provider availability and
 
 These are automated Flutter renders with fictional sample tracks and placeholder artwork. They show layout, not a device playback test. [More previews](docs/ui-review/README.md).
 
-## Install Musyn 0.1.7
+## Install Musyn 0.1.8
 
-The current release is **0.1.7 (8)**: [latest release](https://github.com/Voryn-Labs/Musyn/releases/latest).
+The current release is **0.1.8 (9)**: [latest release](https://github.com/Voryn-Labs/Musyn/releases/latest).
 
-Requires **iOS 15+**. Download `Musyn.ipa` and its SHA-256 checksum from the [0.1.7 release](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.7). The IPA is **unsigned**. Use your own signing identity with a compatible installer, or import it into a compatible LiveContainer version. AltStore PAL cannot install this unsigned build. Installer and host restrictions still apply.
+Requires **iOS 15+**. Download `Musyn.ipa` and its SHA-256 checksum from the [0.1.8 release](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.8). The IPA is **unsigned**. Use your own signing identity with a compatible installer, or import it into a compatible LiveContainer version. AltStore PAL cannot install this unsigned build. Installer and host restrictions still apply.
 
 One Voryn Labs source for **Musyn and Cloudified**: `https://voryn-labs.github.io/source.json`. The maintainer refreshes the shared catalog manually after publishing new app releases.
 
-Identity: `com.vorynlabs.musyn` · version `0.1.7 (8)` · publisher **Voryn Labs**. This is a fresh identity with no legacy migration. The download badge measures release asset requests, not unique users or installations.
+Identity: `com.vorynlabs.musyn` · version `0.1.8 (9)` · publisher **Voryn Labs**. This is a fresh identity with no legacy migration. The download badge measures release asset requests, not unique users or installations.
 
 ## Build and contribute
 
