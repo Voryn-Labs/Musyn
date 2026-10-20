@@ -241,7 +241,8 @@ bool songIsYoutubeCatalog(Map song) {
 String preferredStreamSourceForSong(Map song) {
   final force = song['forceSource']?.toString();
   if (force == 'youtube') return 'youtube';
-  if (force == 'jiosaavn' || force == 'saavn') return 'jiosaavn';
+  if (force == 'jiosaavn' || force == 'saavn')
+    return jiosaavnAvailable ? 'jiosaavn' : 'youtube';
   final resolved = song['resolvedSource']?.toString();
   if (resolved == 'youtube' || resolved == 'jiosaavn') return resolved!;
   final pref = preferredSource.value;
@@ -267,6 +268,7 @@ void clearSongPreparedStreams(Map song) {
 }
 
 bool streamUrlMatchesPreferredSource(String url, Map song) {
+  if (isUsableJiosaavnPlaybackUrl(url) && !jiosaavnAvailable) return false;
   switch (preferredStreamSourceForSong(song)) {
     case 'youtube':
       return isUsableYoutubePlaybackUrl(url);
@@ -289,7 +291,7 @@ bool streamUrlMatchesPreferredSource(String url, Map song) {
 bool songShouldResolveYoutube(Map song) {
   final force = song['forceSource']?.toString();
   if (force == 'youtube') return true;
-  if (force == 'jiosaavn' || force == 'saavn') return false;
+  if (force == 'jiosaavn' || force == 'saavn') return !jiosaavnAvailable;
   // Already-matched Saavn: use the cached URL path, never re-search.
   if (song['resolvedSource']?.toString() == 'jiosaavn') return false;
   if (song['resolvedSource']?.toString() == 'youtube') return true;

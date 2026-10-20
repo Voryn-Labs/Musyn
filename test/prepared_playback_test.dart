@@ -1,9 +1,11 @@
+import 'helpers/provider_fixture.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musyn/services/audio/audio_playback_coordinator.dart';
 import 'playback_install_test.dart' show ControlledPlayer;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(configureFixtureProvider);
   test(
     'consuming a warm URL applies its headers and provider together',
     () async {

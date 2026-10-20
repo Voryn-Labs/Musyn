@@ -1,7 +1,10 @@
 import 'dart:convert';
+
 import 'package:dart_des/dart_des.dart';
 import 'package:http/http.dart' as http;
 import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/provider_access.dart';
+import 'package:musyn/services/settings_manager.dart';
 
 class JioSaavnService {
   factory JioSaavnService() => _instance;
@@ -14,6 +17,7 @@ class JioSaavnService {
     String query, {
     int limit = 5,
   }) async {
+    if (!jiosaavnAvailable) return [];
     try {
       final url = Uri.parse(
         'https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=$limit&q=${Uri.encodeComponent(query)}',
@@ -66,7 +70,7 @@ class JioSaavnService {
     String quality = '320',
   }) async {
     try {
-      if (encryptedMediaUrl.isEmpty) return null;
+      if (!jiosaavnAvailable || encryptedMediaUrl.isEmpty) return null;
       final q = quality == '128' ? '96' : quality;
       final decrypted = _decryptUrl(encryptedMediaUrl);
       if (decrypted.isEmpty) return null;
@@ -83,14 +87,17 @@ class JioSaavnService {
   /// Decrypt the encrypted media URL using DES-ECB
   String _decryptUrl(String encryptedUrl) {
     try {
-      final key = utf8.encode('[removed provider material]');
+      final key = ProviderAccess.instance.mediaKey;
+      if (key == null) return '';
       final input = base64Decode(encryptedUrl);
 
       final des = DES(key: key, paddingType: DESPaddingType.PKCS7);
       final decrypted = des.decrypt(input);
       return utf8.decode(decrypted);
     } catch (e) {
-      logger.log('JioSaavn URL decrypt failed: $e');
+      logger.log(
+        'JioSaavn media URL could not be decoded with the configured key',
+      );
       return '';
     }
   }
@@ -168,6 +175,7 @@ class JioSaavnService {
   /// Fetch JioSaavn top chart playlists (no auth required).
   /// Returns a list of playlist-like maps suitable for display in a shelf.
   Future<List<Map<String, dynamic>>> fetchTopCharts({int limit = 10}) async {
+    if (!jiosaavnAvailable) return [];
     try {
       final url = Uri.parse(
         'https://www.jiosaavn.com/api.php?__call=content.getCharts'
@@ -227,6 +235,7 @@ class JioSaavnService {
 
   /// Fetch full playlist details (including all tracks) for a JioSaavn playlist or chart.
   Future<Map<String, dynamic>?> fetchPlaylistDetails(String playlistId) async {
+    if (!jiosaavnAvailable) return null;
     try {
       final cleanId = playlistId
           .replaceFirst('saavn_chart_', '')

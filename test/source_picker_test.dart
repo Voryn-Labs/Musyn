@@ -1,3 +1,4 @@
+import 'helpers/provider_fixture.dart';
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
@@ -6,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(configureFixtureProvider);
   testWidgets(
     'source sheet shows pending state, blocks duplicate taps and permits retry',
     (tester) async {

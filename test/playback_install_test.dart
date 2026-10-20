@@ -1,3 +1,4 @@
+import 'helpers/provider_fixture.dart';
 import 'dart:async';
 
 import 'package:flutter/services.dart';
@@ -68,7 +69,8 @@ class ControlledPlayer extends AudioPlayer {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() {
+  setUp(() async {
+    await configureFixtureProvider();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('com.ryanheise.audio_session'),

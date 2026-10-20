@@ -5,10 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musyn/services/app_navigation_state.dart';
+import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet;
+import 'package:musyn/widgets/ios26_surface.dart';
 import 'package:musyn/widgets/mini_player.dart';
 
 class BottomNavigationPage extends StatefulWidget {
@@ -23,12 +25,18 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   void initState() {
     super.initState();
     offlineMode.addListener(_offlineChanged);
+    ios26Design.addListener(_designChanged);
   }
 
   @override
   void dispose() {
     offlineMode.removeListener(_offlineChanged);
+    ios26Design.removeListener(_designChanged);
     super.dispose();
+  }
+
+  void _designChanged() {
+    if (mounted) setState(() {});
   }
 
   void _offlineChanged() {
@@ -57,27 +65,31 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
         children: [
           Expanded(child: widget.child),
           if (MediaQuery.viewInsetsOf(context).bottom == 0)
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: musynCanvas(dark),
-                border: Border(
-                  top: BorderSide(
-                    color: CupertinoColors.separator.resolveFrom(context),
-                    width: .5,
+            Ios26Surface(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: ios26Design.value
+                      ? CupertinoColors.transparent
+                      : musynCanvas(dark),
+                  border: Border(
+                    top: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: .5,
+                    ),
                   ),
                 ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const MiniPlayer(),
-                    BitChordTabBar(
-                      selectedIndex: widget.child.currentIndex,
-                      onSelect: _select,
-                    ),
-                  ],
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const MiniPlayer(),
+                      BitChordTabBar(
+                        selectedIndex: widget.child.currentIndex,
+                        onSelect: _select,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -139,7 +151,9 @@ class BitChordTabBar extends StatelessWidget {
             currentIndex: selectedIndex,
             onTap: onSelect,
             height: 54,
-            backgroundColor: musynCanvas(isAppDarkMode(context)),
+            backgroundColor: ios26Design.value
+                ? CupertinoColors.transparent
+                : musynCanvas(isAppDarkMode(context)),
             activeColor: CupertinoTheme.of(context).primaryColor,
             inactiveColor: CupertinoColors.systemGrey,
             border: null,

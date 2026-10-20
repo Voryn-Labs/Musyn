@@ -51,7 +51,7 @@ class _ChartsPageState extends State<ChartsPage> {
   }
 
   void _modeChanged() {
-    if (!jiosaavnEnabled.value) _provider = 'youtube';
+    if (!jiosaavnAvailable) _provider = 'youtube';
     unawaited(_load());
   }
 
@@ -100,7 +100,7 @@ class _ChartsPageState extends State<ChartsPage> {
             () => YouTubeMusicSyncService().fetchChartPlaylists(),
         ytChartPlaylists,
       ),
-      if (jiosaavnEnabled.value)
+      if (jiosaavnAvailable)
         section(
           'jiosaavn',
           widget.loadSaavn ?? () => JioSaavnService().fetchTopCharts(limit: 20),
@@ -217,7 +217,7 @@ class _ChartsPageState extends State<ChartsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (jiosaavnEnabled.value)
+                    if (jiosaavnAvailable)
                       CupertinoSlidingSegmentedControl<String>(
                         groupValue: _provider,
                         children: const {

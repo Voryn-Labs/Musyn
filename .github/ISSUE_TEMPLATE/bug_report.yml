@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: Musyn version and build
-      placeholder: "0.1.0 (1)"
+      placeholder: "0.3.0 (12)"
     validations:
       required: true
   - type: input
@@ -25,4 +25,4 @@ body:
     id: diagnostics
     attributes:
       label: Optional redacted logs or screenshots
-      description: Do not include account cookies, tokens, private links or signing credentials.
+      description: Settings → Support can upload a redacted preview to dpaste. Paste its link here after reviewing it. Do not include provider keys, account cookies, tokens, private links or signing credentials.

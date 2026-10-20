@@ -1,3 +1,9 @@
+import 'package:musyn/screens/legal_page.dart';
+import 'package:musyn/screens/logs_page.dart';
+import 'package:musyn/screens/provider_access_page.dart';
+import 'package:musyn/services/provider_access.dart';
+import 'package:musyn/services/logger_service.dart';
+import 'helpers/provider_fixture.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
 import 'package:musyn/services/youtube_music_sync_service.dart';
 import 'package:musyn/widgets/musyn_bootstrap.dart';
@@ -154,6 +160,19 @@ void main() {
         await loader.load();
       }
     }
+    final monospace = File('/System/Library/Fonts/Menlo.ttc');
+    final monoLoader = FontLoader('Menlo')
+      ..addFont(
+        Future.value(
+          ByteData.sublistView(
+            await (monospace.existsSync()
+                    ? monospace
+                    : File('test/fixtures/fonts/Roboto-Regular.ttf'))
+                .readAsBytes(),
+          ),
+        ),
+      );
+    await monoLoader.load();
     final icon = await rootBundle.load(
       'packages/cupertino_icons/assets/CupertinoIcons.ttf',
     );
@@ -166,7 +185,8 @@ void main() {
     await stateDirectory.delete(recursive: true);
   });
   late UiPlayback handler;
-  setUp(() {
+  setUp(() async {
+    await configureFixtureProvider();
     offlineMode.value = false;
     userRecentlyPlayed.value = [];
     trendingSongs.value = [];
@@ -1351,7 +1371,11 @@ void main() {
             size: small ? const Size(320, 568) : const Size(390, 844),
             scale: small ? 1.8 : 1,
           );
-          await tester.ensureVisible(find.text(destination.key));
+          await tester.scrollUntilVisible(
+            find.text(destination.key),
+            120,
+            scrollable: find.byType(Scrollable).first,
+          );
           await tester.pumpAndSettle();
           await tester.tap(find.text(destination.key));
           await tester.pumpAndSettle();
@@ -1526,6 +1550,13 @@ void main() {
         );
         await tester.tap(find.text('Continue'));
         await tester.pumpAndSettle();
+        expect(find.text('Bring your own source.'), findsOneWidget);
+        await capture(
+          tester,
+          small ? 'walkthrough-provider-small' : 'walkthrough-provider',
+        );
+        await tester.tap(find.text('Continue'));
+        await tester.pumpAndSettle();
         await capture(
           tester,
           small ? 'walkthrough-ready-small' : 'walkthrough-ready',
@@ -1537,6 +1568,89 @@ void main() {
       },
     );
   }
+
+  for (final label in ['Privacy', 'Terms of use']) {
+    testWidgets(
+      'public Settings $label has a real page and working back navigation',
+      (tester) async {
+        await render(
+          tester,
+          const SettingsPage(),
+          size: const Size(320, 568),
+          scale: 1.6,
+        );
+        await tester.scrollUntilVisible(
+          find.text(label),
+          120,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(find.byType(LegalPage), findsOneWidget);
+        expect(find.text('Updated 20 October 2026'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await capture(
+          tester,
+          label == 'Privacy' ? 'privacy-dark' : 'terms-dark',
+        );
+        await tester.tap(find.byType(CupertinoNavigationBarBackButton).first);
+        await tester.pumpAndSettle();
+        expect(find.byType(LegalPage), findsNothing);
+      },
+    );
+  }
+  testWidgets(
+    'provider setup saves a supplied key and removal restores keyless use',
+    (tester) async {
+      await ProviderAccess.instance.remove();
+      jiosaavnEnabled.value = false;
+      await render(tester, const ProviderAccessPage());
+      expect(find.text('No key is configured.'), findsOneWidget);
+      await capture(tester, 'provider-setup-dark');
+      await tester.enterText(find.byType(CupertinoTextField), 'fixture!');
+      await tester.tap(find.text('Save key'));
+      await tester.pumpAndSettle();
+      expect(ProviderAccess.instance.configured, isTrue);
+      expect(jiosaavnAvailable, isTrue);
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byType(CupertinoTextField))
+            .controller!
+            .text,
+        isEmpty,
+      );
+      await tester.ensureVisible(find.text('Remove key'));
+      await tester.tap(find.text('Remove key'));
+      await tester.pumpAndSettle();
+      expect(ProviderAccess.instance.configured, isFalse);
+      expect(preferredSource.value, 'auto');
+      expect(downloadSource.value, 'best');
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'diagnostic preview redacts private URLs and upload cancellation sends nothing',
+    (tester) async {
+      logger.clearLogs();
+      logger.log(
+        'Fixture playback title=Midnight URL=https://audio.example/private?token=fake',
+      );
+      await render(tester, const LogsPage());
+      expect(find.textContaining('audio.example'), findsNothing);
+      await capture(tester, 'support-dark');
+      await tester.tap(find.text('Upload to dpaste'));
+      await tester.pumpAndSettle();
+      expect(find.text('Upload these logs?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CupertinoAlertDialog), findsNothing);
+      expect(find.text('Upload to dpaste'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final entry in [
     (name: 'player-dark', size: const Size(390, 844), light: false, scale: 1.0),

@@ -1,8 +1,11 @@
+import 'helpers/provider_fixture.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musyn/utilities/app_utils.dart';
 import 'package:musyn/services/settings_manager.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(configureFixtureProvider);
   test('force jiosaavn overrides youtube catalog origin', () {
     final song = {
       'ytid': 'abc',

@@ -946,7 +946,7 @@ Future<AudioOnlyStreamInfo?> fetchBestAudioStream(
 /// Never await this on the between-track gap — iOS will suspend on silence.
 Future<void> _cacheSaavnMatchInBackground(Map song) async {
   final songId = song['ytid']?.toString() ?? '';
-  if (songId.isEmpty || !jiosaavnEnabled.value) return;
+  if (songId.isEmpty || !jiosaavnAvailable) return;
   try {
     final existing = await SourceResolver().getCachedMatch(songId);
     if (existing != null) return;
@@ -984,7 +984,7 @@ Future<String?> fetchSongStreamUrl(
     song['catalogOrigin']?.toString() ?? song['source']?.toString(),
     preferredSource.value,
     jiosaavnQuality.value,
-    jiosaavnEnabled.value,
+    jiosaavnAvailable,
     isLive,
   ),
   song,
@@ -1009,7 +1009,9 @@ Future<String?> _fetchSongStreamUrl(Map song, bool isLive) async {
     final forceSource = song['forceSource']?.toString();
     final resolveYoutube = songShouldResolveYoutube(song);
     final pref = preferredSource.value;
-    final forceJiosaavn = forceSource == 'jiosaavn' || forceSource == 'saavn';
+    final forceJiosaavn =
+        jiosaavnAvailable &&
+        (forceSource == 'jiosaavn' || forceSource == 'saavn');
     // Saavn search ONLY when the user pinned JioSaavn. `auto` must never wait
     // on a title/artist lookup between tracks — iOS suspends on silence gaps.
     final allowSaavnSearch =
@@ -1039,7 +1041,9 @@ Future<String?> _fetchSongStreamUrl(Map song, bool isLive) async {
     for (final cachePreference in cacheOrder) {
       // Skip Saavn cache when user pinned YouTube.
       if (cachePreference == 'jiosaavn' &&
-          (forceSource == 'youtube' || pref == 'youtube')) {
+          (!jiosaavnAvailable ||
+              forceSource == 'youtube' ||
+              pref == 'youtube')) {
         continue;
       }
       // Skip YouTube cache when user forced Saavn.
@@ -1126,7 +1130,7 @@ Future<String?> _fetchSongStreamUrl(Map song, bool isLive) async {
     // lock-screen silence gap that lets iOS suspend the audio session.
     if ((allowSaavnSearch || (isSaavnTrack && pref != 'youtube')) &&
         forceSource != 'youtube' &&
-        jiosaavnEnabled.value) {
+        jiosaavnAvailable) {
       try {
         final saavnSource = await SourceResolver()
             .resolveAudioSource(song)
@@ -1252,7 +1256,7 @@ Future<String?> _fetchSongStreamUrl(Map song, bool isLive) async {
     // Opportunistic Saavn match AFTER YouTube is ready — never on the gap.
     // Caches a better source for next time when idle/playing.
     if (!allowSaavnSearch &&
-        jiosaavnEnabled.value &&
+        jiosaavnAvailable &&
         preferredSource.value == 'auto') {
       unawaited(_cacheSaavnMatchInBackground(song));
     }
@@ -1347,7 +1351,7 @@ Future<bool> makeSongOffline(
       downloadActivity.start(job);
       return downloadWithSourceFallback(
         preferred: selectedSource,
-        saavnEnabled: jiosaavnEnabled.value,
+        saavnEnabled: jiosaavnAvailable,
         isCancelled: () => token.isCancelled,
         onFallback: (provider) {
           downloadActivity.retrying(
@@ -1483,8 +1487,7 @@ Future<bool> _makeSongOffline(
       var mappedQuality = quality;
       // Saavn only supports 96/160/320, map 128 -> 96
       if (mappedQuality == '128') mappedQuality = '96';
-      if (normalizedSource != 'youtube' &&
-          (jiosaavnEnabled.value || isSaavnTrack)) {
+      if (normalizedSource != 'youtube' && jiosaavnAvailable) {
         try {
           saavnSource = await SourceResolver()
               .resolveAudioSource(offlineSong, quality: mappedQuality)

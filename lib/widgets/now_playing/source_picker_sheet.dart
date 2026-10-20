@@ -162,13 +162,13 @@ void showAudioSourcePicker(
             ),
             PlayerDrawerRow(
               title: 'JioSaavn',
-              subtitle: jiosaavnEnabled.value
+              subtitle: jiosaavnAvailable
                   ? 'AAC · up to 320 kbps'
                   : 'Enable JioSaavn in Settings to use this source',
               icon: CupertinoIcons.waveform,
               iconBg: CupertinoColors.systemGreen,
               selected: currentSource == 'jiosaavn',
-              enabled: jiosaavnEnabled.value,
+              enabled: jiosaavnAvailable,
               loading: pendingSource == 'jiosaavn',
               onTap: () => select('jiosaavn'),
             ),

@@ -33,6 +33,7 @@ jobs:
           flutter analyze
           flutter test
           python3 scripts/verify_branding.py
+          python3 scripts/check_public_release.py
           python3 scripts/test_native_artwork.py
           plutil -lint ios/Runner/Info.plist
           plutil -lint ios/Runner.xcodeproj/project.pbxproj
@@ -51,6 +52,7 @@ jobs:
           cd ../..
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/ios/iphoneos/Runner.app/Info.plist)
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          python3 scripts/check_public_release.py --ipa build/ipa/Musyn.ipa
           python3 scripts/release_feed.py --ipa build/ipa/Musyn.ipa --tag "v$VERSION"
       - uses: actions/upload-artifact@v4
         with:

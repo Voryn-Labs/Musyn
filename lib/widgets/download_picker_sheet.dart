@@ -27,7 +27,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     'saavn' || 'jiosaavn' => 'saavn',
     'youtube' => 'youtube',
     _ =>
-      widget.song['resolvedSource'] == 'youtube' || !jiosaavnEnabled.value
+      widget.song['resolvedSource'] == 'youtube' || !jiosaavnAvailable
           ? 'youtube'
           : 'saavn',
   };
@@ -45,7 +45,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
 
   Future<void> _checkSaavnAvailability() async {
     try {
-      if (!jiosaavnEnabled.value) {
+      if (!jiosaavnAvailable) {
         if (mounted) {
           setState(() {
             _isSaavnAvailable = false;
@@ -99,8 +99,8 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
     }
 
     return PlayerDrawer(
-      title: 'Download Options',
-      subtitle: 'Save audio locally for offline playback',
+      title: 'Download',
+      subtitle: 'Save this track for offline listening',
       children: [
         // Track Preview Header Card
         Container(
@@ -161,31 +161,32 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
           ),
         ),
 
-        // Sources
-        PlayerDrawerRow(
-          title: 'JioSaavn',
-          subtitle: !jiosaavnEnabled.value
-              ? 'Enable JioSaavn in Settings to use this source'
-              : _isCheckingSaavn
-              ? 'Checking availability...'
-              : (_availabilityUnknown
-                    ? 'Availability confirmed during download'
-                    : _isSaavnAvailable
-                    ? 'AAC · up to 320 kbps'
-                    : 'Unavailable on JioSaavn for this track'),
-          icon: CupertinoIcons.waveform,
-          iconBg: CupertinoColors.systemGreen,
-          selected: _selectedSource == 'saavn',
-          enabled: !_isCheckingSaavn && _isSaavnAvailable,
-          loading: _isCheckingSaavn,
-          onTap: () {
-            HapticFeedback.selectionClick();
-            setState(() {
-              _selectedSource = 'saavn';
-              _selectedQuality = '320';
-            });
-          },
-        ),
+        // Show only configured providers; avoid a large disabled setup card.
+        if (jiosaavnAvailable)
+          PlayerDrawerRow(
+            title: 'JioSaavn',
+            subtitle: !jiosaavnAvailable
+                ? 'Add your media URL key in Settings → JioSaavn'
+                : _isCheckingSaavn
+                ? 'Checking availability...'
+                : (_availabilityUnknown
+                      ? 'Availability confirmed during download'
+                      : _isSaavnAvailable
+                      ? 'AAC · up to 320 kbps'
+                      : 'Unavailable on JioSaavn for this track'),
+            icon: CupertinoIcons.waveform,
+            iconBg: CupertinoColors.systemGreen,
+            selected: _selectedSource == 'saavn',
+            enabled: !_isCheckingSaavn && _isSaavnAvailable,
+            loading: _isCheckingSaavn,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _selectedSource = 'saavn';
+                _selectedQuality = '320';
+              });
+            },
+          ),
 
         PlayerDrawerRow(
           title: 'YouTube Music',
@@ -202,47 +203,27 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
           },
         ),
 
+        if (!jiosaavnAvailable)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            child: Text(
+              'JioSaavn can be added in Settings.',
+              style: TextStyle(
+                fontSize: 12,
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              ),
+            ),
+          ),
         const SizedBox(height: 10),
 
-        // Quality selection row
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            const Text(
-              'QUALITY LIMIT',
-              style: TextStyle(
-                fontFamily: MusynStyle.uiFont,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: secondaryTextColor,
-                letterSpacing: 0.6,
-                decoration: TextDecoration.none,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: MusynStyle.appleRed.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                'Up to $_selectedQuality kbps',
-                style: const TextStyle(
-                  fontFamily: MusynStyle.uiFont,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: MusynStyle.appleRed,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ),
-          ],
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Audio quality',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
         ),
-        const SizedBox(height: 8),
-
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: CupertinoSlidingSegmentedControl<String>(
@@ -275,7 +256,7 @@ class _DownloadPickerSheetState extends State<DownloadPickerSheet> {
         SizedBox(
           width: double.infinity,
           child: CupertinoButton(
-            color: MusynStyle.appleRed,
+            color: CupertinoTheme.of(context).primaryColor,
             borderRadius: BorderRadius.circular(16),
             padding: const EdgeInsets.symmetric(vertical: 14),
             onPressed: () {

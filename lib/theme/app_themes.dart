@@ -120,6 +120,7 @@ CupertinoThemeData buildCupertinoTheme({
         decoration: TextDecoration.none,
       ),
       navTitleTextStyle: TextStyle(
+        inherit: false,
         fontFamily: MusynStyle.displayFont,
         fontSize: 17,
         fontWeight: FontWeight.w700,
@@ -127,6 +128,7 @@ CupertinoThemeData buildCupertinoTheme({
         decoration: TextDecoration.none,
       ),
       navLargeTitleTextStyle: TextStyle(
+        inherit: false,
         fontFamily: MusynStyle.displayFont,
         fontSize: 34,
         fontWeight: FontWeight.w800,

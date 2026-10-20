@@ -2,6 +2,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:musyn/models/playlist_sort_type.dart';
+import 'package:musyn/services/provider_access.dart';
 import 'package:musyn/utilities/language_utils.dart';
 
 T _safeBoxGet<T>(String key, T defaultValue) {
@@ -113,7 +114,7 @@ final chartCountry = ValueNotifier<String>(
 // helper as everything else for consistency.
 
 final jiosaavnEnabled = ValueNotifier<bool>(
-  _safeBoxGet<bool>('jiosaavnEnabled', true),
+  _safeBoxGet<bool>('jiosaavnEnabled', false),
 );
 
 final jiosaavnQuality = ValueNotifier<String>(
@@ -213,7 +214,7 @@ void reloadSettingsFromStorage() {
     repeatNotifier.value = AudioServiceRepeatMode.values[restoredRepeatIndex];
   }
 
-  jiosaavnEnabled.value = settings.get('jiosaavnEnabled', defaultValue: true);
+  jiosaavnEnabled.value = settings.get('jiosaavnEnabled', defaultValue: false);
   jiosaavnQuality.value = settings.get('jiosaavnQuality', defaultValue: '320');
   preferredSource.value = settings.get('preferredSource', defaultValue: 'auto');
   downloadSource.value = settings.get('downloadSource', defaultValue: 'best');
@@ -230,3 +231,6 @@ void reloadSettingsFromStorage() {
   );
   ytReportHistory.value = settings.get('ytReportHistory', defaultValue: true);
 }
+
+bool get jiosaavnAvailable =>
+    jiosaavnEnabled.value && ProviderAccess.instance.configured;

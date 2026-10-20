@@ -34,7 +34,7 @@ class SourceResolver {
     Map song, {
     String? quality,
   }) async {
-    if (!jiosaavnEnabled.value) return null;
+    if (!jiosaavnAvailable) return null;
 
     // Source preference is applied by fetchSongStreamUrl. Keeping this
     // resolver source-agnostic also lets the now-playing source picker force

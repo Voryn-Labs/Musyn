@@ -17,9 +17,11 @@ import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/io_service.dart';
 import 'package:musyn/services/logger_service.dart';
+import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/playlist_download_service.dart';
 import 'package:musyn/services/playlist_sharing.dart';
 import 'package:musyn/services/playlists_manager.dart';
+import 'package:musyn/services/provider_access.dart';
 import 'package:musyn/services/router_service.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/source_resolver.dart';
@@ -184,6 +186,7 @@ class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
         ],
         supportedLocales: appSupportedLocales,
@@ -289,6 +292,8 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
       Hive.openBox('youtube_auth'),
     ]).timeout(const Duration(seconds: 15));
     // Restore persisted settings into ValueNotifiers + theme globals
+    await ProviderAccess.instance.initialize();
+    await MotionArtwork.instance.initialize();
     reloadSettingsFromStorage();
     syncThemeFromSettings();
     await YtdlpClientSyncService.instance.ensureLoaded();

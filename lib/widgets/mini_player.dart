@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
@@ -10,6 +8,7 @@ import 'package:musyn/models/full_player_state.dart';
 import 'package:musyn/models/position_data.dart';
 import 'package:musyn/screens/now_playing_page.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
+import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/navigation_paths.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
@@ -45,6 +44,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    ios26Design.addListener(_refreshDesign);
     _pressController = AnimationController(
       duration: const Duration(milliseconds: 100),
       vsync: this,
@@ -64,11 +64,16 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    ios26Design.removeListener(_refreshDesign);
     _pullPreview?.remove();
     _pullController.dispose();
     _pressController.dispose();
     _swipeController.dispose();
     super.dispose();
+  }
+
+  void _refreshDesign() {
+    if (mounted) setState(() {});
   }
 
   void _openNowPlaying() {
@@ -224,7 +229,14 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
           audioHandler.mediaItem.valueOrNull?.duration ?? Duration.zero,
         ),
       ),
-      stream: audioHandler.fullPlayerStateStream,
+      stream: audioHandler.fullPlayerStateStream.distinct(
+        (a, b) =>
+            a.mediaItem == b.mediaItem &&
+            a.playbackState.playing == b.playbackState.playing &&
+            a.playbackState.processingState ==
+                b.playbackState.processingState &&
+            a.queue.length == b.queue.length,
+      ),
       builder: (context, stateSnapshot) {
         final state = stateSnapshot.data;
         final metadata = state?.mediaItem;
@@ -233,7 +245,9 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         }
 
         final isDark = isAppDarkMode(context);
-        final bg = musynCanvas(isDark);
+        final bg = ios26Design.value
+            ? CupertinoColors.transparent
+            : musynCanvas(isDark);
         final titleColor = isDark
             ? CupertinoColors.white
             : CupertinoColors.black;
@@ -250,7 +264,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         final hasNext = audioHandler.hasNext;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 2, 8, 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: AnimatedBuilder(
             animation: Listenable.merge([_scaleAnimation, _swipeController]),
             builder: (context, child) => Transform.scale(
@@ -277,128 +291,124 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
                 onHorizontalDragUpdate: _handleHorizontalDragUpdate,
                 onHorizontalDragEnd: _handleHorizontalDragEnd,
                 child: ClipRRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                    child: Container(
-                      height: MiniPlayer.playerHeight,
-                      decoration: BoxDecoration(color: bg),
-                      child: Stack(
-                        children: [
-                          // Main content with horizontal swipe translation
-                          Transform.translate(
-                            offset: Offset(
-                              _swipeController.isAnimating
-                                  ? _swipeAnimation.value
-                                  : _dragOffset,
-                              0,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              child: Row(
-                                children: [
-                                  // Artwork
-                                  Hero(
-                                    flightShuttleBuilder:
-                                        SongArtworkWidget.flightShuttle,
-                                    tag: 'playing-art-${metadata.id}',
-                                    child: SongArtworkWidget(
-                                      metadata: metadata,
-                                      size: 40,
-                                      borderRadius: 7,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    height: MiniPlayer.playerHeight,
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Main content with horizontal swipe translation
+                        Transform.translate(
+                          offset: Offset(
+                            _swipeController.isAnimating
+                                ? _swipeAnimation.value
+                                : _dragOffset,
+                            0,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Row(
+                              children: [
+                                // Artwork
+                                Hero(
+                                  flightShuttleBuilder:
+                                      SongArtworkWidget.flightShuttle,
+                                  tag: 'playing-art-${metadata.id}',
+                                  child: SongArtworkWidget(
+                                    metadata: metadata,
+                                    size: 40,
+                                    borderRadius: 7,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+
+                                // Track info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        metadata.title,
+                                        style: TextStyle(
+                                          fontFamily: MusynStyle.uiFont,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: -0.2,
+                                          color: titleColor,
+                                          decoration: TextDecoration.none,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        metadata.artist ?? '',
+                                        style: TextStyle(
+                                          fontFamily: MusynStyle.uiFont,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w400,
+                                          color: artistColor,
+                                          decoration: TextDecoration.none,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Transport controls
+                                if (isLoading)
+                                  const Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: CupertinoActivityIndicator(
+                                      radius: 11,
+                                    ),
+                                  )
+                                else
+                                  CupertinoButton(
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(44, 44),
+                                    onPressed: () {
+                                      HapticFeedback.selectionClick();
+                                      if (isPlaying) {
+                                        audioHandler.pause();
+                                      } else {
+                                        audioHandler.play();
+                                      }
+                                    },
+                                    child: Icon(
+                                      isPlaying
+                                          ? CupertinoIcons.pause_fill
+                                          : CupertinoIcons.play_fill,
+                                      color: titleColor,
+                                      size: 24,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-
-                                  // Track info
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          metadata.title,
-                                          style: TextStyle(
-                                            fontFamily: MusynStyle.uiFont,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: -0.2,
-                                            color: titleColor,
-                                            decoration: TextDecoration.none,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          metadata.artist ?? '',
-                                          style: TextStyle(
-                                            fontFamily: MusynStyle.uiFont,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w400,
-                                            color: artistColor,
-                                            decoration: TextDecoration.none,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
+                                if (hasNext)
+                                  CupertinoButton(
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(44, 44),
+                                    onPressed: () {
+                                      HapticFeedback.selectionClick();
+                                      audioHandler.skipToNext();
+                                    },
+                                    child: Icon(
+                                      CupertinoIcons.forward_fill,
+                                      color: titleColor.withValues(alpha: 0.8),
+                                      size: 22,
                                     ),
                                   ),
-
-                                  // Transport controls
-                                  if (isLoading)
-                                    const Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: CupertinoActivityIndicator(
-                                        radius: 11,
-                                      ),
-                                    )
-                                  else
-                                    CupertinoButton(
-                                      padding: const EdgeInsets.all(8),
-                                      minimumSize: const Size(44, 44),
-                                      onPressed: () {
-                                        HapticFeedback.selectionClick();
-                                        if (isPlaying) {
-                                          audioHandler.pause();
-                                        } else {
-                                          audioHandler.play();
-                                        }
-                                      },
-                                      child: Icon(
-                                        isPlaying
-                                            ? CupertinoIcons.pause_fill
-                                            : CupertinoIcons.play_fill,
-                                        color: titleColor,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  if (hasNext)
-                                    CupertinoButton(
-                                      padding: const EdgeInsets.all(8),
-                                      minimumSize: const Size(44, 44),
-                                      onPressed: () {
-                                        HapticFeedback.selectionClick();
-                                        audioHandler.skipToNext();
-                                      },
-                                      child: Icon(
-                                        CupertinoIcons.forward_fill,
-                                        color: titleColor.withValues(
-                                          alpha: 0.8,
-                                        ),
-                                        size: 22,
-                                      ),
-                                    ),
-                                ],
-                              ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

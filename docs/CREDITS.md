@@ -5,3 +5,5 @@ Musyn is maintained by Voryn Labs under GPL-3.0. It develops an iOS music player
 The current navigation/player visual work references BitChord: https://github.com/kushagrasinghx/BitChord (GPL-3.0). No addon modules are included.
 
 Flutter, just_audio, audio_service, Hive and the vendored YouTube libraries retain their own notices and licenses. Lyrics are provided through LRCLIB. Audio providers and artwork owners retain their rights; this project does not distribute a music catalogue.
+
+Taurus was studied as an iOS 26 behavior reference. No Taurus tweak code, Spotify hooks or extracted Apple web token is included. Native materials and video artwork use Apple public APIs. The MIT audio_service fork retains upstream notices and documents its single metadata notification hook in packages/audio_service/MUSYN_PATCH.md.

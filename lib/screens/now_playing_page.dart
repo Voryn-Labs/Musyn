@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
@@ -18,6 +19,8 @@ import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/mediaitem.dart';
 import 'package:musyn/widgets/audio_route_button.dart';
 import 'package:musyn/widgets/content_state.dart';
+import 'package:musyn/widgets/ios26_surface.dart';
+import 'package:musyn/widgets/motion_artwork_view.dart';
 import 'package:musyn/widgets/now_playing/synced_lyrics_view.dart';
 import 'package:musyn/widgets/playback_icon_button.dart';
 import 'package:musyn/widgets/player_sheet_route.dart';
@@ -407,10 +410,14 @@ class _NowPlayingPageState extends State<NowPlayingPage>
             child: Hero(
               flightShuttleBuilder: SongArtworkWidget.flightShuttle,
               tag: 'playing-art-${item.id}',
-              child: SongArtworkWidget(
-                metadata: item,
+              child: MotionArtworkView(
+                item: item,
                 size: sleeve.toDouble(),
-                errorWidgetIconSize: 64,
+                child: SongArtworkWidget(
+                  metadata: item,
+                  size: sleeve.toDouble(),
+                  errorWidgetIconSize: 64,
+                ),
               ),
             ),
           ),
@@ -612,94 +619,96 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   // ---------------------------------------------------------------------------
   // FULL TRANSPORT DECK (MAIN SLEEVE VIEW)
   // ---------------------------------------------------------------------------
-  Widget _deck(MediaItem item, {required bool compact}) => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (!(item.extras?['isLive'] ?? false))
-          PositionSlider(qualityLabel: _qualityLabel(item)),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _button(
-              CupertinoIcons.backward_end_fill,
-              'Previous track',
-              () => unawaited(audioHandler.skipToPrevious()),
-              size: compact ? 28 : 34,
-              touch: compact ? 48 : 60,
-            ),
-            buildPlaybackIconButton(
-              compact ? 38 : 50,
-              CupertinoTheme.of(context).textTheme.textStyle.color!,
-              const Color(0x00000000),
-              padding: const EdgeInsets.all(8),
-            ),
-            _button(
-              CupertinoIcons.forward_end_fill,
-              'Next track',
-              () => unawaited(audioHandler.skipToNext()),
-              size: compact ? 28 : 34,
-              touch: compact ? 48 : 60,
+  Widget _deck(MediaItem item, {required bool compact}) => Ios26Surface(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!(item.extras?['isLive'] ?? false))
+            PositionSlider(qualityLabel: _qualityLabel(item)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _button(
+                CupertinoIcons.backward_end_fill,
+                'Previous track',
+                () => unawaited(audioHandler.skipToPrevious()),
+                size: compact ? 28 : 34,
+                touch: compact ? 48 : 60,
+              ),
+              buildPlaybackIconButton(
+                compact ? 38 : 50,
+                CupertinoTheme.of(context).textTheme.textStyle.color!,
+                const Color(0x00000000),
+                padding: const EdgeInsets.all(8),
+              ),
+              _button(
+                CupertinoIcons.forward_end_fill,
+                'Next track',
+                () => unawaited(audioHandler.skipToNext()),
+                size: compact ? 28 : 34,
+                touch: compact ? 48 : 60,
+              ),
+            ],
+          ),
+          if (_pane == _PlayerPane.main) ...[
+            const SizedBox(height: 4),
+            StreamBuilder<double>(
+              initialData: audioHandler.audioPlayer.volume,
+              stream: audioHandler.audioPlayer.volumeStream,
+              builder: (_, snapshot) => Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.volume_down,
+                    size: 20,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                  Expanded(
+                    child: CupertinoSlider(
+                      activeColor: CupertinoTheme.of(
+                        context,
+                      ).textTheme.textStyle.color,
+                      value: (snapshot.data ?? 1).clamp(0.0, 1.0),
+                      onChanged: (value) =>
+                          unawaited(audioHandler.audioPlayer.setVolume(value)),
+                    ),
+                  ),
+                  const Icon(
+                    CupertinoIcons.volume_up,
+                    size: 20,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ],
+              ),
             ),
           ],
-        ),
-        if (_pane == _PlayerPane.main) ...[
           const SizedBox(height: 4),
-          StreamBuilder<double>(
-            initialData: audioHandler.audioPlayer.volume,
-            stream: audioHandler.audioPlayer.volumeStream,
-            builder: (_, snapshot) => Row(
-              children: [
-                const Icon(
-                  CupertinoIcons.volume_down,
-                  size: 20,
-                  color: CupertinoColors.systemGrey,
-                ),
-                Expanded(
-                  child: CupertinoSlider(
-                    activeColor: CupertinoTheme.of(
-                      context,
-                    ).textTheme.textStyle.color,
-                    value: (snapshot.data ?? 1).clamp(0.0, 1.0),
-                    onChanged: (value) =>
-                        unawaited(audioHandler.audioPlayer.setVolume(value)),
-                  ),
-                ),
-                const Icon(
-                  CupertinoIcons.volume_up,
-                  size: 20,
-                  color: CupertinoColors.systemGrey,
-                ),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _button(CupertinoIcons.quote_bubble, 'Lyrics', () {
+                HapticFeedback.selectionClick();
+                setState(
+                  () => _pane = _pane == _PlayerPane.lyrics
+                      ? _PlayerPane.main
+                      : _PlayerPane.lyrics,
+                );
+              }, selected: _pane == _PlayerPane.lyrics),
+              _downloadControl(item),
+              const AudioRouteButton(),
+              _button(CupertinoIcons.list_bullet, 'Queue', () {
+                HapticFeedback.selectionClick();
+                setState(
+                  () => _pane = _pane == _PlayerPane.queue
+                      ? _PlayerPane.main
+                      : _PlayerPane.queue,
+                );
+              }, selected: _pane == _PlayerPane.queue),
+            ],
           ),
         ],
-        const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _button(CupertinoIcons.quote_bubble, 'Lyrics', () {
-              HapticFeedback.selectionClick();
-              setState(
-                () => _pane = _pane == _PlayerPane.lyrics
-                    ? _PlayerPane.main
-                    : _PlayerPane.lyrics,
-              );
-            }, selected: _pane == _PlayerPane.lyrics),
-            _downloadControl(item),
-            const AudioRouteButton(),
-            _button(CupertinoIcons.list_bullet, 'Queue', () {
-              HapticFeedback.selectionClick();
-              setState(
-                () => _pane = _pane == _PlayerPane.queue
-                    ? _PlayerPane.main
-                    : _PlayerPane.queue,
-              );
-            }, selected: _pane == _PlayerPane.queue),
-          ],
-        ),
-      ],
+      ),
     ),
   );
 

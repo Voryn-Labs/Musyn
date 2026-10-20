@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/services/audio/playback_controller.dart';
 import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/utilities/mediaitem.dart';
 
 /// audio_service does not expose MPFeedbackCommand on iOS. Keep the native
@@ -18,10 +20,14 @@ class RemoteFavorites {
   void start(PlaybackController handler) {
     _subscription?.cancel();
     userLikedSongsList.removeListener(_sync);
+    motionArtworkEnabled.removeListener(_sync);
+    MotionArtwork.instance.removeListener(_sync);
     _handler = handler;
     channel.setMethodCallHandler(handleCommand);
     _subscription = handler.mediaItem.listen((_) => _sync());
     userLikedSongsList.addListener(_sync);
+    motionArtworkEnabled.addListener(_sync);
+    MotionArtwork.instance.addListener(_sync);
     _sync();
   }
 
@@ -34,6 +40,11 @@ class RemoteFavorites {
       channel
           .invokeMethod<void>('setState', {
             'trackId': id,
+            'mediaId': _handler?.mediaItem.valueOrNull?.id,
+            'motionEnabled': motionArtworkEnabled.value,
+            'motionPath': id == null
+                ? null
+                : MotionArtwork.instance.fileFor(id),
             // Read the published list directly: its synchronous notification precedes
             // the lookup-cache refresh inside updateSongLikeStatus.
             'liked':
@@ -63,6 +74,8 @@ class RemoteFavorites {
   Future<void> dispose() async {
     await _subscription?.cancel();
     userLikedSongsList.removeListener(_sync);
+    motionArtworkEnabled.removeListener(_sync);
+    MotionArtwork.instance.removeListener(_sync);
     _handler = null;
     _sync();
     channel.setMethodCallHandler(null);

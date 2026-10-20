@@ -126,7 +126,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   ),
                   title: 'Music, in your rhythm.',
                   description:
-                      'Welcome to Musyn. Search YouTube Music and JioSaavn, build your library, and keep your favorites close.',
+                      'Welcome to Musyn. Start with YouTube Music, build your library, and keep your favorites close. JioSaavn is an optional source you configure yourself.',
                 ),
                 _step(
                   context,
@@ -145,6 +145,26 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       CupertinoIcons.person_crop_circle,
                       'An account is optional',
                       'Connect YouTube Music in Settings when you want to sync your library.',
+                    ),
+                  ],
+                ),
+                _step(
+                  context,
+                  visual: const Icon(CupertinoIcons.lock, size: 92),
+                  title: 'Bring your own source.',
+                  description:
+                      'YouTube Music is ready without keys. To enable JioSaavn, add your own media URL key in Settings → JioSaavn.',
+                  children: [
+                    const SizedBox(height: 20),
+                    _hint(
+                      CupertinoIcons.lock,
+                      'Stored on your device',
+                      'Musyn keeps your key in iOS Keychain and excludes it from diagnostic reports.',
+                    ),
+                    _hint(
+                      CupertinoIcons.search,
+                      'A little setup help',
+                      'Search “JioSaavn media URL key”. Musyn does not supply one; use only keys you are authorized to use.',
                     ),
                   ],
                 ),
@@ -191,11 +211,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    for (var i = 0; i < 3; i++)
+                    for (var i = 0; i < 4; i++)
                       Padding(
                         padding: const EdgeInsets.all(4),
                         child: Semantics(
-                          label: 'Page ${i + 1} of 3',
+                          label: 'Page ${i + 1} of 4',
                           selected: i == _page,
                           child: Container(
                             width: 6,
@@ -220,7 +240,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     onPressed: _saving
                         ? null
                         : () {
-                            if (_page == 2) {
+                            if (_page == 3) {
                               _finish();
                             } else {
                               if (MediaQuery.disableAnimationsOf(context)) {
@@ -235,7 +255,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           },
                     child: _saving
                         ? const CupertinoActivityIndicator()
-                        : Text(_page == 2 ? 'Start listening' : 'Continue'),
+                        : Text(_page == 3 ? 'Start listening' : 'Continue'),
                   ),
                 ),
               ],

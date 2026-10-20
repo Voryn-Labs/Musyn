@@ -19,3 +19,4 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: python3 scripts/verify_branding.py
+      - run: python3 scripts/check_public_release.py

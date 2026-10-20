@@ -45,8 +45,21 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    jiosaavnEnabled.addListener(_sourcesChanged);
     announcementURL.value = null;
     unawaited(_loadTrending());
+  }
+
+  void _sourcesChanged() {
+    if (!mounted) return;
+    if (!jiosaavnAvailable) saavnCharts.value = [];
+    unawaited(_loadTrending());
+  }
+
+  @override
+  void dispose() {
+    jiosaavnEnabled.removeListener(_sourcesChanged);
+    super.dispose();
   }
 
   Future<void> _loadTrending({bool refresh = false}) async {
@@ -74,7 +87,7 @@ class _HomePageState extends State<HomePage> {
           await YouTubeMusicSyncService().fetchTrendingTracks();
           if (trendingError.value != null) failed = true;
         }),
-        if (jiosaavnEnabled.value)
+        if (jiosaavnAvailable)
           load(() async {
             if (!refresh && saavnCharts.value.isNotEmpty) return;
             final charts = await JioSaavnService().fetchTopCharts(limit: 15);
@@ -163,8 +176,7 @@ class _HomePageState extends State<HomePage> {
                       _buildLikedSongsSection(isDark),
                       _buildTrendingSection(isDark),
                       _buildYtChartsSection(isDark),
-                      if (jiosaavnEnabled.value)
-                        _buildSaavnChartsSection(isDark),
+                      if (jiosaavnAvailable) _buildSaavnChartsSection(isDark),
                       _buildPlaylistsSection(),
                       _buildMostPlayedSection(isDark),
                       if (_isLoading) _buildFeedSkeleton(isDark),
@@ -865,7 +877,7 @@ class _HomePageState extends State<HomePage> {
       userCustomPlaylists.value.isNotEmpty ||
       trendingSongs.value.isNotEmpty ||
       ytChartPlaylists.value.isNotEmpty ||
-      (jiosaavnEnabled.value && saavnCharts.value.isNotEmpty);
+      (jiosaavnAvailable && saavnCharts.value.isNotEmpty);
 
   Widget _buildEmptyStateIfNeeded(bool isDark) => AnimatedBuilder(
     animation: Listenable.merge([

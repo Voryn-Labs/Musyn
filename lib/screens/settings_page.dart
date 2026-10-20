@@ -4,12 +4,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:musyn/constants/version.dart';
+import 'package:musyn/screens/legal_page.dart';
 import 'package:musyn/screens/onboarding_page.dart';
+import 'package:musyn/screens/provider_access_page.dart';
 import 'package:musyn/screens/youtube_auth_webview.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/discovery_state.dart';
+import 'package:musyn/services/motion_artwork.dart';
+import 'package:musyn/services/provider_access.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
 import 'package:musyn/services/youtube_music_sync_service.dart';
@@ -22,6 +26,10 @@ class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   Listenable get _changes => Listenable.merge([
+    ProviderAccess.instance,
+    MotionArtwork.instance,
+    ios26Design,
+    motionArtworkEnabled,
     themeModeSetting,
     usePureBlackColor,
     preferredSource,
@@ -47,7 +55,7 @@ class SettingsPage extends StatelessWidget {
     context,
     'Settings',
     () => [
-      _section(context, 'Account', [
+      _section(context, 'Your music', [
         _row(
           context,
           'YouTube Music',
@@ -56,6 +64,19 @@ class SettingsPage extends StatelessWidget {
               : 'Connect',
           onTap: () =>
               _open(context, 'YouTube Music', () => _accountRows(context)),
+        ),
+      ]),
+      _section(context, 'Sources', [
+        _row(
+          context,
+          'JioSaavn',
+          value: ProviderAccess.instance.configured
+              ? 'Configured'
+              : 'Add your key',
+          onTap: () => Navigator.push(
+            context,
+            CupertinoPageRoute(builder: (_) => const ProviderAccessPage()),
+          ),
         ),
       ]),
       _section(context, 'Music', [
@@ -107,6 +128,37 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
       ]),
+      _section(context, 'About Musyn', [
+        _row(
+          context,
+          'Privacy',
+          onTap: () => Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (_) =>
+                  const LegalPage(title: 'Privacy', sections: privacySections),
+            ),
+          ),
+        ),
+        _row(
+          context,
+          'Terms of use',
+          onTap: () => Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (_) => const LegalPage(
+                title: 'Terms of use',
+                sections: termsSections,
+              ),
+            ),
+          ),
+        ),
+        _row(
+          context,
+          'Report an issue',
+          onTap: () => context.push('/settings/logs'),
+        ),
+      ]),
       Padding(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
         child: Column(
@@ -133,9 +185,7 @@ class SettingsPage extends StatelessWidget {
   ) => AnimatedBuilder(
     animation: _changes,
     builder: (context, _) => CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground.resolveFrom(
-        context,
-      ),
+      backgroundColor: musynCanvas(isAppDarkMode(context)),
       child: CustomScrollView(
         slivers: [
           CupertinoSliverNavigationBar(
@@ -166,6 +216,43 @@ class SettingsPage extends StatelessWidget {
   );
 
   List<Widget> _appearanceRows(BuildContext context) => [
+    _section(
+      context,
+      'iOS 26',
+      [
+        CupertinoListTile.notched(
+          title: const Text('Native glass'),
+          trailing: CupertinoSwitch(
+            value: ios26Design.value,
+            onChanged: !MotionArtwork.instance.supported
+                ? null
+                : (value) {
+                    ios26Design.value = value;
+                    unawaited(
+                      addOrUpdateData('settings', 'ios26Design', value),
+                    );
+                  },
+          ),
+        ),
+        CupertinoListTile.notched(
+          title: const Text('Animated artwork'),
+          trailing: CupertinoSwitch(
+            value: motionArtworkEnabled.value,
+            onChanged: !MotionArtwork.instance.supported
+                ? null
+                : (value) {
+                    motionArtworkEnabled.value = value;
+                    unawaited(
+                      addOrUpdateData('settings', 'motionArtwork', value),
+                    );
+                  },
+          ),
+        ),
+      ],
+      footer: MotionArtwork.instance.supported
+          ? 'Native materials and real video artwork are optional. Add a silent square or 3:4 video from a song’s menu. Still covers stay still when no clip exists. iOS controls lock-screen animation.'
+          : 'Requires iOS 26 or later. Your standard player remains available on earlier versions.',
+    ),
     _section(
       context,
       'Display',
@@ -202,7 +289,17 @@ class SettingsPage extends StatelessWidget {
         value: _sourceLabel(preferredSource.value),
         onTap: () => _selectProvider(context, preferredSource.value),
       ),
-      _toggle(context, 'JioSaavn', jiosaavnEnabled, 'jiosaavnEnabled'),
+      _row(
+        context,
+        'JioSaavn',
+        value: ProviderAccess.instance.configured
+            ? 'Configured'
+            : 'Add your key',
+        onTap: () => Navigator.push(
+          context,
+          CupertinoPageRoute(builder: (_) => const ProviderAccessPage()),
+        ),
+      ),
     ]),
     _section(context, 'Audio quality', [
       _row(
@@ -253,9 +350,9 @@ class SettingsPage extends StatelessWidget {
           'Download source',
           value: _sourceLabel(downloadSource.value),
           onTap: () =>
-              _selectQuality(context, downloadSource, 'downloadSource', const {
+              _selectQuality(context, downloadSource, 'downloadSource', {
                 'best': 'Automatic',
-                'saavn': 'JioSaavn',
+                if (jiosaavnAvailable) 'saavn': 'JioSaavn',
                 'youtube': 'YouTube Music',
               }),
         ),
@@ -441,8 +538,10 @@ class SettingsPage extends StatelessWidget {
               color: CupertinoColors.secondaryLabel.resolveFrom(context),
             ),
           ),
-    backgroundColor: CupertinoColors.systemGroupedBackground.resolveFrom(
-      context,
+    backgroundColor: musynCanvas(isAppDarkMode(context)),
+    decoration: BoxDecoration(
+      color: musynElevatedSurface(isAppDarkMode(context)),
+      borderRadius: BorderRadius.circular(16),
     ),
     margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
     children: rows,
@@ -455,7 +554,26 @@ class SettingsPage extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     final largeText = MediaQuery.textScalerOf(context).scale(17) > 22;
+    final icon = <String, IconData>{
+      'YouTube Music': CupertinoIcons.play_rectangle,
+      'JioSaavn': CupertinoIcons.waveform,
+      'Playback': CupertinoIcons.play_circle,
+      'Downloads': CupertinoIcons.arrow_down_circle,
+      'Appearance': CupertinoIcons.paintbrush,
+      'Walkthrough': CupertinoIcons.hand_draw,
+      'Storage & diagnostics': CupertinoIcons.archivebox,
+      'Privacy': CupertinoIcons.lock_shield,
+      'Terms of use': CupertinoIcons.doc_text,
+      'Report an issue': CupertinoIcons.bubble_left_bubble_right,
+    }[title];
     return CupertinoListTile.notched(
+      leading: icon == null
+          ? null
+          : Icon(
+              icon,
+              size: 21,
+              color: CupertinoTheme.of(context).primaryColor,
+            ),
       title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: largeText && value != null ? Text(value, maxLines: 2) : null,
       additionalInfo: value == null || largeText
@@ -590,10 +708,10 @@ class SettingsPage extends StatelessWidget {
         builder: (sheet) => CupertinoActionSheet(
           title: const Text('Default Audio Provider'),
           actions: [
-            for (final entry in const {
+            for (final entry in {
               'auto': 'Automatic',
               'youtube': 'YouTube Music',
-              'jiosaavn': 'JioSaavn',
+              if (jiosaavnAvailable) 'jiosaavn': 'JioSaavn',
             }.entries)
               CupertinoActionSheetAction(
                 isDefaultAction: current == entry.key,

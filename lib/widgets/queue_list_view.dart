@@ -139,12 +139,14 @@ class _QueueWidgetState extends State<QueueWidget> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: MusynStyle.appleRed.withValues(alpha: 0.15),
+              color: CupertinoTheme.of(
+                context,
+              ).primaryColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               CupertinoIcons.list_bullet,
-              color: MusynStyle.appleRed,
+              color: CupertinoTheme.of(context).primaryColor,
               size: 20,
             ),
           ),
@@ -382,15 +384,15 @@ class _QueueWidgetState extends State<QueueWidget> {
           width: 0.5,
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(
             CupertinoIcons.infinite,
-            color: MusynStyle.appleRed,
+            color: CupertinoTheme.of(context).primaryColor,
             size: 22,
           ),
-          SizedBox(width: 12),
-          Expanded(
+          const SizedBox(width: 12),
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -450,7 +452,7 @@ class _QueueTile extends StatelessWidget {
     final image =
         song['image']?.toString() ?? song['lowResImage']?.toString() ?? '';
     final isLocalFile = image.startsWith('/') || image.startsWith('file://');
-    const activeColor = MusynStyle.appleRed;
+    final activeColor = CupertinoTheme.of(context).primaryColor;
     final titleColor = isCurrentSong
         ? activeColor
         : (isDark ? CupertinoColors.white : CupertinoColors.black);
