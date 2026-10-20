@@ -18,3 +18,7 @@ Local validation: 219 deterministic tests passed, analysis reported no issues, a
 This host has Command Line Tools but no full Xcode or iOS Simulator. CI validates native compilation and packaging. Device checks remain necessary for material compositing, accessibility appearance and frame pacing.
 
 References: [Apple materials guidance](https://developer.apple.com/design/human-interface-guidelines/materials), [Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/), [UIGlassEffect interactive behavior](https://developer.apple.com/documentation/uikit/uiglasseffect/isinteractive).
+
+## Published artifact
+
+[Native build 39439105251](https://github.com/Voryn-Labs/Musyn/actions/runs/39439105251) passed analysis, tests, iOS compilation, packaging and publication. Downloaded and verified the regular public 0.3.2 (14) IPA: 12,252,212 bytes, SHA-256 `f9230b64fd6b8821e83dbedecdd5f5942d4a2797e56a14ad762581c1d055cdf4`, bundle `com.vorynlabs.musyn`, display name Musyn, iOS 15 minimum. The packaged credential scan and generated installer metadata checks passed. The shared source update was triggered manually: [39447370076](https://github.com/Voryn-Labs/Voryn-Labs.github.io/actions/runs/39447370076). Native material optics and device frame pacing remain unverified here.
