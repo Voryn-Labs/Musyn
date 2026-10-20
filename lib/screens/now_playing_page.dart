@@ -21,7 +21,6 @@ import 'package:musyn/widgets/content_state.dart';
 import 'package:musyn/widgets/now_playing/synced_lyrics_view.dart';
 import 'package:musyn/widgets/playback_icon_button.dart';
 import 'package:musyn/widgets/player_sheet_route.dart';
-import 'package:musyn/widgets/playing_artwork_motion.dart';
 import 'package:musyn/widgets/position_slider.dart';
 import 'package:musyn/widgets/queue_list_view.dart';
 import 'package:musyn/widgets/song_actions_sheet.dart';
@@ -405,20 +404,13 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               _downward ? 0 : _coverDrag.clamp(-96.0, 0.0) * .5,
               0,
             ),
-            child: StreamBuilder<PlaybackState>(
-              initialData: audioHandler.playbackState.value,
-              stream: audioHandler.playbackState,
-              builder: (context, state) => PlayingArtworkMotion(
-                playing: state.data?.playing ?? false,
-                child: Hero(
-                  flightShuttleBuilder: SongArtworkWidget.flightShuttle,
-                  tag: 'playing-art-${item.id}',
-                  child: SongArtworkWidget(
-                    metadata: item,
-                    size: sleeve.toDouble(),
-                    errorWidgetIconSize: 64,
-                  ),
-                ),
+            child: Hero(
+              flightShuttleBuilder: SongArtworkWidget.flightShuttle,
+              tag: 'playing-art-${item.id}',
+              child: SongArtworkWidget(
+                metadata: item,
+                size: sleeve.toDouble(),
+                errorWidgetIconSize: 64,
               ),
             ),
           ),

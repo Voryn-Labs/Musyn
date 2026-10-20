@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:musyn/constants/clients.dart';
 import 'package:musyn/services/artist_service.dart' show ytMusicClient;
 import 'package:musyn/services/audio/player_artwork_cache.dart';
+import 'package:musyn/services/audio/stream_resolution_pool.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/download_activity.dart';
 import 'package:musyn/services/download_source_policy.dart';
@@ -968,13 +969,30 @@ Future<void> _cacheSaavnMatchInBackground(Map song) async {
   }
 }
 
-/// Resolves a playable stream URL for a song (cached when possible).
+final _streamResolutions = StreamResolutionPool();
+
+/// A tap reuses an in-flight warmup rather than starting a second manifest call.
 Future<String?> fetchSongStreamUrl(
   Map song,
   bool isLive, {
   bool Function()? abandon,
-}) async {
-  if (abandon?.call() == true) return null;
+}) => _streamResolutions.resolve(
+  (
+    song['ytid']?.toString(),
+    song['forceSource']?.toString(),
+    preferredStreamSourceForSong(song),
+    song['catalogOrigin']?.toString() ?? song['source']?.toString(),
+    preferredSource.value,
+    jiosaavnQuality.value,
+    jiosaavnEnabled.value,
+    isLive,
+  ),
+  song,
+  (copy) => _fetchSongStreamUrl(copy, isLive),
+  abandon: abandon,
+);
+
+Future<String?> _fetchSongStreamUrl(Map song, bool isLive) async {
   final songId = song['ytid']?.toString() ?? '';
   try {
     if (songId.isEmpty) {
@@ -995,7 +1013,8 @@ Future<String?> fetchSongStreamUrl(
     // Saavn search ONLY when the user pinned JioSaavn. `auto` must never wait
     // on a title/artist lookup between tracks — iOS suspends on silence gaps.
     final allowSaavnSearch =
-        forceJiosaavn || pref == 'jiosaavn' || pref == 'saavn';
+        !resolveYoutube &&
+        (forceJiosaavn || pref == 'jiosaavn' || pref == 'saavn');
     final preference = resolveYoutube
         ? 'youtube'
         : (allowSaavnSearch ? 'jiosaavn' : 'youtube');
@@ -1105,7 +1124,7 @@ Future<String?> fetchSongStreamUrl(
     // Blocking Saavn search — only when the user selected JioSaavn or track is from Saavn catalog.
     // Keep the timeout well under a second for auto-searches so a miss does not create a
     // lock-screen silence gap that lets iOS suspend the audio session.
-    if ((allowSaavnSearch || isSaavnTrack) &&
+    if ((allowSaavnSearch || (isSaavnTrack && pref != 'youtube')) &&
         forceSource != 'youtube' &&
         jiosaavnEnabled.value) {
       try {
@@ -1165,7 +1184,6 @@ Future<String?> fetchSongStreamUrl(
     }
 
     // YouTube Music resolution — coverage path for auto / youtube / Saavn miss.
-    if (abandon?.call() == true) return null;
     var resolvedYtSongId = song['resolvedYoutubeId']?.toString() ?? songId;
     if (isSaavnTrack && !isValidYoutubeVideoId(resolvedYtSongId)) {
       try {

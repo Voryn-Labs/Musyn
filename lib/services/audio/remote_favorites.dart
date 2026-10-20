@@ -34,8 +34,6 @@ class RemoteFavorites {
       channel
           .invokeMethod<void>('setState', {
             'trackId': id,
-            'mediaId': _handler?.mediaItem.valueOrNull?.id,
-            'artUri': _handler?.mediaItem.valueOrNull?.artUri?.toString(),
             // Read the published list directly: its synchronous notification precedes
             // the lookup-cache refresh inside updateSongLikeStatus.
             'liked':

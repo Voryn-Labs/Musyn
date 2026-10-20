@@ -455,6 +455,7 @@ class AudioPlaybackCoordinator {
         },
       );
 
+      final installClock = Stopwatch()..start();
       await audioPlayer
           .setAudioSources(
             [installSource],
@@ -471,6 +472,7 @@ class AudioPlaybackCoordinator {
           'title': song['title'],
           'source': song['resolvedSource'],
           'playerDur': audioPlayer.duration?.inSeconds,
+          'loadMs': installClock.elapsedMilliseconds,
         },
       );
 

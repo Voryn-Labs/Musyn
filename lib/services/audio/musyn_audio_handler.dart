@@ -45,7 +45,7 @@ class MusynAudioHandler extends PlaybackController {
           audioLoadConfiguration: const AudioLoadConfiguration(
             darwinLoadControl: DarwinLoadControl(
               automaticallyWaitsToMinimizeStalling: false,
-              preferredForwardBufferDuration: Duration(seconds: 5),
+              preferredForwardBufferDuration: Duration(seconds: 1),
             ),
           ),
         );
@@ -56,6 +56,64 @@ class MusynAudioHandler extends PlaybackController {
   }
 
   final Future<Uri?> Function(Uri) _prepareArtwork;
+  final _coverJobs = <Uri, Future<Uri?>>{};
+  final _readyCovers = <Uri, Uri>{};
+
+  Future<Uri?> _warmCover(Uri uri) {
+    final ready = _readyCovers[uri];
+    if (ready != null) return Future.value(ready);
+    return _coverJobs.putIfAbsent(uri, () => _loadCover(uri));
+  }
+
+  Future<Uri?> _loadCover(Uri uri) async {
+    final elapsed = Stopwatch()..start();
+    try {
+      final local = await _prepareArtwork(uri);
+      if (local != null) {
+        _readyCovers[uri] = local;
+        if (_readyCovers.length > 40)
+          _readyCovers.remove(_readyCovers.keys.first);
+      }
+      logger.log(
+        'Cover prepared',
+        data: {
+          'host': uri.host,
+          'available': local != null,
+          'elapsedMs': elapsed.elapsedMilliseconds,
+        },
+      );
+      return local;
+    } catch (error, stack) {
+      logger.log('Cover preparation failed', error: error, stackTrace: stack);
+      return null;
+    } finally {
+      final _ = _coverJobs.remove(uri);
+    }
+  }
+
+  Future<void> _warmUpcomingArtwork() async {
+    final selected = _hub.queue.currentIndex;
+    final songs = _hub.queue.items.skip(selected + 1).take(3).toList();
+    for (final song in songs) {
+      if (_hub.queue.currentIndex != selected) return;
+      final uri = mapToMediaItem(song).artUri;
+      if (uri != null) await _warmCover(uri);
+    }
+  }
+
+  @override
+  Future<void> primeSong(Map song) async {
+    if (offlineMode.value || _currentLoadingTransitionId != -1) return;
+    final copy = Map.from(song);
+    final cover = mapToMediaItem(copy).artUri;
+    if (cover != null) unawaited(_warmCover(cover));
+    if (isSongAlreadyOffline(copy['ytid']?.toString())) return;
+    await _hub.preload.preloadSingle(
+      copy,
+      offlineModeEnabled: offlineMode.value,
+      isLoadInProgress: () => _currentLoadingTransitionId != -1,
+    );
+  }
 
   @override
   late final AudioPlayer audioPlayer;
@@ -459,7 +517,7 @@ class MusynAudioHandler extends PlaybackController {
     final prepared = item.extras?['_squareArtwork'] == true;
     final square = prepared || original == null
         ? original
-        : PlayerArtworkCache.cached(original);
+        : _readyCovers[original] ?? PlayerArtworkCache.cached(original);
     final needsCover = original != null && !prepared && square == null;
     if (!prepared) {
       // Never expose a video-shaped source to Now Playing, even while its
@@ -481,7 +539,7 @@ class MusynAudioHandler extends PlaybackController {
     mediaItem.add(item);
     if (needsCover) {
       unawaited(
-        _prepareArtwork(original)
+        _warmCover(original)
             .then((local) {
               if (local == null || mediaItem.isClosed) return;
               final current = mediaItem.valueOrNull;
@@ -1668,7 +1726,9 @@ class MusynAudioHandler extends PlaybackController {
   // --- Preload (via hub) ---
 
   void _preloadUpcomingSongs() {
-    if (offlineMode.value || _currentLoadingTransitionId != -1) return;
+    if (_currentLoadingTransitionId != -1) return;
+    unawaited(_warmUpcomingArtwork());
+    if (offlineMode.value) return;
 
     Future.microtask(() async {
       try {
@@ -2424,6 +2484,7 @@ class MusynAudioHandler extends PlaybackController {
         freshTrack: !_playback.sourceSwitchInFlight,
       );
 
+      final resolutionClock = Stopwatch()..start();
       final playback = await _playback
           .resolvePlaybackSource(
             songData,
@@ -2441,6 +2502,15 @@ class MusynAudioHandler extends PlaybackController {
               return null;
             },
           );
+
+      logger.log(
+        'Playback resolution finished',
+        data: {
+          'ytid': songData['ytid'],
+          'elapsedMs': resolutionClock.elapsedMilliseconds,
+          'superseded': _isStaleTransition(effectiveTransitionId),
+        },
+      );
 
       // Abort if a newer song was requested while we were fetching the stream URL.
       // This is the primary guard against the race condition where a slow streaming

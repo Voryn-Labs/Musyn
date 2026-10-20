@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:musyn/utilities/artwork_provider.dart' show artworkCandidates;
 
@@ -10,6 +10,7 @@ import 'package:musyn/utilities/artwork_provider.dart' show artworkCandidates;
 class PlayerArtworkCache {
   static final _pending = <String, Future<Uri?>>{};
   static final _resolved = <String, Uri>{};
+  static const _channel = MethodChannel('com.vorynlabs.musyn/artwork');
 
   static Uri? cached(Uri remote) => _resolved[remote.toString()];
 
@@ -35,46 +36,33 @@ class PlayerArtworkCache {
     if (!{'https', 'http', 'file'}.contains(uri.scheme)) return null;
     try {
       final cache = DefaultCacheManager();
-      final key = '$uri#musyn-square-v3';
+      final key = '$uri#musyn-square-v4';
       final cached = await cache.getFileFromCache(key);
       if (cached != null && await cached.file.exists()) return cached.file.uri;
-      File? original;
-      if (uri.scheme == 'file') {
-        original = File.fromUri(uri);
-      } else {
-        for (final candidate in artworkCandidates(
-          uri.toString(),
-          targetSize: 1024,
-        )) {
-          try {
-            final file = await cache
-                .getSingleFile(candidate)
-                .timeout(const Duration(seconds: 8));
-            if (candidate.contains('/maxresdefault.')) {
-              final codec = await ui.instantiateImageCodec(
-                await file.readAsBytes(),
-              );
-              final image = (await codec.getNextFrame()).image;
-              final usable = image.width >= 480;
-              image.dispose();
-              codec.dispose();
-              if (!usable) continue;
-            }
-            original = file;
-            break;
-          } catch (_) {
-            /* Try the known thumbnail fallback. */
-          }
-        }
-      }
-      if (original == null) return null;
       final videoThumbnail =
           uri.host.endsWith('ytimg.com') &&
           (uri.path.contains('/vi/') || uri.path.contains('/vi_webp/'));
-      final bytes = await squareCover(
-        await original.readAsBytes(),
-        videoThumbnail: videoThumbnail,
-      );
+      Uint8List? bytes;
+      final candidates = uri.scheme == 'file'
+          ? [uri.toString()]
+          : artworkCandidates(uri.toString(), targetSize: 1024);
+      for (final candidate in candidates) {
+        try {
+          final file = uri.scheme == 'file'
+              ? File.fromUri(uri)
+              : await cache
+                    .getSingleFile(candidate)
+                    .timeout(const Duration(seconds: 5));
+          bytes = await squareCover(
+            await file.readAsBytes(),
+            videoThumbnail: videoThumbnail,
+            minimumWidth: candidate.contains('/maxresdefault.') ? 480 : 0,
+          );
+          if (bytes != null) break;
+        } catch (_) {
+          /* Try the known thumbnail fallback. */
+        }
+      }
       if (bytes == null) return null;
       final file = await cache.putFile(key, bytes, fileExtension: 'png');
       return file.uri;
@@ -87,7 +75,17 @@ class PlayerArtworkCache {
   static Future<Uint8List?> squareCover(
     Uint8List bytes, {
     bool videoThumbnail = false,
+    int minimumWidth = 0,
   }) async {
+    // Flutter's raster surface can be suspended while lock-screen audio keeps
+    // running. Native ImageIO/Core Graphics works without an active Flutter frame.
+    if (Platform.isIOS) {
+      return _channel.invokeMethod<Uint8List>('squareCover', {
+        'bytes': bytes,
+        'videoThumbnail': videoThumbnail,
+        'minimumWidth': minimumWidth,
+      });
+    }
     final codec = await ui.instantiateImageCodec(
       bytes,
       targetWidth: 1440,
@@ -101,6 +99,7 @@ class PlayerArtworkCache {
     }
     final image = frame.image;
     try {
+      if (image.width < minimumWidth) return null;
       final contentHeight = videoThumbnail
           ? math.min(image.height.toDouble(), image.width * 9 / 16)
           : image.height.toDouble();

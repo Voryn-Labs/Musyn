@@ -23,6 +23,9 @@ abstract class PlaybackController extends BaseAudioHandler {
     bool resetShuffle = true,
   });
   Future<void> playSingleSong(Map song);
+
+  /// Resolve one likely first selection without selecting or starting playback.
+  Future<void> primeSong(Map song) async {}
   Future<void> playPlaylistSong({
     Map<dynamic, dynamic>? playlist,
     required int songIndex,

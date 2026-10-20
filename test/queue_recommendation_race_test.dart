@@ -232,10 +232,14 @@ void main() {
             (_) async => null,
           );
       final covers = <String, Completer<Uri?>>{};
+      final requests = <String, int>{};
+      final player = TimelinePlayer();
       final handler = MusynAudioHandler(
-        player: ProbePlayer(),
-        prepareArtwork: (uri) =>
-            covers.putIfAbsent(uri.toString(), Completer<Uri?>.new).future,
+        player: player,
+        prepareArtwork: (uri) {
+          requests.update(uri.toString(), (n) => n + 1, ifAbsent: () => 1);
+          return covers.putIfAbsent(uri.toString(), Completer<Uri?>.new).future;
+        },
       );
       try {
         playNextSongAutomatically.value = false;
@@ -280,6 +284,14 @@ void main() {
           Uri.file('${directory.path}/second.png'),
         );
         expect(handler.mediaItem.valueOrNull?.title, 'Second song');
+        expect(requests.values, everyElement(1));
+        player.durations.add(const Duration(seconds: 181));
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          handler.mediaItem.valueOrNull?.artUri,
+          Uri.file('${directory.path}/second.png'),
+        );
+        expect(requests.values, everyElement(1));
       } finally {
         await handler.dispose();
         userOfflineSongs.value = [];

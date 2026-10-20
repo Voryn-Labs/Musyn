@@ -361,6 +361,12 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
     }
   }
   audioHandlerReady.value = audioHandlerInstance != null;
+  // Warm a single likely selection during the splash, without autoplay or a
+  // native player item. A tap shares the pending lookup if it arrives first.
+  final recent = userRecentlyPlayed.value.whereType<Map>().firstOrNull;
+  if (audioHandlerInstance != null && recent != null) {
+    unawaited(audioHandlerInstance!.primeSong(recent));
+  }
   if (defaultTargetPlatform == TargetPlatform.iOS &&
       audioHandlerInstance != null) {
     remoteFavorites.start(audioHandlerInstance!);

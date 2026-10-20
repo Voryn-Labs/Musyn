@@ -49,7 +49,7 @@ action inventory in `../../UI-FLOW-MAP.md`.
 
 - Native [Settings](settings-dark.png), [Downloads](downloads-dark.png) and [track actions](track-menu-dark.png), with an integrated mini-player and direct player download control.
 - Walkthrough: [welcome](walkthrough-welcome.png), [sources](walkthrough-sources.png), [gestures](walkthrough-ready.png); corresponding `*-small.png` files exercise large text on a small viewport and scrollable content.
-- Continuous artwork motion has separate time-advancing widget tests. These still renders use Reduce Motion and cannot demonstrate frame pacing.
+- Version 0.2.0 removes simulated continuous sleeve movement and generated lock-screen video loops. The reference animates the illustration itself; current providers supply still artwork. Covers remain still, while track gestures and sheet transitions remain interactive.
 - [Fixes and verification limits](../PLAYER_AND_UI_FIXES_0.1.7.md).
 
 ## 0.1.8 follow-up

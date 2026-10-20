@@ -33,6 +33,7 @@ jobs:
           flutter analyze
           flutter test
           python3 scripts/verify_branding.py
+          python3 scripts/test_native_artwork.py
           plutil -lint ios/Runner/Info.plist
           plutil -lint ios/Runner.xcodeproj/project.pbxproj
       - name: Build unsigned iOS app
