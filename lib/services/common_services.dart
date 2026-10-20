@@ -32,6 +32,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 export 'package:musyn/services/library_state.dart';
 
+List? _likedSongIdsSnapshot;
 final Set<String> _likedSongIdsSet = {
   ...userLikedSongsList.value
       .map((s) => s['ytid']?.toString() ?? '')
@@ -45,6 +46,7 @@ final Set<String> _offlineSongIdsSet = {
 };
 
 void _syncLikedSongIdsSet() {
+  _likedSongIdsSnapshot = userLikedSongsList.value;
   _likedSongIdsSet
     ..clear()
     ..addAll(
@@ -546,7 +548,7 @@ Future<void> renameSongInLikedSongs(
 bool isSongAlreadyLiked(songIdToCheck) {
   final songId = songIdToCheck?.toString();
   if (songId == null || songId.isEmpty) return false;
-  if (_likedSongIdsSet.isEmpty && userLikedSongsList.value.isNotEmpty) {
+  if (!identical(_likedSongIdsSnapshot, userLikedSongsList.value)) {
     _syncLikedSongIdsSet();
   }
   return _likedSongIdsSet.contains(songId);

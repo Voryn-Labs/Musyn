@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:musyn/services/library_state.dart';
+import 'package:musyn/services/common_services.dart' show isSongAlreadyLiked;
 import 'package:musyn/services/playlists_manager.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
@@ -114,6 +115,7 @@ void main() {
         {'ytid': '12345678901', 'title': 'Local favorite'},
         {'ytid': 'saavn_track_123', 'title': 'Local provider favorite'},
       ];
+      expect(isSongAlreadyLiked('12345678901'), isTrue);
       await store.record('zyxwvutsrqp', false, null);
       final mutations = <String>[];
       await http.runWithClient(
@@ -124,6 +126,8 @@ void main() {
             unorderedEquals(['abcdefghijk', '12345678901', 'saavn_track_123']),
           );
           expect(service.pendingLikes.value, 0);
+          expect(isSongAlreadyLiked('abcdefghijk'), isTrue);
+          expect(isSongAlreadyLiked('zyxwvutsrqp'), isFalse);
           expect(
             mutations,
             containsAll(['like:12345678901', 'removelike:zyxwvutsrqp']),
@@ -192,6 +196,31 @@ void main() {
       expect(store.pending['abcdefghijk']!['liked'], isFalse);
       await store.confirmSnapshot([]);
       expect(store.pending, isEmpty);
+    },
+  );
+
+  test(
+    'remote removal updates an already-populated heart lookup cache',
+    () async {
+      userLikedSongsList.value = [
+        {'ytid': 'abcdefghijk', 'title': 'Previously remote'},
+      ];
+      await store.rememberRemote([
+        {'ytid': 'abcdefghijk'},
+      ]);
+      expect(isSongAlreadyLiked('abcdefghijk'), isTrue);
+      await http.runWithClient(
+        () async {
+          expect(await service.fullSync(), isTrue);
+          expect(userLikedSongsList.value, isEmpty);
+          expect(isSongAlreadyLiked('abcdefghijk'), isFalse);
+        },
+        () => MockClient(
+          (request) async => request.method == 'GET'
+              ? bootstrap()
+              : jsonResponse(likedResponse([])),
+        ),
+      );
     },
   );
 

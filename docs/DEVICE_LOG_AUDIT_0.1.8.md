@@ -40,6 +40,12 @@ The full Flutter regression suite passes 200 tests. Static analysis and branding
 
 ## Verified release
 
+### Favorite-heart coherence in 0.1.9
+
+The favorites list and the heart lookup used separate state: the lookup refreshed only when it was empty or a local tap explicitly refreshed it. Once populated, it could miss newly synchronized likes and retain remotely removed likes. Lookup validity now follows the published list snapshot. Regression tests populate the lookup before a sync, then verify both imported favorites and remotely removed favorites. The full local suite passes 201 tests. Version 0.1.9 (10) includes this correction and all changes described above.
+
+### 0.1.8 artifact verification
+
 - [Native build 39380029287](https://github.com/Voryn-Labs/Musyn/actions/runs/39380029287) succeeded from `9819ee616c7370bce526ad8b0daff7c4738d3fe7`, using Xcode 26.0.1 (17A400). Xcode compilation took 161.9 seconds. The complete local Flutter suite passed 200 tests; CI analysis, tests and branding checks also passed.
 - [Regular release v0.1.8](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.1.8) is latest, not prerelease. Downloaded IPA: 12,003,076 bytes, bundle `com.vorynlabs.musyn`, display name Musyn, version 0.1.8 (9), minimum iOS 15.0. ZIP validation, release-feed size and downloaded checksum match. SHA-256: `b5b2638034bc72d83e8f1c9e98c4ff53865169c8e46b58029bc0031904d0e11b`.
 - The packaged native executable contains `MPMediaItemAnimatedArtwork`, both square/portrait artwork keys and the metadata-update hook, confirming the iOS 26 implementation was compiled rather than excluded by its SDK guard.
