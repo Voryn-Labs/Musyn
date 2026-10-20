@@ -231,7 +231,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
       ),
       stream: audioHandler.fullPlayerStateStream.distinct(
         (a, b) =>
-            a.mediaItem == b.mediaItem &&
+            identical(a.mediaItem, b.mediaItem) &&
             a.playbackState.playing == b.playbackState.playing &&
             a.playbackState.processingState ==
                 b.playbackState.processingState &&

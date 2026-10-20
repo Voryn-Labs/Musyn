@@ -15,3 +15,9 @@
 Regression tests exercise configured/unconfigured provider operation, fictional-key decryption, removal, storage failure, prepared-stream gating, diagnostic redaction/upload response validation, user cancellation, legal navigation/back paths and accessible layouts. Headless renders use fictional fixture content. Native crop fixtures exercise production ImageIO code. Release artifact and cleanup verification are recorded below when complete.
 
 This host has no full Xcode or iOS Simulator. Native compilation is performed in CI; physical iPhone glass, lock-screen animation, account sync and frame pacing still require device acceptance. There is no claim of automatic video-artwork discovery, App Store approval or legal certification. Old downloads and third-party copies cannot be recalled.
+
+## 0.3.1 final review
+
+A same-track metadata refresh must redraw the mini player even when the media ID is unchanged. The stream filter now compares object identity because audio_service's MediaItem equality compares only IDs. A widget regression publishes position updates followed by a new artwork URI for the same ID.
+
+Local final checks: 214 deterministic tests passed, Flutter analysis reported no issues, source credential/automatic-upload guard passed, branding checks passed, and production native cover fixtures passed. CI compiles and packages the final iOS artifact separately.

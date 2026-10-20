@@ -47,6 +47,7 @@ import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/audio/playback_controller.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/widgets/mini_player.dart';
+import 'package:musyn/widgets/song_artwork.dart';
 import 'package:musyn/widgets/player_sheet_route.dart';
 import 'playback_install_test.dart' show ControlledPlayer;
 
@@ -112,19 +113,22 @@ class UiPlayback extends PlaybackController {
       const Duration(minutes: 3),
     ),
   );
+  Stream<FullPlayerState>? stateUpdates;
   @override
-  Stream<FullPlayerState> get fullPlayerStateStream => Stream.value(
-    FullPlayerState(
-      mediaItem: mediaItem.value,
-      playbackState: playbackState.value,
-      queue: [],
-      position: PositionData(
-        const Duration(seconds: 42),
-        const Duration(minutes: 2),
-        const Duration(minutes: 3),
-      ),
-    ),
-  );
+  Stream<FullPlayerState> get fullPlayerStateStream =>
+      stateUpdates ??
+      Stream.value(
+        FullPlayerState(
+          mediaItem: mediaItem.value,
+          playbackState: playbackState.value,
+          queue: [],
+          position: PositionData(
+            const Duration(seconds: 42),
+            const Duration(minutes: 2),
+            const Duration(minutes: 3),
+          ),
+        ),
+      );
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -383,6 +387,60 @@ void main() {
     expect(selected, 3);
     await capture(tester, 'navigation-dark');
   });
+
+  testWidgets(
+    'mini-player refreshes same-track artwork after position updates',
+    (tester) async {
+      final updates = StreamController<FullPlayerState>.broadcast();
+      handler.stateUpdates = updates.stream;
+      addTearDown(() async {
+        await updates.close();
+      });
+      void emit(MediaItem item, int seconds) => updates.add(
+        FullPlayerState(
+          mediaItem: item,
+          playbackState: handler.playbackState.value,
+          queue: [],
+          position: PositionData(
+            Duration(seconds: seconds),
+            Duration.zero,
+            item.duration ?? Duration.zero,
+          ),
+        ),
+      );
+      await render(
+        tester,
+        const CupertinoPageScaffold(child: Center(child: MiniPlayer())),
+      );
+      final original = handler.mediaItem.value!;
+      emit(original, 43);
+      await tester.pump();
+      emit(original, 44);
+      await tester.pump();
+      await tester.pump();
+      expect(
+        tester
+            .widget<SongArtworkWidget>(find.byType(SongArtworkWidget))
+            .metadata,
+        same(original),
+      );
+      final refreshed = original.copyWith(
+        artUri: Uri.parse('file:///nonexistent-refreshed-artwork.jpg'),
+      );
+      expect(refreshed, original); // audio_service equality compares only IDs.
+      emit(refreshed, 45);
+      await tester.pump();
+      await tester.pump();
+      expect(
+        tester
+            .widget<SongArtworkWidget>(find.byType(SongArtworkWidget))
+            .metadata,
+        same(refreshed),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('mini-player skip and root expansion respond to gestures', (
     tester,

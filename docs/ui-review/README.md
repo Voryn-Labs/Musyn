@@ -57,3 +57,8 @@ action inventory in `../../UI-FLOW-MAP.md`.
 - Settings now has individual Playback, Downloads, Appearance, YouTube Music and Storage/diagnostics destinations; `settings-*-detail.png` and `settings-*-large-text.png` exercise their real navigation.
 - [Splash](splash-dark.png) and [slow-start status](splash-slow-dark.png) retain stationary branding.
 - [Device-log findings and verification limits](../DEVICE_LOG_AUDIT_0.1.8.md).
+
+## 0.3 public release
+
+- New provider setup, Support, Privacy and Terms renders accompany the updated Settings, download and walkthrough screens. These are headless Flutter renders using fictional content.
+- Optional iOS 26 glass and local video artwork use native platform views. They require physical-device acceptance; these still renders do not establish motion quality or lock-screen behavior. Clips are imported by the user; still covers remain the fallback.
