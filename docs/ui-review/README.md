@@ -62,3 +62,7 @@ action inventory in `../../UI-FLOW-MAP.md`.
 
 - New provider setup, Support, Privacy and Terms renders accompany the updated Settings, download and walkthrough screens. These are headless Flutter renders using fictional content.
 - Optional iOS 26 glass and local video artwork use native platform views. They require physical-device acceptance; these still renders do not establish motion quality or lock-screen behavior. Clips are imported by the user; still covers remain the fallback.
+
+## 0.3.2 glass correction
+
+`iphone-*-glass-dark.png` exercise compact native-view bounds using a mocked platform surface; the real material requires a device check. `glass-selection-mid-transition.png` and `playback-pause-mid-transition.png` capture actual intermediate Flutter animation frames. The player renders now show transport controls directly over the background. [Scope and verification limits](../GLASS_FIXES_0.3.2.md).

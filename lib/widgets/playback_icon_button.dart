@@ -31,6 +31,7 @@ Widget buildPlaybackIconButton(
   }
 
   return StreamBuilder<PlaybackState>(
+    initialData: audioHandler.playbackState.value,
     stream: audioHandler.playbackState.distinct((previous, current) {
       // Only rebuild if relevant state changes
       return previous.playing == current.playing &&
@@ -101,7 +102,32 @@ Widget buildPlaybackIconButton(
         padding: padding ?? EdgeInsets.all(iconSize * 0.35),
         minimumSize: const Size(40, 40),
         borderRadius: BorderRadius.circular(100),
-        child: Semantics(label: semanticLabel, button: true, child: iconWidget),
+        child: Semantics(
+          label: semanticLabel,
+          button: true,
+          child: ExcludeSemantics(
+            child: SizedBox(
+              width: iconSize,
+              height: iconSize,
+              child: AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 140),
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: .9, end: 1).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: KeyedSubtree(
+                  key: ValueKey(semanticLabel),
+                  child: iconWidget,
+                ),
+              ),
+            ),
+          ),
+        ),
       );
     },
   );

@@ -211,15 +211,50 @@ private final class MusynGlassFactory: NSObject, FlutterPlatformViewFactory {
     MusynGlassView(frame: frame, radius: (args as? [String: Any])?["radius"] as? CGFloat ?? 18, dark: (args as? [String: Any])?["dark"] as? Bool ?? true)
   }
 }
-private final class MusynGlassView: NSObject, FlutterPlatformView {
-  private let surface: UIVisualEffectView
+// Native glass is decorative here; Flutter owns the accessible controls and
+// their state/gesture transitions. Clear glass needs its own legibility layer.
+private final class MusynGlassSurface: UIView {
+  private let effectView = UIVisualEffectView()
+  private let dark: Bool
+  private var transparencyObserver: NSObjectProtocol?
   init(frame: CGRect, radius: CGFloat, dark: Bool) {
-    if #available(iOS 26.0, *) { surface = UIVisualEffectView(effect: UIGlassEffect(style: .regular)) }
-    else { surface = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial)) }
+    self.dark = dark
+    super.init(frame: frame)
+    overrideUserInterfaceStyle = dark ? .dark : .light
+    layer.cornerRadius = radius
+    layer.cornerCurve = .continuous
+    clipsToBounds = true
+    isUserInteractionEnabled = false
+    effectView.frame = bounds
+    effectView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    addSubview(effectView)
+    updateMaterial()
+    transparencyObserver = NotificationCenter.default.addObserver(
+      forName: UIAccessibility.reduceTransparencyStatusDidChangeNotification,
+      object: nil, queue: .main
+    ) { [weak self] _ in self?.updateMaterial() }
+  }
+  required init?(coder: NSCoder) { nil }
+  private func updateMaterial() {
+    let solid = UIAccessibility.isReduceTransparencyEnabled
+    // Do not allow the regular material's adaptive white fill to wash out
+    // Flutter labels. Keep a bounded, appearance-matched base under clear glass.
+    backgroundColor = dark
+      ? UIColor(white: 0.07, alpha: solid ? 1 : 0.88)
+      : UIColor(white: 1, alpha: solid ? 1 : 0.88)
+    if solid { effectView.effect = nil }
+    else if #available(iOS 26.0, *) { effectView.effect = UIGlassEffect(style: .clear) }
+    else { effectView.effect = UIBlurEffect(style: dark ? .systemUltraThinMaterialDark : .systemUltraThinMaterialLight) }
+  }
+  deinit {
+    if let transparencyObserver { NotificationCenter.default.removeObserver(transparencyObserver) }
+  }
+}
+private final class MusynGlassView: NSObject, FlutterPlatformView {
+  private let surface: MusynGlassSurface
+  init(frame: CGRect, radius: CGFloat, dark: Bool) {
+    surface = MusynGlassSurface(frame: frame, radius: radius, dark: dark)
     super.init()
-    surface.overrideUserInterfaceStyle = dark ? .dark : .light
-    surface.frame = frame; surface.layer.cornerRadius = radius; surface.clipsToBounds = true
-    surface.isUserInteractionEnabled = false
   }
   func view() -> UIView { surface }
 }

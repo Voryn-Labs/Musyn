@@ -1,3 +1,5 @@
+import 'package:musyn/services/motion_artwork.dart';
+import 'package:musyn/widgets/ios26_surface.dart';
 import 'package:musyn/screens/legal_page.dart';
 import 'package:musyn/screens/logs_page.dart';
 import 'package:musyn/screens/provider_access_page.dart';
@@ -191,6 +193,14 @@ void main() {
   late UiPlayback handler;
   setUp(() async {
     await configureFixtureProvider();
+    ios26Design.value = false;
+    motionArtworkEnabled.value = false;
+    MotionArtwork.instance.supported = false;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          SystemChannels.platform_views,
+          (_) async => null,
+        );
     offlineMode.value = false;
     userRecentlyPlayed.value = [];
     trendingSongs.value = [];
@@ -336,26 +346,46 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    for (final path in ['/', '/explore', '/library', '/search']) {
-      router.go(path);
-      await tester.pumpAndSettle();
-      final viewport = find.descendant(
-        of: find.byType(BottomNavigationPage),
-        matching: find.byType(StatefulNavigationShell),
-      );
-      expect(
-        tester.getBottomRight(viewport).dy,
-        lessThanOrEqualTo(tester.getTopLeft(find.byType(MiniPlayer)).dy),
-      );
-      expect(
-        tester.getBottomRight(find.byType(BitChordTabBar)).dy,
-        lessThanOrEqualTo(840),
-      );
-      expect(tester.takeException(), isNull);
-      await capture(
-        tester,
-        'iphone-${path == '/' ? 'home' : path.substring(1)}-dark',
-      );
+    for (final glass in [false, true]) {
+      MotionArtwork.instance.supported = glass;
+      ios26Design.value = glass;
+      await tester.pump();
+      for (final path in ['/', '/explore', '/library', '/search']) {
+        router.go(path);
+        await tester.pumpAndSettle();
+        final viewport = find.descendant(
+          of: find.byType(BottomNavigationPage),
+          matching: find.byType(StatefulNavigationShell),
+        );
+        expect(
+          tester.getBottomRight(viewport).dy,
+          lessThanOrEqualTo(tester.getTopLeft(find.byType(MiniPlayer)).dy),
+        );
+        expect(
+          tester.getBottomRight(find.byType(BitChordTabBar)).dy,
+          lessThanOrEqualTo(840),
+        );
+        expect(tester.takeException(), isNull);
+        await capture(
+          tester,
+          'iphone-${path == '/' ? 'home' : path.substring(1)}-${glass ? 'glass' : 'standard'}-dark',
+        );
+        if (glass) {
+          final surface = find.byType(Ios26Surface);
+          expect(tester.getSize(surface).height, 54);
+          expect(
+            tester.getTopLeft(surface).dy,
+            greaterThanOrEqualTo(
+              tester.getBottomRight(find.byType(MiniPlayer)).dy,
+            ),
+          );
+          expect(tester.getBottomRight(surface).dy, lessThanOrEqualTo(836));
+          expect(
+            find.descendant(of: surface, matching: find.byType(MiniPlayer)),
+            findsNothing,
+          );
+        }
+      }
     }
     await tester.pumpWidget(const SizedBox());
     router.dispose();
@@ -441,6 +471,181 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  testWidgets('native glass recreates its material when appearance changes', (
+    tester,
+  ) async {
+    MotionArtwork.instance.supported = true;
+    ios26Design.value = true;
+    final creations = <Map<dynamic, dynamic>>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform_views, (call) async {
+          if (call.method == 'create')
+            creations.add(Map.of(call.arguments as Map));
+          return null;
+        });
+    for (final appearance in [Brightness.dark, Brightness.light]) {
+      await render(
+        tester,
+        const CupertinoPageScaffold(
+          child: Center(
+            child: Ios26Surface(
+              radius: 28,
+              child: SizedBox(width: 300, height: 54),
+            ),
+          ),
+        ),
+        brightness: appearance,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.widget<UiKitView>(find.byType(UiKitView)).creationParams
+            as Map)['dark'],
+        appearance == Brightness.dark,
+      );
+    }
+    expect(creations, hasLength(2));
+    expect(creations[0]['id'], isNot(creations[1]['id']));
+    final first =
+        const StandardMessageCodec().decodeMessage(
+              ByteData.sublistView(creations[0]['params'] as Uint8List),
+            )
+            as Map;
+    final last =
+        const StandardMessageCodec().decodeMessage(
+              ByteData.sublistView(creations[1]['params'] as Uint8List),
+            )
+            as Map;
+    expect(first['dark'], true);
+    expect(last['dark'], false);
+  });
+
+  testWidgets('glass tab selection animates from its current position', (
+    tester,
+  ) async {
+    MotionArtwork.instance.supported = true;
+    ios26Design.value = true;
+    var selected = 0;
+    await render(
+      tester,
+      CupertinoPageScaffold(
+        child: Center(
+          child: StatefulBuilder(
+            builder: (context, update) => BitChordTabBar(
+              selectedIndex: selected,
+              onSelect: (index) => update(() => selected = index),
+            ),
+          ),
+        ),
+      ),
+      reduceMotion: false,
+    );
+    final indicator = find.byKey(const ValueKey('tab-selection-motion'));
+    double x() =>
+        (tester
+                    .widget<Align>(
+                      find
+                          .descendant(
+                            of: indicator,
+                            matching: find.byType(Align),
+                          )
+                          .first,
+                    )
+                    .alignment
+                as Alignment)
+            .x;
+    expect(x(), -1);
+    await tester.tap(find.text('Explore'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(x(), greaterThan(-1));
+    expect(x(), lessThan(-1 / 3));
+    await capture(tester, 'glass-selection-mid-transition');
+    await tester.tap(find.text('Search'));
+    await tester.pumpAndSettle();
+    expect(x(), closeTo(1, .001));
+    expect(selected, 3);
+  });
+
+  testWidgets('player keeps glass off controls and animates playback state', (
+    tester,
+  ) async {
+    MotionArtwork.instance.supported = true;
+    ios26Design.value = true;
+    motionArtworkEnabled.value = true;
+    await render(tester, const NowPlayingPage(), reduceMotion: false);
+    expect(find.byType(Ios26Surface), findsNothing);
+    // Enabling video without attaching a clip must keep a still cover.
+    expect(find.byType(UiKitView), findsNothing);
+    final artwork = find.byKey(const ValueKey('playback-artwork-scale'));
+    double scale() => tester
+        .widget<ScaleTransition>(
+          find
+              .descendant(of: artwork, matching: find.byType(ScaleTransition))
+              .first,
+        )
+        .scale
+        .value;
+    expect(scale(), 1);
+    handler.playbackState.add(
+      PlaybackState(
+        playing: false,
+        processingState: AudioProcessingState.ready,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(scale(), greaterThan(.92));
+    expect(scale(), lessThan(1));
+    await capture(tester, 'playback-pause-mid-transition');
+    await tester.pumpAndSettle();
+    expect(scale(), closeTo(.92, .001));
+    await capture(tester, 'player-glass-enabled-dark');
+    handler.playbackState.add(
+      PlaybackState(playing: true, processingState: AudioProcessingState.ready),
+    );
+    await tester.pumpAndSettle();
+    expect(scale(), 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Reduce Motion settles playback and tab feedback immediately', (
+    tester,
+  ) async {
+    MotionArtwork.instance.supported = true;
+    ios26Design.value = true;
+    await render(tester, const NowPlayingPage());
+    handler.playbackState.add(
+      PlaybackState(
+        playing: false,
+        processingState: AudioProcessingState.ready,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    final scale = tester.widget<AnimatedScale>(
+      find.byKey(const ValueKey('playback-artwork-scale')),
+    );
+    expect(scale.duration, Duration.zero);
+    expect(scale.scale, .92);
+    await render(
+      tester,
+      CupertinoPageScaffold(
+        child: Center(
+          child: BitChordTabBar(selectedIndex: 0, onSelect: (_) {}),
+        ),
+      ),
+    );
+    expect(
+      tester
+          .widget<AnimatedAlign>(
+            find.byKey(const ValueKey('tab-selection-motion')),
+          )
+          .duration,
+      Duration.zero,
+    );
+  });
 
   testWidgets('mini-player skip and root expansion respond to gestures', (
     tester,

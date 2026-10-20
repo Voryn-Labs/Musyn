@@ -8,7 +8,6 @@ import 'package:musyn/models/full_player_state.dart';
 import 'package:musyn/models/position_data.dart';
 import 'package:musyn/screens/now_playing_page.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
-import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/navigation_paths.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
@@ -44,7 +43,6 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    ios26Design.addListener(_refreshDesign);
     _pressController = AnimationController(
       duration: const Duration(milliseconds: 100),
       vsync: this,
@@ -64,16 +62,11 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    ios26Design.removeListener(_refreshDesign);
     _pullPreview?.remove();
     _pullController.dispose();
     _pressController.dispose();
     _swipeController.dispose();
     super.dispose();
-  }
-
-  void _refreshDesign() {
-    if (mounted) setState(() {});
   }
 
   void _openNowPlaying() {
@@ -245,9 +238,7 @@ class _MiniPlayerState extends State<MiniPlayer> with TickerProviderStateMixin {
         }
 
         final isDark = isAppDarkMode(context);
-        final bg = ios26Design.value
-            ? CupertinoColors.transparent
-            : musynCanvas(isDark);
+        final bg = musynCanvas(isDark);
         final titleColor = isDark
             ? CupertinoColors.white
             : CupertinoColors.black;

@@ -12,7 +12,7 @@ Moving a value into a field is not a legal workaround. JioSaavn's [terms](https:
 
 ## iOS 26 options
 
-Settings → Appearance offers **Native glass** and **Animated artwork**, both opt-in and disabled on unsupported systems. Native glass uses `UIGlassEffect` for the dock, player controls and sheets. Earlier systems retain the standard presentation.
+Settings → Appearance offers **Glass navigation** and **Video artwork**, both opt-in and disabled on unsupported systems. Glass navigation uses `UIGlassEffect` only behind the compact tab strip, with an appearance-matched legibility layer. The safe area, mini-player row, transport panel and sheets keep the normal Musyn surfaces. Native material is a decorative backdrop; tab-selection, transport-state and cover-change transitions are implemented separately in Flutter. Reduce Transparency uses a solid native material; Reduce Motion settles the Flutter transitions immediately. Earlier systems retain the standard presentation.
 
 For real motion, open a song's menu → **Add video artwork**. Choose a silent square (1:1) or portrait (3:4) MP4/MOV, 0.5–30 seconds, under 20 MB, that you have permission to use. The app validates playability, duration, shape and absence of an audio track before copying it locally. The player loops the actual clip and iOS 26 Now Playing receives the same local asset and matching first-frame preview. Remove video artwork from that song's menu when no longer wanted.
 

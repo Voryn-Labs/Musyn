@@ -221,7 +221,7 @@ class SettingsPage extends StatelessWidget {
       'iOS 26',
       [
         CupertinoListTile.notched(
-          title: const Text('Native glass'),
+          title: const Text('Glass navigation'),
           trailing: CupertinoSwitch(
             value: ios26Design.value,
             onChanged: !MotionArtwork.instance.supported
@@ -235,7 +235,7 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
         CupertinoListTile.notched(
-          title: const Text('Animated artwork'),
+          title: const Text('Video artwork'),
           trailing: CupertinoSwitch(
             value: motionArtworkEnabled.value,
             onChanged: !MotionArtwork.instance.supported
@@ -250,7 +250,7 @@ class SettingsPage extends StatelessWidget {
         ),
       ],
       footer: MotionArtwork.instance.supported
-          ? 'Native materials and real video artwork are optional. Add a silent square or 3:4 video from a song’s menu. Still covers stay still when no clip exists. iOS controls lock-screen animation.'
+          ? 'Glass applies to the navigation bar. Video artwork loops clips you attach from a song’s menu; it does not find animated covers automatically. Tracks without a clip keep still covers. iOS controls lock-screen presentation.'
           : 'Requires iOS 26 or later. Your standard player remains available on earlier versions.',
     ),
     _section(

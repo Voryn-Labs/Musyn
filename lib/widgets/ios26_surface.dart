@@ -2,7 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/services/motion_artwork.dart';
 
-/// Native UIGlassEffect only on supported, opted-in devices.
+/// A compact native glass surface. Keep safe-area and large content panels out
+/// of this material: the platform effect is a backdrop, not native controls.
 class Ios26Surface extends StatelessWidget {
   const Ios26Surface({super.key, required this.child, this.radius = 18});
   final Widget child;
@@ -20,6 +21,7 @@ class Ios26Surface extends StatelessWidget {
                 Positioned.fill(
                   child: IgnorePointer(
                     child: UiKitView(
+                      key: ValueKey(CupertinoTheme.brightnessOf(context)),
                       viewType: 'com.vorynlabs.musyn/glass',
                       creationParams: {
                         'radius': radius,
@@ -31,7 +33,20 @@ class Ios26Surface extends StatelessWidget {
                     ),
                   ),
                 ),
-                child,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius),
+                    border: Border.all(
+                      color:
+                          CupertinoTheme.brightnessOf(context) ==
+                              Brightness.dark
+                          ? const Color(0x24FFFFFF)
+                          : const Color(0x18000000),
+                      width: .5,
+                    ),
+                  ),
+                  child: child,
+                ),
               ],
             ),
           ),

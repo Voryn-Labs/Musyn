@@ -65,32 +65,28 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
         children: [
           Expanded(child: widget.child),
           if (MediaQuery.viewInsetsOf(context).bottom == 0)
-            Ios26Surface(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: ios26Design.value
-                      ? CupertinoColors.transparent
-                      : musynCanvas(dark),
-                  border: Border(
-                    top: BorderSide(
-                      color: CupertinoColors.separator.resolveFrom(context),
-                      width: .5,
+            SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const MiniPlayer(),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      ios26Design.value ? 12 : 0,
+                      0,
+                      ios26Design.value ? 12 : 0,
+                      4,
                     ),
-                  ),
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const MiniPlayer(),
-                      BitChordTabBar(
+                    child: Ios26Surface(
+                      radius: 28,
+                      child: BitChordTabBar(
                         selectedIndex: widget.child.currentIndex,
                         onSelect: _select,
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
         ],
@@ -144,28 +140,66 @@ class BitChordTabBar extends StatelessWidget {
               .clamp(0, 3);
           if (index != selectedIndex) onSelect(index);
         },
-        child: MediaQuery.removePadding(
-          context: context,
-          removeBottom: true,
-          child: CupertinoTabBar(
-            currentIndex: selectedIndex,
-            onTap: onSelect,
-            height: 54,
-            backgroundColor: ios26Design.value
-                ? CupertinoColors.transparent
-                : musynCanvas(isAppDarkMode(context)),
-            activeColor: CupertinoTheme.of(context).primaryColor,
-            inactiveColor: CupertinoColors.systemGrey,
-            border: null,
-            items: List.generate(
-              4,
-              (index) => BottomNavigationBarItem(
-                icon: Icon(_icons[index], size: 23),
-                activeIcon: Icon(_selectedIcons[index], size: 23),
-                label: _labels[index],
+        child: Stack(
+          children: [
+            if (ios26Design.value && MotionArtwork.instance.supported)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedAlign(
+                    key: const ValueKey('tab-selection-motion'),
+                    alignment: Alignment(
+                      (-1 + selectedIndex * 2 / 3) *
+                          (Directionality.of(context) == TextDirection.rtl
+                              ? -1
+                              : 1),
+                      0,
+                    ),
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    child: FractionallySizedBox(
+                      widthFactor: .25,
+                      heightFactor: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: isAppDarkMode(context)
+                                ? const Color(0x20FFFFFF)
+                                : const Color(0x10000000),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            MediaQuery.removePadding(
+              context: context,
+              removeBottom: true,
+              child: CupertinoTabBar(
+                currentIndex: selectedIndex,
+                onTap: onSelect,
+                height: 54,
+                backgroundColor: ios26Design.value
+                    ? CupertinoColors.transparent
+                    : musynCanvas(isAppDarkMode(context)),
+                activeColor: CupertinoTheme.of(context).primaryColor,
+                inactiveColor: CupertinoColors.systemGrey,
+                border: null,
+                items: List.generate(
+                  4,
+                  (index) => BottomNavigationBarItem(
+                    icon: Icon(_icons[index], size: 23),
+                    activeIcon: Icon(_selectedIcons[index], size: 23),
+                    label: _labels[index],
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

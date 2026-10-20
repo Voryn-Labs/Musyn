@@ -1,9 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
-import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/theme/app_themes.dart';
-import 'package:musyn/widgets/ios26_surface.dart';
 
 /// Shared, scrollable player sheet. Its surface includes the home-indicator inset.
 class PlayerDrawer extends StatefulWidget {
@@ -63,121 +61,115 @@ class _PlayerDrawerState extends State<PlayerDrawer>
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(PlayerDrawer.topRadius),
           ),
-          child: Ios26Surface(
-            radius: PlayerDrawer.topRadius,
-            child: ColoredBox(
-              color: ios26Design.value
-                  ? CupertinoColors.transparent
-                  : musynCanvas(dark),
-              child: SafeArea(
-                top: false,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: DefaultTextStyle(
-                    style: CupertinoTheme.of(context).textTheme.textStyle,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Semantics(
-                          label: 'Close sheet',
-                          button: true,
-                          onTap: () => Navigator.pop(context),
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onVerticalDragStart: (_) => _drag.stop(),
-                            onVerticalDragUpdate: (d) => _drag.value =
-                                (_drag.value + d.delta.dy).clamp(0, 400),
-                            onVerticalDragCancel: _settle,
-                            onVerticalDragEnd: (d) {
-                              final velocity = d.primaryVelocity ?? 0;
-                              if (_drag.value > 90 || velocity > 500) {
-                                HapticFeedback.lightImpact();
-                                Navigator.pop(context);
-                              } else {
-                                _settle(velocity);
-                              }
-                            },
-                            child: SizedBox(
-                              height: 44,
-                              width: double.infinity,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Center(
-                                    child: Container(
-                                      width: 36,
-                                      height: 5,
-                                      decoration: BoxDecoration(
-                                        color: CupertinoColors.systemGrey3
-                                            .resolveFrom(context),
-                                        borderRadius: BorderRadius.circular(3),
-                                      ),
+          child: ColoredBox(
+            color: musynCanvas(dark),
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: DefaultTextStyle(
+                  style: CupertinoTheme.of(context).textTheme.textStyle,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Semantics(
+                        label: 'Close sheet',
+                        button: true,
+                        onTap: () => Navigator.pop(context),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onVerticalDragStart: (_) => _drag.stop(),
+                          onVerticalDragUpdate: (d) => _drag.value =
+                              (_drag.value + d.delta.dy).clamp(0, 400),
+                          onVerticalDragCancel: _settle,
+                          onVerticalDragEnd: (d) {
+                            final velocity = d.primaryVelocity ?? 0;
+                            if (_drag.value > 90 || velocity > 500) {
+                              HapticFeedback.lightImpact();
+                              Navigator.pop(context);
+                            } else {
+                              _settle(velocity);
+                            }
+                          },
+                          child: SizedBox(
+                            height: 44,
+                            width: double.infinity,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Center(
+                                  child: Container(
+                                    width: 36,
+                                    height: 5,
+                                    decoration: BoxDecoration(
+                                      color: CupertinoColors.systemGrey3
+                                          .resolveFrom(context),
+                                      borderRadius: BorderRadius.circular(3),
                                     ),
                                   ),
-                                  Positioned(
-                                    right: 8,
-                                    top: 0,
-                                    bottom: 0,
-                                    child:
-                                        widget.trailingHeader ??
-                                        CupertinoButton(
-                                          padding: const EdgeInsets.all(8),
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Icon(
-                                            CupertinoIcons.xmark_circle_fill,
-                                            color: CupertinoColors.systemGrey,
-                                            size: 24,
-                                            semanticLabel: 'Close sheet',
-                                          ),
+                                ),
+                                Positioned(
+                                  right: 8,
+                                  top: 0,
+                                  bottom: 0,
+                                  child:
+                                      widget.trailingHeader ??
+                                      CupertinoButton(
+                                        padding: const EdgeInsets.all(8),
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Icon(
+                                          CupertinoIcons.xmark_circle_fill,
+                                          color: CupertinoColors.systemGrey,
+                                          size: 24,
+                                          semanticLabel: 'Close sheet',
                                         ),
-                                  ),
-                                ],
-                              ),
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 12, 16),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 12, 16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.title,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (widget.subtitle != null) ...[
+                                    const SizedBox(height: 4),
                                     Text(
-                                      widget.title,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700,
+                                      widget.subtitle!,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: CupertinoColors.secondaryLabel
+                                            .resolveFrom(context),
                                       ),
                                     ),
-                                    if (widget.subtitle != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        widget.subtitle!,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: CupertinoColors.secondaryLabel
-                                              .resolveFrom(context),
-                                        ),
-                                      ),
-                                    ],
                                   ],
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: widget.children,
-                          ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: widget.children,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
