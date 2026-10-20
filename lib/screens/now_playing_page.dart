@@ -407,18 +407,26 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               0,
             ),
             child: _playbackSleeve(
-              item.id,
               reduced,
               Hero(
                 flightShuttleBuilder: SongArtworkWidget.flightShuttle,
                 tag: 'playing-art-${item.id}',
-                child: MotionArtworkView(
-                  item: item,
-                  size: sleeve.toDouble(),
-                  child: SongArtworkWidget(
-                    metadata: item,
+                child: AnimatedSwitcher(
+                  duration: reduced
+                      ? Duration.zero
+                      : const Duration(milliseconds: 160),
+                  switchInCurve: Curves.easeOutCubic,
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: MotionArtworkView(
+                    key: ValueKey(item.id),
+                    item: item,
                     size: sleeve.toDouble(),
-                    errorWidgetIconSize: 64,
+                    child: SongArtworkWidget(
+                      metadata: item,
+                      size: sleeve.toDouble(),
+                      errorWidgetIconSize: 64,
+                    ),
                   ),
                 ),
               ),
@@ -429,7 +437,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     );
   }
 
-  Widget _playbackSleeve(String trackId, bool reduced, Widget child) =>
+  Widget _playbackSleeve(bool reduced, Widget child) =>
       StreamBuilder<PlaybackState>(
         initialData: audioHandler.playbackState.value,
         stream: audioHandler.playbackState.distinct(
@@ -440,15 +448,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
           scale: state.data?.playing == true ? 1 : .92,
           duration: reduced ? Duration.zero : const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          child: AnimatedSwitcher(
-            duration: reduced
-                ? Duration.zero
-                : const Duration(milliseconds: 160),
-            switchInCurve: Curves.easeOutCubic,
-            transitionBuilder: (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
-            child: KeyedSubtree(key: ValueKey(trackId), child: child),
-          ),
+          child: child,
         ),
       );
 

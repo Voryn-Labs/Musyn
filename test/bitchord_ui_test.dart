@@ -647,6 +647,26 @@ void main() {
     );
   });
 
+  testWidgets('rapid return to a track keeps one artwork Hero during fades', (
+    tester,
+  ) async {
+    await render(tester, const NowPlayingPage(), reduceMotion: false);
+    final first = handler.mediaItem.value!;
+    handler.mediaItem.add(first.copyWith(id: 'second', title: 'Second track'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+    handler.mediaItem.add(first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+    expect(find.byType(Hero), findsOneWidget);
+    expect(
+      tester.widget<Hero>(find.byType(Hero)).tag,
+      'playing-art-${first.id}',
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('mini-player skip and root expansion respond to gestures', (
     tester,
   ) async {
