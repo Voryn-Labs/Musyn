@@ -90,9 +90,16 @@ import Security
     registrar.register(MusynClipFactory(messenger: registrar.messenger()), withId: "com.vorynlabs.musyn/clip")
     let motionChannel = FlutterMethodChannel(name: "com.vorynlabs.musyn/motion", binaryMessenger: registrar.messenger())
     self.motionChannel = motionChannel
-    motionChannel.setMethodCallHandler { call, result in
+    motionChannel.setMethodCallHandler { [weak self] call, result in
       if call.method == "supported" {
         if #available(iOS 26.0, *) { result(true) } else { result(false) }
+      } else if call.method == "retainedPaths" {
+        result(self?.motion.retainedPath.map { [$0] } ?? [])
+      } else if call.method == "clear" {
+        self?.motion.clear()
+        result(nil)
+      } else if call.method == "canFetch" {
+        result(!UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled)
       } else if call.method == "validate", let path = call.arguments as? String {
         Task {
           let valid = await MusynClipValidation.valid(URL(fileURLWithPath: path))
@@ -314,6 +321,7 @@ private final class MusynMotionArtwork {
   private var enabled = false
   private var artwork: Any?
   private var portrait = false
+  private(set) var retainedPath: String?
   init() {
     observer = NotificationCenter.default.addObserver(forName: NSNotification.Name("MusynNowPlayingInfoUpdated"), object: nil, queue: .main) { [weak self] note in
       self?.publishedID = note.userInfo?["mediaId"] as? String
@@ -354,13 +362,25 @@ private final class MusynMotionArtwork {
       apply()
     }
   }
+  func clear() {
+    enabled = false; path = nil; artwork = nil
+    if #available(iOS 26.0, *), var info = MPNowPlayingInfoCenter.default().nowPlayingInfo {
+      info.removeValue(forKey: MPNowPlayingInfoProperty1x1AnimatedArtwork)
+      info.removeValue(forKey: MPNowPlayingInfoProperty3x4AnimatedArtwork)
+      MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+    retainedPath = nil
+  }
   private func apply() {
     if #available(iOS 26.0, *) {
       guard let mediaID = mediaID, mediaID == publishedID, var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
       info.removeValue(forKey: MPNowPlayingInfoProperty1x1AnimatedArtwork)
       info.removeValue(forKey: MPNowPlayingInfoProperty3x4AnimatedArtwork)
       let key = portrait ? MPNowPlayingInfoProperty3x4AnimatedArtwork : MPNowPlayingInfoProperty1x1AnimatedArtwork
-      if enabled, let artwork = artwork, MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(key) { info[key] = artwork }
+      retainedPath = nil
+      if enabled, let artwork = artwork, MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(key) {
+        info[key] = artwork; retainedPath = path
+      }
       MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
   }

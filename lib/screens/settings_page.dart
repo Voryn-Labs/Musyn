@@ -235,7 +235,7 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
         CupertinoListTile.notched(
-          title: const Text('Video artwork'),
+          title: const Text('Automatic artwork'),
           trailing: CupertinoSwitch(
             value: motionArtworkEnabled.value,
             onChanged: !MotionArtwork.instance.supported
@@ -250,7 +250,7 @@ class SettingsPage extends StatelessWidget {
         ),
       ],
       footer: MotionArtwork.instance.supported
-          ? 'Glass applies to the navigation bar. Video artwork loops clips you attach from a song’s menu; it does not find animated covers automatically. Tracks without a clip keep still covers. iOS controls lock-screen presentation.'
+          ? 'Glass applies to navigation. Automatic artwork matches the track to Apple’s public album pages and caches an available animated cover. No import or account is needed. Tracks without a confident match keep still covers. Network, power, accessibility and iOS lock-screen limits apply.'
           : 'Requires iOS 26 or later. Your standard player remains available on earlier versions.',
     ),
     _section(
@@ -484,6 +484,22 @@ class SettingsPage extends StatelessWidget {
                   ? 'Audio cache cleared'
                   : 'Cache could not be cleared. Try again.',
             );
+        },
+      ),
+      _row(
+        context,
+        'Clear Artwork Cache',
+        onTap: () async {
+          try {
+            await MotionArtwork.instance.clearCache();
+            if (context.mounted) showToast(context, 'Artwork cache cleared');
+          } catch (_) {
+            if (context.mounted)
+              showToast(
+                context,
+                'Artwork cache could not be cleared. Try again.',
+              );
+          }
         },
       ),
       _row(

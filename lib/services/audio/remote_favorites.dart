@@ -35,6 +35,7 @@ class RemoteFavorites {
       item == null ? null : item.extras?['ytid']?.toString() ?? item.id;
 
   void _sync() {
+    MotionArtwork.instance.select(_handler?.mediaItem.valueOrNull);
     final id = _id(_handler?.mediaItem.valueOrNull);
     unawaited(
       channel

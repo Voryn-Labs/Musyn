@@ -130,6 +130,7 @@ class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
+    MotionArtwork.instance.refreshSelection();
     if (!isAudioHandlerInitialized) return;
     unawaited(audioHandler.resyncAfterForeground());
   }

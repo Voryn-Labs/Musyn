@@ -137,6 +137,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   children: [
                     const SizedBox(height: 24),
                     _hint(
+                      CupertinoIcons.film,
+                      'Artwork that moves',
+                      'On iOS 26, Musyn finds matching animated album covers through Apple’s public pages. Manage this in Appearance.',
+                    ),
+                    _hint(
                       CupertinoIcons.arrow_down_circle,
                       'One-tap downloads',
                       'Musyn tries another enabled source when your first choice is unavailable.',

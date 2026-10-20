@@ -29,7 +29,7 @@ These are automated Flutter renders with fictional sample tracks and placeholder
 
 ## Install Musyn
 
-Musyn combines YouTube Music integration, offline downloads, synced lyrics and a queue you control. More providers can be introduced as the project grows. Real video artwork and native glass are opt-in on iOS 26; tracks without a clip keep still covers.
+Musyn combines YouTube Music integration, offline downloads, synced lyrics and a queue you control. More providers can be introduced as the project grows. On iOS 26, animated album covers are found and cached automatically from Apple’s public pages, with no upload or extra account. Tracks without a confident match keep still covers. Glass navigation is optional.
 
 **JioSaavn is optional.** Musyn supplies no media URL key. Add your own in Settings → JioSaavn; it stays in iOS Keychain. YouTube works without it. [Source and artwork setup](docs/SOURCES_AND_ARTWORK.md).
 
@@ -49,7 +49,7 @@ python3 scripts/verify_branding.py
 flutter build ios --release --no-codesign
 ```
 
-Pinned CI toolchain: Flutter 3.47.7 / Dart 3.13.5. iOS builds require full Xcode. CI selects Xcode 26.0.1. Optional iOS 26 native glass and local video artwork use public Apple APIs; earlier versions keep the standard UI. Native dependencies use Swift Package Manager. GitHub Actions builds and verifies the IPA, generates its source feed from the actual binary, and publishes a regular release only when requested. Existing releases are never silently replaced. See [build/release notes](docs/BUILD.md), [flow map](UI-FLOW-MAP.md) and [verification](VERIFICATION.md).
+Pinned CI toolchain: Flutter 3.47.7 / Dart 3.13.5. iOS builds require full Xcode. CI selects Xcode 26.0.1. Optional iOS 26 glass and automatic animated artwork use public Apple metadata and native APIs; earlier versions keep the standard UI. Native dependencies use Swift Package Manager. GitHub Actions builds and verifies the IPA, generates its source feed from the actual binary, and publishes a regular release only when requested. Existing releases are never silently replaced. See [build/release notes](docs/BUILD.md), [flow map](UI-FLOW-MAP.md) and [verification](VERIFICATION.md).
 
 Automated tests cover playback coordination and UI flows. Physical iPhone lock-screen playback, interruptions, real provider availability and installer behavior still require acceptance; no universal reliability claim is made.
 

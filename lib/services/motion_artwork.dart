@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
+import 'package:musyn/services/automatic_artwork_resolver.dart';
+import 'package:musyn/services/automatic_artwork_store.dart';
 import 'package:musyn/services/io_service.dart';
-import 'package:musyn/utilities/app_utils.dart';
+import 'package:musyn/services/settings_manager.dart';
+import 'package:path_provider/path_provider.dart';
 
 final ios26Design = ValueNotifier<bool>(false);
 final motionArtworkEnabled = ValueNotifier<bool>(false);
@@ -14,6 +16,10 @@ class MotionArtwork extends ChangeNotifier {
   static final instance = MotionArtwork();
   static const channel = MethodChannel('com.vorynlabs.musyn/motion');
   bool supported = false;
+  AutomaticArtworkStore? _automatic;
+  MediaItem? _selection;
+  bool _listening = false;
+
   Future<void> initialize() async {
     try {
       supported = await channel.invokeMethod<bool>('supported') ?? false;
@@ -25,54 +31,70 @@ class MotionArtwork extends ChangeNotifier {
     ios26Design.value =
         supported &&
         Hive.box('settings').get('ios26Design', defaultValue: false);
+    // Existing explicit opt-outs survive. No setting means automatic on iOS 26.
     motionArtworkEnabled.value =
         supported &&
-        Hive.box('settings').get('motionArtwork', defaultValue: false);
+        Hive.box('settings').get('motionArtwork', defaultValue: true);
+    if (supported) {
+      try {
+        final root = await getApplicationCacheDirectory();
+        _automatic?.removeListener(notifyListeners);
+        _automatic?.dispose();
+        _automatic = AutomaticArtworkStore(
+          directory: Directory('${root.path}/musyn-motion'),
+          cache: Hive.box('cache'),
+          resolverFactory: () => AutomaticArtworkResolver(
+            country:
+                PlatformDispatcher.instance.locale.countryCode?.toLowerCase() ??
+                'us',
+          ),
+          validate: (path) async =>
+              await channel.invokeMethod<bool>('validate', path) ?? false,
+          retainedPaths: () async =>
+              (await channel.invokeListMethod<String>('retainedPaths') ??
+                      <String>[])
+                  .toSet(),
+          canFetch: () async =>
+              await channel.invokeMethod<bool>('canFetch') ?? false,
+        )..addListener(notifyListeners);
+      } catch (_) {
+        // Artwork is optional: cache/path-provider failures cannot block startup.
+      }
+    }
+    if (!_listening) {
+      motionArtworkEnabled.addListener(refreshSelection);
+      offlineMode.addListener(refreshSelection);
+      _listening = true;
+    }
     notifyListeners();
+  }
+
+  void select(MediaItem? item) {
+    _selection = item;
+    _automatic?.select(
+      item,
+      enabled: supported && motionArtworkEnabled.value && !offlineMode.value,
+    );
+  }
+
+  void refreshSelection() {
+    _automatic?.select(null, enabled: false);
+    select(_selection);
   }
 
   String? fileFor(String id) {
-    if (!Hive.isBoxOpen('userNoBackup')) return null;
-    final file = Hive.box('userNoBackup').get('motion:$id');
-    if (file is! String) return null;
-    final path = '$applicationDirPath/motion/$file';
-    return File(path).existsSync() ? path : null;
-  }
-
-  Future<void> importFor(MediaItem item) async {
-    if (!supported) throw StateError('Video artwork requires iOS 26 or later.');
-    final picked = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: ['mp4', 'mov'],
-    );
-    if (picked == null || picked.path == null) return;
-    final file = File(picked.path!);
-    if (await file.length() > 20 * 1024 * 1024)
-      throw StateError('Choose a clip smaller than 20 MB.');
-    final valid = await channel.invokeMethod<bool>('validate', file.path);
-    if (valid != true)
-      throw StateError(
-        'Use a silent square or 3:4 portrait video, 0.5–30 seconds long.',
-      );
-    final id = item.extras?['ytid']?.toString() ?? item.id;
-    final directory = Directory('$applicationDirPath/motion');
-    await directory.create(recursive: true);
-    final name =
-        '${sanitizeStorageSongId(id)}-${DateTime.now().microsecondsSinceEpoch}.mp4';
-    await file.copy('${directory.path}/$name');
-    await Hive.box('userNoBackup').put('motion:$id', name);
-    motionArtworkEnabled.value = true;
-    await Hive.box('settings').put('motionArtwork', true);
-    notifyListeners();
-  }
-
-  Future<void> removeFor(String id) async {
-    final path = fileFor(id);
-    await Hive.box('userNoBackup').delete('motion:$id');
-    notifyListeners();
-    if (path != null) {
-      final file = File(path);
-      if (await file.exists()) await file.delete();
+    // Keep existing user overrides, but no manual import is required or prompted.
+    if (Hive.isBoxOpen('userNoBackup')) {
+      final file = Hive.box('userNoBackup').get('motion:$id');
+      if (file is String && !file.contains('/') && !file.contains('..')) {
+        final path = '$applicationDirPath/motion/$file';
+        if (File(path).existsSync()) return path;
+      }
     }
+    return _automatic?.fileFor(id);
   }
+
+  Future<void> clearCache() async => _automatic?.clear(
+    beforeDelete: () => channel.invokeMethod<void>('clear'),
+  );
 }

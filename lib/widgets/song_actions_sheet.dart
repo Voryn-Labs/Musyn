@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/common_services.dart';
-import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/mediaitem.dart';
@@ -99,24 +98,6 @@ void showSongActionsSheet(
               CupertinoIcons.plus_circle,
               'Add to Playlist',
               () => showAddToPlaylistDialog(context, song: song),
-            ),
-          if (MotionArtwork.instance.supported)
-            action(CupertinoIcons.film, 'Add video artwork', () async {
-              try {
-                await MotionArtwork.instance.importFor(metadata);
-              } catch (e) {
-                if (context.mounted)
-                  showToast(
-                    context,
-                    e.toString().replaceFirst('Bad state: ', ''),
-                  );
-              }
-            }),
-          if (MotionArtwork.instance.fileFor(id) != null)
-            action(
-              CupertinoIcons.minus_circle,
-              'Remove video artwork',
-              () => unawaited(MotionArtwork.instance.removeFor(id)),
             ),
           if (current)
             action(
