@@ -19,3 +19,13 @@ This finds Apple animated album covers, not Spotify Canvas. Albums with no suita
 Deterministic tests cover matching and Unicode names, album identity, safe HLS parsing, redirects, byte limits, cancellation, opt-out, caching, cache bounds and stale same-ID metadata. A separately enabled real-network test resolved Taylor Swift’s Anti-Hero to a public album cover and downloaded its actual video with no account/token. Production AVFoundation validation is exercised separately against that file. No media was added to the repository. Local validation: 241 deterministic tests passed; Flutter analysis, branding checks, the public-source credential guard and Swift syntax parsing passed. The real public lookup downloaded a roughly 4.5 MB clip; the production AVFoundation validator accepted it as a silent 22.67-second video. The UI render suite passed 80 tests. Cache tests also verify that native Now Playing references are released before deletion and that pruning retains any older clip still published by iOS.
 
 Native iOS compilation is performed in CI; lock-screen presentation/frame pacing still require a physical device.
+
+
+## Published artifact
+
+- Native release workflow [39466771515](https://github.com/Voryn-Labs/Musyn/actions/runs/39466771515) passed analysis/tests, native crop fixtures, Xcode compilation, IPA packaging and the packaged-credential guard for source commit `7a7ea343404716aec683ab650bc8d0e89ed5c91a`.
+- Regular latest release: [v0.3.3](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.3), build **15**, `com.vorynlabs.musyn`, minimum iOS 15.0. Automatic artwork requires iOS 26.
+- Downloaded IPA: **12,284,131 bytes**; SHA-256 `3f35f3068e9577852837c041cbd183d3a841e41ff01aecf317c59bf55069b1f1`. The downloaded checksum file, GitHub asset digest, Info.plist and installer metadata agree. The downloaded archive also passed the provider-material guard.
+- Manual shared-source workflow [39467800171](https://github.com/Voryn-Labs/Voryn-Labs.github.io/actions/runs/39467800171) passed and updated Musyn to 0.3.3 (15). The complete Cloudified entry remains unchanged. No schedule was added.
+
+Physical-device playback, lock-screen animation and frame pacing remain to be checked by an iOS 26 user; compilation and file validation do not prove system presentation.

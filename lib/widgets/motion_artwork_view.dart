@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/motion_artwork.dart';
 
-/// Real, user-provided video artwork. No video exists: keep the original cover.
+/// Real, automatically matched artwork; keep the still cover when unavailable.
 class MotionArtworkView extends StatelessWidget {
   const MotionArtworkView({
     super.key,
