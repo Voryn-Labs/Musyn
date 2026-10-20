@@ -10,6 +10,7 @@ import 'package:musyn/services/library_state.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_favorites_store.dart';
 import 'package:musyn/services/youtube_public_context.dart';
 import 'package:musyn/utilities/youtube_playlist_parser.dart';
 
@@ -36,6 +37,12 @@ class YouTubeMusicSyncService {
       ValueNotifier([]);
   final ValueNotifier<DateTime?> lastSyncTime = ValueNotifier(null);
   final ValueNotifier<bool> isSyncing = ValueNotifier(false);
+  final syncError = ValueNotifier<String?>(null);
+  final pendingLikes = ValueNotifier<int>(0);
+  final _favorites = YouTubeFavoritesStore();
+  Future<bool>? _syncRequest;
+  Future<void>? _likeFlush;
+  bool _fetchingLikes = false;
 
   Future<void> initialize() async {
     try {
@@ -47,6 +54,8 @@ class YouTubeMusicSyncService {
         }
       }
       await _hydratePlaylistsFromCache();
+      if (Hive.isBoxOpen('user')) pendingLikes.value = _favorites.unsentCount;
+      if (YouTubeAuthService().isSignedIn.value) unawaited(fullSync());
     } catch (e) {
       logger.log('Error initializing YouTubeMusicSyncService: $e');
     }
@@ -92,7 +101,24 @@ class YouTubeMusicSyncService {
     if (headers.isEmpty) {
       throw Exception('Not authenticated');
     }
-    return _post(endpoint, body, headers);
+    final version = await _publicContext.version();
+    return _post(
+      endpoint,
+      {
+        ...body,
+        'context': {
+          'client': {..._remixContext['client']!, 'clientVersion': version},
+        },
+      },
+      {
+        ...headers,
+        'User-Agent': YouTubePublicContext.userAgent,
+        'Referer': 'https://music.youtube.com/',
+        'X-Youtube-Client-Name': '67',
+        'X-Youtube-Client-Version': version,
+        'X-Origin': 'https://music.youtube.com',
+      },
+    );
   }
 
   /// Charts / explore work without a signed-in session.
@@ -145,7 +171,9 @@ class YouTubeMusicSyncService {
       throw Exception('YouTube API error: ${response.statusCode}');
     }
 
-    final data = jsonDecode(response.body);
+    final data = jsonDecode(utf8.decode(response.bodyBytes));
+    if (data is Map && data['error'] != null)
+      throw StateError('YouTube rejected the request');
     if (data is Map<String, dynamic>) {
       return data;
     }
@@ -407,12 +435,9 @@ class YouTubeMusicSyncService {
   }
 
   Future<List<Map<String, dynamic>>> fetchLikedSongs() async {
-    try {
-      return await _browseAllTracks('FEmusic_liked_videos');
-    } catch (e) {
-      logger.log('Error fetching liked songs: $e');
-      return [];
-    }
+    // FEmusic_liked_videos is the library-songs feed, not Liked Music.
+    // Personal collections must never fall back to anonymous browse requests.
+    return _browseAllTracks('VLLM', authenticatedOnly: true);
   }
 
   Future<List<Map<String, dynamic>>> fetchUserPlaylists() async {
@@ -459,7 +484,7 @@ class YouTubeMusicSyncService {
       return playlists;
     } catch (e) {
       logger.log('Error fetching user playlists: $e');
-      return [];
+      rethrow;
     }
   }
 
@@ -505,14 +530,27 @@ class YouTubeMusicSyncService {
   Future<List<Map<String, dynamic>>> _browseAllTracks(
     String browseId, {
     bool publicOnly = false,
+    bool authenticatedOnly = false,
     int? limit,
   }) async {
     final tracks = <Map<String, dynamic>>[];
     final seen = <String>{};
 
     Future<Map<String, dynamic>> browse(Map<String, dynamic> body) =>
-        publicOnly ? _publicPost('/browse', body) : _browsePost(body);
+        authenticatedOnly
+        ? _authenticatedPost('/browse', body)
+        : publicOnly
+        ? _publicPost('/browse', body)
+        : _browsePost(body);
     var response = await browse({'browseId': browseId});
+    if (authenticatedOnly &&
+        (YouTubePlaylistParser.playlistScope(response)['playlistSections']
+                as List)
+            .isEmpty) {
+      throw StateError(
+        'YouTube did not return the signed-in Liked Music collection',
+      );
+    }
     _appendUniqueTracks(
       tracks,
       seen,
@@ -870,47 +908,115 @@ class YouTubeMusicSyncService {
     }
   }
 
-  Future<void> syncLikedSongs() async {
-    if (!ytAutoSyncLikes.value) return;
-    try {
-      final ytLikes = await fetchLikedSongs();
-
-      userLikedSongsList.value = ytLikes;
-      unawaited(addOrUpdateData<List>('user', 'likedSongs', ytLikes));
-      _patchLikedMusicPlaylistCount(ytLikes.length);
-
-      _updateSyncTime();
-    } catch (e) {
-      logger.log('Error syncing liked songs: $e');
+  Future<void> recordFavorite(String id, bool liked, Map? song) async {
+    if (!Hive.isBoxOpen('user') || !YouTubeFavoritesStore.validId(id)) return;
+    await _favorites.record(id, liked, song);
+    pendingLikes.value = _favorites.unsentCount;
+    if (!_fetchingLikes &&
+        YouTubeAuthService().isSignedIn.value &&
+        ytAutoSyncLikes.value) {
+      unawaited(flushPendingLikes());
     }
   }
 
-  Future<void> syncPlaylists() async {
-    if (!ytAutoSyncPlaylists.value) return;
+  Future<void> flushPendingLikes() {
+    if (_likeFlush != null) return _likeFlush!;
+    return _likeFlush = _flushPendingLikes().whenComplete(() {
+      _likeFlush = null;
+    });
+  }
+
+  Future<void> _flushPendingLikes() async {
+    if (!Hive.isBoxOpen('user') ||
+        !YouTubeAuthService().isSignedIn.value ||
+        !ytAutoSyncLikes.value)
+      return;
+    // Serialize mutations so rapid like/unlike taps cannot reach YouTube backwards.
+    final attempted = <String>{};
+    while (YouTubeAuthService().isSignedIn.value && ytAutoSyncLikes.value) {
+      final edits = _favorites.pending;
+      final remaining = edits.entries.where(
+        (e) =>
+            e.value['sent'] != true &&
+            !attempted.contains('${e.key}:${e.value['revision']}'),
+      );
+      if (remaining.isEmpty) break;
+      final edit = remaining.first;
+      attempted.add('${edit.key}:${edit.value['revision']}');
+      final ok = edit.value['liked'] == true
+          ? await likeSong(edit.key)
+          : await unlikeSong(edit.key);
+      if (!ok) {
+        syncError.value =
+            'Some favorites are saved on this iPhone and waiting to sync. Retry when connected.';
+        break;
+      }
+      await _favorites.acknowledge(edit.key, edit.value['revision']);
+    }
+    pendingLikes.value = _favorites.unsentCount;
+  }
+
+  Future<bool> syncLikedSongs() async {
+    if (!ytAutoSyncLikes.value) return true;
+    _fetchingLikes = true;
+    try {
+      await _favorites.seedLocalLikes(userLikedSongsList.value);
+      final ytLikes = await fetchLikedSongs();
+      await _favorites.confirmSnapshot(ytLikes);
+      final merged = _favorites.merge(ytLikes, userLikedSongsList.value);
+      userLikedSongsList.value = merged;
+      await addOrUpdateData<List>('user', 'likedSongs', merged);
+      await _favorites.rememberRemote(ytLikes);
+      _patchLikedMusicPlaylistCount(ytLikes.length);
+      await flushPendingLikes();
+      return _favorites.unsentCount == 0;
+    } catch (e) {
+      // Preserve the last library and every pending local edit on any failure.
+      logger.log('Error syncing liked songs: $e');
+      syncError.value =
+          'YouTube favorites could not sync. Your saved favorites are safe on this iPhone.';
+      return false;
+    } finally {
+      _fetchingLikes = false;
+      if (Hive.isBoxOpen('user')) pendingLikes.value = _favorites.unsentCount;
+    }
+  }
+
+  Future<bool> syncPlaylists() async {
+    if (!ytAutoSyncPlaylists.value) return true;
     try {
       final playlists = await fetchUserPlaylists();
       ytMusicPlaylists.value = playlists;
-      unawaited(_persistPlaylists(playlists));
-      _updateSyncTime();
+      await _persistPlaylists(playlists);
+      return true;
     } catch (e) {
       logger.log('Error syncing playlists: $e');
+      syncError.value =
+          'YouTube playlists could not sync. Try reconnecting your account.';
+      return false;
     }
   }
 
-  Future<void> fullSync() async {
-    if (isSyncing.value) return;
+  Future<bool> fullSync() {
+    if (_syncRequest != null) return _syncRequest!;
+    return _syncRequest = _fullSync().whenComplete(() {
+      _syncRequest = null;
+    });
+  }
 
+  Future<bool> _fullSync() async {
+    if (!YouTubeAuthService().isSignedIn.value) return false;
     isSyncing.value = true;
+    syncError.value = null;
     try {
-      final authService = YouTubeAuthService();
-      if (!authService.isSignedIn.value) {
-        isSyncing.value = false;
-        return;
-      }
-
-      await Future.wait([syncLikedSongs(), syncPlaylists()]);
+      final results = await Future.wait([syncLikedSongs(), syncPlaylists()]);
+      final ok = results.every((result) => result);
+      if (ok) _updateSyncTime();
+      return ok;
     } catch (e) {
       logger.log('Error during full sync: $e');
+      syncError.value = 'YouTube library could not sync. Please retry.';
+      return false;
     } finally {
       isSyncing.value = false;
     }
@@ -941,7 +1047,6 @@ class YouTubeMusicSyncService {
   }
 
   void _patchLikedMusicPlaylistCount(int count) {
-    if (count <= 0) return;
     final playlists = [
       for (final playlist in ytMusicPlaylists.value)
         Map<String, dynamic>.from(playlist),

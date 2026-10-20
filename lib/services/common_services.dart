@@ -434,16 +434,12 @@ Future<void> updateSongLikeStatus(
 
     userLikedSongsList.value = updatedLikedSongs;
     _syncLikedSongIdsSet();
-    // Sync like/unlike to YouTube Music if authenticated
-    if (YouTubeAuthService().isSignedIn.value && ytAutoSyncLikes.value) {
-      unawaited(
-        add
-            ? YouTubeMusicSyncService().likeSong(normalizedSongId)
-            : YouTubeMusicSyncService().unlikeSong(normalizedSongId),
-      );
-    }
-    unawaited(
-      addOrUpdateData<List>('user', 'likedSongs', userLikedSongsList.value),
+    await addOrUpdateData<List>('user', 'likedSongs', userLikedSongsList.value);
+    // Journal intent even offline/signed out, before attempting remote writes.
+    await YouTubeMusicSyncService().recordFavorite(
+      normalizedSongId,
+      add,
+      songToAdd,
     );
   } catch (e, stackTrace) {
     logger.log(

@@ -117,7 +117,7 @@ MediaItem mapToMediaItem(Map song) {
   final downloadSource =
       song['downloadSource'] ?? offlineSong['downloadSource'];
 
-  final artworkUrl = resolveMediaArtworkUrl(song, ytid: ytid);
+  final artworkUrl = resolveMediaArtworkUrl(song, ytid: ytid, targetSize: 1024);
 
   final artworkPath =
       _nonEmptyUrl(offlineSong['artworkPath']) ??
@@ -156,6 +156,7 @@ MediaItem mapToMediaItem(Map song) {
     album: album,
     title: song['title'].toString(),
     artUri: artUri,
+    isLive: song['isLive'] == true,
     duration: parseSongDuration(song['duration']),
     extras: {
       'lowResImage': song['lowResImage'],

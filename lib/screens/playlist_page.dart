@@ -13,6 +13,8 @@ import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/playlist_sharing.dart';
 import 'package:musyn/services/playlists_manager.dart';
 import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart'
+    show isLikedMusicPlaylist;
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/flutter_toast.dart';
@@ -279,16 +281,25 @@ class _PlaylistPageState extends State<PlaylistPage> {
             : ContentState(
                 icon: CupertinoIcons.music_albums,
                 title: 'Collection unavailable',
-                message:
-                    'The track list could not be loaded. Check your connection and try again.',
+                message: _isPrivateLikes
+                    ? 'YouTube could not load your liked music. Retry or reconnect your account. Favorites saved on this iPhone are safe.'
+                    : 'The track list could not be loaded. Check your connection and try again.',
                 actionLabel: 'Retry collection',
                 onAction: _initializePlaylist,
-                secondaryLabel: 'Find other music',
-                onSecondary: () => context.go('/search'),
+                secondaryLabel: _isPrivateLikes
+                    ? 'Account settings'
+                    : 'Find other music',
+                onSecondary: () => _isPrivateLikes
+                    ? context.push('/settings')
+                    : context.go('/search'),
               ),
       ),
     );
   }
+
+  bool get _isPrivateLikes => isLikedMusicPlaylist({
+    'playlistId': widget.playlistId ?? widget.playlistData?['ytid'],
+  });
 
   String get _playlistTitle {
     final rawTitle =

@@ -19,13 +19,13 @@
                             <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" image="LaunchImage" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
                             </imageView>
                             <label opaque="NO" text="Musyn" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="musyn-title"><fontDescription key="fontDescription" type="system" weight="bold" pointSize="34"/><color key="textColor" red="1" green="0.96" blue="0.94" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></label>
-                            <label opaque="NO" text="By Voryn Labs" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="voryn-credit"><fontDescription key="fontDescription" type="system" weight="medium" pointSize="13"/><color key="textColor" red="0.79" green="0.72" blue="0.56" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></label>
+                            <label opaque="NO" text="By Voryn Labs" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="voryn-credit"><fontDescription key="fontDescription" type="system" weight="medium" pointSize="13"/><color key="textColor" red="0.6667" green="0.6392" blue="0.6392" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></label>
                         </subviews>
                         <color key="backgroundColor" red="0.0627451" green="0.054902" blue="0.0705882" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="musyn-title" firstAttribute="top" secondItem="YRO-k0-Ey4" secondAttribute="bottom" constant="22" id="musyn-title-top"/>
                             <constraint firstItem="musyn-title" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="musyn-title-x"/>
-                            <constraint firstItem="voryn-credit" firstAttribute="top" secondItem="musyn-title" secondAttribute="bottom" constant="56" id="voryn-top"/>
+                            <constraint firstItem="voryn-credit" firstAttribute="top" secondItem="musyn-title" secondAttribute="bottom" constant="24" id="voryn-top"/>
                             <constraint firstItem="voryn-credit" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="voryn-x"/>
                             <constraint firstItem="YRO-k0-Ey4" firstAttribute="width" constant="112" id="musyn-width"/>
                             <constraint firstItem="YRO-k0-Ey4" firstAttribute="height" constant="112" id="musyn-height"/>

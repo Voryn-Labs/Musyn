@@ -1108,6 +1108,17 @@ Future<Map?> getPlaylistInfoForWidget(
     return JioSaavnService().fetchPlaylistDetails(saavnId);
   }
 
+  if (isLikedMusicPlaylist({'playlistId': normalizedId})) {
+    final tracks = await YouTubeMusicSyncService().fetchLikedSongs();
+    return {
+      'ytid': 'VLLM',
+      'title': 'Liked Music',
+      'source': 'user-youtube',
+      'list': tracks,
+      'catalogStatus': 'complete',
+      'image': tracks.isEmpty ? '' : tracks.first['image'] ?? '',
+    };
+  }
   return _fetchYouTubePlaylist(normalizedId);
 }
 
@@ -1275,6 +1286,9 @@ Future<List> getSongsFromPlaylist(
   String? playlistImage,
   bool forceRefresh = false,
 }) async {
+  if (isLikedMusicPlaylist({'playlistId': playlistId})) {
+    return YouTubeMusicSyncService().fetchLikedSongs();
+  }
   final songList = forceRefresh
       ? <dynamic>[]
       : List<dynamic>.from(

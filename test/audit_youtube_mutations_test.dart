@@ -60,6 +60,11 @@ INNERTUBE_CLIENTS = {
     () async {
       final requests = <http.Request>[];
       final client = MockClient((request) async {
+        if (request.method == 'GET')
+          return http.Response(
+            '{"INNERTUBE_CLIENT_VERSION":"1.20261018.16.00"}',
+            200,
+          );
         requests.add(request);
         return http.Response(jsonEncode({'playlistId': 'PLcreated'}), 200);
       });
@@ -91,7 +96,12 @@ INNERTUBE_CLIENTS = {
   test('batch reports completed chunks if a later chunk fails', () async {
     var calls = 0;
     final client = MockClient(
-      (_) async => http.Response('{}', ++calls == 1 ? 200 : 500),
+      (request) async => request.method == 'GET'
+          ? http.Response(
+              '{"INNERTUBE_CLIENT_VERSION":"1.20261018.16.00"}',
+              200,
+            )
+          : http.Response('{}', ++calls == 1 ? 200 : 500),
     );
     final ids = List.generate(51, (index) => index.toString().padLeft(11, '0'));
     final added = await http.runWithClient(

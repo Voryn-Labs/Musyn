@@ -109,7 +109,7 @@ class _HomePageState extends State<HomePage> {
         YouTubeMusicSyncService()
             .fullSync()
             .timeout(const Duration(seconds: 20))
-            .catchError((Object _) {}),
+            .catchError((Object _) => false),
     ]);
   }
 

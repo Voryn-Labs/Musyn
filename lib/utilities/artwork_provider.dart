@@ -28,8 +28,7 @@ String upgradeArtworkUrl(String url, {int targetSize = 400}) {
     upgraded = upgraded
         .replaceAll('50x50.jpg', '500x500.jpg')
         .replaceAll('150x150.jpg', '500x500.jpg')
-        .replaceAll('500x500.jpg', '500x500.jpg')
-        .replaceAll('1500x1500.jpg', '500x500.jpg');
+        .replaceAll('500x500.jpg', '500x500.jpg');
   }
 
   // hqdefault is universally available at 480px. mqdefault was only 320px
@@ -41,7 +40,27 @@ String upgradeArtworkUrl(String url, {int targetSize = 400}) {
     );
   }
 
+  if (targetSize > 480 && upgraded.contains('ytimg.com/')) {
+    upgraded = upgraded.replaceAll(
+      RegExp(r'/(hqdefault|sddefault)\.(jpg|webp|jpeg)'),
+      '/maxresdefault.jpg',
+    );
+  }
   return upgraded;
+}
+
+/// Max-resolution video art is optional; retain a reliable fallback for videos
+/// without it. Album CDNs keep their original source at the requested size.
+List<String> artworkCandidates(String url, {int targetSize = 800}) {
+  final best = upgradeArtworkUrl(url, targetSize: targetSize);
+  return [
+    best,
+    if (best.contains('/maxresdefault.'))
+      best.replaceFirst(
+        RegExp(r'/maxresdefault\.(jpg|webp|jpeg)'),
+        '/hqdefault.jpg',
+      ),
+  ];
 }
 
 class ArtworkProvider {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:musyn/utilities/artwork_provider.dart' show artworkCandidates;
 import 'package:musyn/utilities/mediaitem.dart'
     show resolveMediaArtworkUrl, upgradeArtworkUrl;
 import 'package:musyn/widgets/no_artwork_cube.dart';
@@ -44,7 +45,7 @@ class SongArtworkWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-    final cacheDimension = (size * devicePixelRatio).round().clamp(64, 800);
+    final cacheDimension = (size * devicePixelRatio).round().clamp(64, 1024);
     final ytid = metadata.extras?['ytid']?.toString() ?? metadata.id;
 
     final resolvedUrl = resolveMediaArtworkUrl(
@@ -62,23 +63,27 @@ class SongArtworkWidget extends StatelessWidget {
       resolvedUrl ?? (isValidUri ? rawArtUri : ''),
       targetSize: cacheDimension,
     );
-    final networkArtwork = imageUrl.isEmpty || imageUrl.startsWith('file:')
+    final candidates = artworkCandidates(imageUrl, targetSize: cacheDimension);
+    Widget network(int index) =>
+        index >= candidates.length ||
+            imageUrl.isEmpty ||
+            imageUrl.startsWith('file:')
         ? NullArtworkWidget(iconSize: errorWidgetIconSize, size: size)
         : CachedNetworkImage(
-            key: ValueKey('${metadata.id}:$imageUrl'),
+            key: ValueKey('${metadata.id}:${candidates[index]}'),
             width: size,
             height: size,
-            imageUrl: imageUrl,
+            imageUrl: candidates[index],
             memCacheWidth: cacheDimension,
             fadeInDuration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
-                : const Duration(milliseconds: 300),
+                : const Duration(milliseconds: 180),
             fit: BoxFit.cover,
             placeholder: (_, __) =>
                 NullArtworkWidget(iconSize: errorWidgetIconSize, size: size),
-            errorWidget: (_, __, ___) =>
-                NullArtworkWidget(iconSize: errorWidgetIconSize, size: size),
+            errorWidget: (_, __, ___) => network(index + 1),
           );
+    final networkArtwork = network(0);
 
     return localArtUri?.scheme == 'file'
         ? SizedBox(

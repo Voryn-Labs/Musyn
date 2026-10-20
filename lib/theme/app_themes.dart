@@ -110,6 +110,9 @@ CupertinoThemeData buildCupertinoTheme({
         ? const Color(0xB3121214)
         : const Color(0xB3FFFFFF),
     textTheme: CupertinoTextThemeData(
+      primaryColor:
+          primaryColor ??
+          (isDark ? MusynStyle.brandCoral : MusynStyle.brandCoralLight),
       textStyle: TextStyle(
         fontFamily: MusynStyle.uiFont,
         fontSize: 17,

@@ -703,6 +703,9 @@ class MusynAudioHandler extends PlaybackController {
   }
 
   void _updateCurrentMediaItemWithDuration(Duration duration) {
+    // AVPlayer emits zero while replacing/buffering an item. Do not erase the
+    // known catalog duration and make the system timeline disappear.
+    if (duration <= Duration.zero) return;
     try {
       final queueIndex = _hub.queue.currentIndex;
       if (queueIndex < 0 || queueIndex >= _hub.queue.items.length) return;
@@ -2575,6 +2578,8 @@ class MusynAudioHandler extends PlaybackController {
       data: {'ytid': ytid, 'title': song['title']},
     );
 
+    final previousNativeSource = audioPlayer.audioSource;
+    final previousMedia = mediaItem.valueOrNull;
     final resumePosition = audioPlayer.position;
     final shouldResume =
         !_userPaused && (audioPlayer.playing || _playbackWanted);
@@ -2606,6 +2611,18 @@ class MusynAudioHandler extends PlaybackController {
       if (_isStaleTransition(transitionId)) return null;
 
       if (!success) {
+        if (previousNativeSource != null &&
+            identical(audioPlayer.audioSource, previousNativeSource) &&
+            (audioPlayer.processingState == ProcessingState.ready ||
+                audioPlayer.processingState == ProcessingState.buffering)) {
+          // Resolution failed before any native replacement. Keep the working
+          // item and its advancing position instead of needlessly reloading it.
+          if (previousMedia != null)
+            _publishMediaItem(previousMedia, force: true);
+          logger.log('Source unavailable; kept the existing native item');
+          _updatePlaybackState();
+          return null;
+        }
         if (!_isStaleTransition(transitionId)) {
           final restore = cloneMap(song)..['forceSource'] = previousSource;
           await playSong(

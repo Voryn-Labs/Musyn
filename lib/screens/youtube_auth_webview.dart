@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class YouTubeAuthWebView extends StatefulWidget {
@@ -85,7 +87,8 @@ class _YouTubeAuthWebViewState extends State<YouTubeAuthWebView> {
           cookiesMap.containsKey('__Secure-3PAPISID');
       if (hasRequired) {
         _isCompleting = true;
-        YouTubeAuthService().saveCookies(cookiesMap);
+        await YouTubeAuthService().saveCookies(cookiesMap);
+        unawaited(YouTubeMusicSyncService().fullSync());
         if (mounted && Navigator.canPop(context)) {
           Navigator.pop(context, true);
         }

@@ -12,6 +12,17 @@ import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/library_state.dart';
 import 'playback_install_test.dart' show ControlledPlayer;
 
+class TimelinePlayer extends ProbePlayer {
+  final durations = StreamController<Duration?>.broadcast();
+  @override
+  Stream<Duration?> get durationStream => durations.stream;
+  @override
+  Future<void> dispose() async {
+    await durations.close();
+    await super.dispose();
+  }
+}
+
 class ProbePlayer extends ControlledPlayer {
   @override
   Future<void> setLoopMode(LoopMode value) async {}
@@ -23,6 +34,78 @@ class ProbePlayer extends ControlledPlayer {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'transient zero native duration cannot erase a known lock-screen timeline',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'musyn-timeline-',
+      );
+      Hive.init(directory.path);
+      for (final box in [
+        'settings',
+        'user',
+        'cache',
+        'youtube_auth',
+        'userNoBackup',
+      ]) {
+        await Hive.openBox(box, bytes: Uint8List(0));
+      }
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('com.ryanheise.audio_session'),
+            (_) async => null,
+          );
+      final player = TimelinePlayer();
+      final handler = MusynAudioHandler(
+        player: player,
+        prepareArtwork: (_) async => null,
+      );
+      try {
+        final file = File('${directory.path}/song.m4a');
+        await file.writeAsBytes(List.filled(60000, 1));
+        userOfflineSongs.value = [
+          {
+            'ytid': 'abcdefghijk',
+            'title': 'Timeline',
+            'audioPath': file.path,
+            'duration': 180,
+          },
+        ];
+        await handler.addToQueue({
+          'ytid': 'abcdefghijk',
+          'title': 'Timeline',
+          'duration': 180,
+        });
+        await handler.skipToQueueItem(0);
+        expect(handler.mediaItem.value!.duration, const Duration(seconds: 180));
+        player.durations.add(Duration.zero);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        final installedCount = player.installed.length;
+        await http.runWithClient(
+          () async {
+            expect(await handler.switchSource('jiosaavn'), isNull);
+          },
+          () => MockClient(
+            (_) async =>
+                http.Response('{"success":true,"data":{"results":[]}}', 200),
+          ),
+        );
+        expect(
+          player.installed.length,
+          installedCount,
+          reason:
+              'An unavailable provider must not reload the still-playing native item',
+        );
+
+        expect(handler.mediaItem.value!.duration, const Duration(seconds: 180));
+      } finally {
+        await handler.dispose();
+        await Hive.close();
+        await directory.delete(recursive: true);
+        userOfflineSongs.value = [];
+      }
+    },
+  );
   for (final action in ['clearQueue', 'switchSource']) {
     test(
       '$action invalidates an already-running end-of-queue recommendation',
@@ -187,10 +270,7 @@ void main() {
           Uri.file('${directory.path}/first.png'),
         );
         await Future<void>.delayed(Duration.zero);
-        expect(
-          handler.mediaItem.valueOrNull?.artUri,
-          isNull,
-        );
+        expect(handler.mediaItem.valueOrNull?.artUri, isNull);
         covers['https://covers.example/second.jpg']!.complete(
           Uri.file('${directory.path}/second.png'),
         );

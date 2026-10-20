@@ -270,9 +270,15 @@ void main() async {
 }
 
 Future<void> initialisation({ValueChanged<String>? onProgress}) async {
+  final elapsed = Stopwatch()..start();
+  void report(String stage) {
+    logger.log('Startup stage=$stage elapsedMs=${elapsed.elapsedMilliseconds}');
+    onProgress?.call(stage);
+  }
+
   // Phase 1: Hive + settings (never let this kill the app)
   try {
-    onProgress?.call('Opening your library');
+    report('Opening your library');
     await Hive.initFlutter().timeout(const Duration(seconds: 10));
 
     await Future.wait([
@@ -312,7 +318,7 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
 
   // Phase 3: audio + saavn (isolated so router always initializes)
   try {
-    onProgress?.call('Preparing music sources');
+    report('Preparing music sources');
     await SourceResolver().init().timeout(const Duration(seconds: 5));
   } catch (e, stackTrace) {
     logger.log('SourceResolver init error', error: e, stackTrace: stackTrace);
@@ -323,12 +329,12 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
     // whole app: if it doesn't finish in time we fall through to the plain
     // MusynAudioHandler() below (no system media integration, but songs
     // still play), instead of leaving `audioHandlerInstance` null forever.
-    onProgress?.call('Starting the player');
+    report('Starting the player');
     audioHandlerInstance = await AudioService.init(
       builder: MusynAudioHandler.new,
       config: const AudioServiceConfig(
-        artDownscaleWidth: 512,
-        artDownscaleHeight: 512,
+        artDownscaleWidth: 1024,
+        artDownscaleHeight: 1024,
         preloadArtwork: true,
         fastForwardInterval: Duration(seconds: 15),
         rewindInterval: Duration(seconds: 15),
@@ -360,6 +366,7 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
     remoteFavorites.start(audioHandlerInstance!);
   }
 
+  report('Opening Musyn');
   // Phase 4: router - MUST always run
   try {
     NavigationManager.instance;
@@ -386,6 +393,7 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
   } catch (e, stackTrace) {
     logger.log('AppLinks listen error', error: e, stackTrace: stackTrace);
   }
+  logger.log('Startup complete elapsedMs=${elapsed.elapsedMilliseconds}');
 }
 
 Future<void> handleIncomingLink(Uri? uri) async {

@@ -1,3 +1,6 @@
+import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_music_sync_service.dart';
+import 'package:musyn/widgets/musyn_bootstrap.dart';
 import 'package:musyn/services/playlist_download_service.dart';
 import 'package:musyn/widgets/download_picker_sheet.dart';
 import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
@@ -1063,6 +1066,8 @@ void main() {
     (tester) async {
       final source = preferredSource.value;
       await render(tester, const SettingsPage());
+      await tester.tap(find.text('Playback'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('YouTube quality'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('YouTube quality'));
@@ -1081,6 +1086,8 @@ void main() {
   ) async {
     preferredSource.value = 'auto';
     await render(tester, const SettingsPage());
+    await tester.tap(find.text('Playback'));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Default source'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Default source'));
@@ -1328,6 +1335,118 @@ void main() {
     },
   );
 
+  for (final small in [false, true]) {
+    for (final destination in const {
+      'Downloads': 'Download source',
+      'Appearance': 'Theme',
+      'YouTube Music': 'Connect YouTube Music',
+      'Storage & diagnostics': 'Repair YouTube playback',
+    }.entries) {
+      testWidgets(
+        'Settings ${destination.key} has working navigation ${small ? 'large text' : 'standard'}',
+        (tester) async {
+          await render(
+            tester,
+            const SettingsPage(),
+            size: small ? const Size(320, 568) : const Size(390, 844),
+            scale: small ? 1.8 : 1,
+          );
+          await tester.ensureVisible(find.text(destination.key));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(destination.key));
+          await tester.pumpAndSettle();
+          expect(find.text(destination.value), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          await capture(
+            tester,
+            'settings-${destination.key.toLowerCase().replaceAll(RegExp(r'[^a-z]+'), '-')}-${small ? 'large-text' : 'detail'}',
+          );
+          await tester.tap(find.byType(CupertinoNavigationBarBackButton).first);
+          await tester.pumpAndSettle();
+          expect(find.text('Settings'), findsWidgets);
+        },
+      );
+    }
+  }
+  for (final small in [false, true]) {
+    testWidgets(
+      'connected account exposes sync failure and persists preference ${small ? 'large text' : 'standard'}',
+      (tester) async {
+        final auth = YouTubeAuthService();
+        final sync = YouTubeMusicSyncService();
+        auth.isSignedIn.value = true;
+        sync.pendingLikes.value = 2;
+        sync.syncError.value =
+            'Favorites are saved on this iPhone and waiting to sync.';
+        ytAutoSyncLikes.value = true;
+        try {
+          await render(
+            tester,
+            const SettingsPage(),
+            size: small ? const Size(320, 568) : const Size(390, 844),
+            scale: small ? 1.8 : 1,
+            brightness: small ? Brightness.light : Brightness.dark,
+          );
+          await tester.tap(find.text('YouTube Music'));
+          await tester.pumpAndSettle();
+          expect(find.text('2 pending'), findsOneWidget);
+          expect(
+            find.text(
+              'Favorites are saved on this iPhone and waiting to sync.',
+            ),
+            findsOneWidget,
+          );
+          await tester.ensureVisible(find.text('Sync favorites'));
+          await tester.pumpAndSettle();
+          await capture(
+            tester,
+            'settings-account-${small ? 'large-text' : 'connected'}',
+          );
+          await tester.tap(find.byType(CupertinoSwitch).first);
+          await tester.pumpAndSettle();
+          expect(ytAutoSyncLikes.value, isFalse);
+          expect(Hive.box('settings').get('ytAutoSyncLikes'), isFalse);
+          expect(tester.takeException(), isNull);
+        } finally {
+          auth.isSignedIn.value = false;
+          sync.pendingLikes.value = 0;
+          sync.syncError.value = null;
+          ytAutoSyncLikes.value = true;
+        }
+      },
+    );
+  }
+  testWidgets(
+    'splash keeps branding stationary when slow-start status appears',
+    (tester) async {
+      final pending = Completer<void>();
+      await render(
+        tester,
+        MusynBootstrap(
+          minimumDisplay: Duration.zero,
+          initialize: (report) {
+            report('Starting the player');
+            return pending.future;
+          },
+          readyBuilder: (_) => const CupertinoApp(home: Text('Library ready')),
+        ),
+      );
+      final logo = find.image(
+        const AssetImage('assets/branding/musyn-icon.png'),
+      );
+      final before = tester.getCenter(logo);
+      expect(find.text('Starting the player'), findsNothing);
+      await capture(tester, 'splash-dark');
+      await tester.pump(const Duration(seconds: 4));
+      expect(tester.getCenter(logo), before);
+      expect(find.text('Starting the player'), findsOneWidget);
+      await capture(tester, 'splash-slow-dark');
+      pending.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Library ready'), findsOneWidget);
+    },
+  );
+
   for (final light in [false, true]) {
     testWidgets(
       'settings full layout ${light ? 'light' : 'dark'} renders appearance and quality sections',
@@ -1339,6 +1458,8 @@ void main() {
         );
         expect(tester.takeException(), isNull);
         await capture(tester, 'settings-${light ? 'light' : 'dark'}');
+        await tester.tap(find.text('Playback'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('YouTube quality'));
         await tester.pumpAndSettle();
         await capture(tester, 'quality-settings-${light ? 'light' : 'dark'}');

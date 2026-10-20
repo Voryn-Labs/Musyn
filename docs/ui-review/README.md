@@ -51,3 +51,9 @@ action inventory in `../../UI-FLOW-MAP.md`.
 - Walkthrough: [welcome](walkthrough-welcome.png), [sources](walkthrough-sources.png), [gestures](walkthrough-ready.png); corresponding `*-small.png` files exercise large text on a small viewport and scrollable content.
 - Continuous artwork motion has separate time-advancing widget tests. These still renders use Reduce Motion and cannot demonstrate frame pacing.
 - [Fixes and verification limits](../PLAYER_AND_UI_FIXES_0.1.7.md).
+
+## 0.1.8 follow-up
+
+- Settings now has individual Playback, Downloads, Appearance, YouTube Music and Storage/diagnostics destinations; `settings-*-detail.png` and `settings-*-large-text.png` exercise their real navigation.
+- [Splash](splash-dark.png) and [slow-start status](splash-slow-dark.png) retain stationary branding.
+- [Device-log findings and verification limits](../DEVICE_LOG_AUDIT_0.1.8.md).

@@ -21,22 +21,117 @@ import 'package:musyn/widgets/musyn_brand.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
+  Listenable get _changes => Listenable.merge([
+    themeModeSetting,
+    usePureBlackColor,
+    preferredSource,
+    audioQualitySetting,
+    jiosaavnQuality,
+    downloadSource,
+    downloadQuality,
+    jiosaavnEnabled,
+    offlineMode,
+    playNextSongAutomatically,
+    ytAutoSyncLikes,
+    ytAutoSyncPlaylists,
+    ytReportHistory,
+    YouTubeAuthService().isSignedIn,
+    YouTubeAuthService().userName,
+    YouTubeMusicSyncService().isSyncing,
+    YouTubeMusicSyncService().syncError,
+    YouTubeMusicSyncService().pendingLikes,
+  ]);
+
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: Listenable.merge([
-      themeModeSetting,
-      usePureBlackColor,
-      preferredSource,
-      audioQualitySetting,
-      jiosaavnQuality,
-      downloadSource,
-      downloadQuality,
-      jiosaavnEnabled,
-      offlineMode,
-      playNextSongAutomatically,
-      YouTubeAuthService().isSignedIn,
-      YouTubeAuthService().userName,
-    ]),
+  Widget build(BuildContext context) => _page(
+    context,
+    'Settings',
+    () => [
+      _section(context, 'Account', [
+        _row(
+          context,
+          'YouTube Music',
+          value: YouTubeAuthService().isSignedIn.value
+              ? 'Connected'
+              : 'Connect',
+          onTap: () =>
+              _open(context, 'YouTube Music', () => _accountRows(context)),
+        ),
+      ]),
+      _section(context, 'Music', [
+        _row(
+          context,
+          'Playback',
+          onTap: () => _open(context, 'Playback', () => _playbackRows(context)),
+        ),
+        _row(
+          context,
+          'Downloads',
+          onTap: () =>
+              _open(context, 'Downloads', () => _downloadRows(context)),
+        ),
+        _row(
+          context,
+          'Appearance',
+          value: [
+            'System',
+            'Light',
+            'Dark',
+          ][themeModeSetting.value.clamp(0, 2)],
+          onTap: () =>
+              _open(context, 'Appearance', () => _appearanceRows(context)),
+        ),
+      ]),
+      _section(context, 'Help', [
+        _row(
+          context,
+          'Walkthrough',
+          onTap: () => Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (page) => OnboardingPage(
+                onComplete: () async {
+                  Navigator.pop(page);
+                },
+              ),
+            ),
+          ),
+        ),
+        _row(
+          context,
+          'Storage & diagnostics',
+          onTap: () => _open(
+            context,
+            'Storage & diagnostics',
+            () => _supportRows(context),
+          ),
+        ),
+      ]),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+        child: Column(
+          children: [
+            const MusynBrand(compact: true),
+            const SizedBox(height: 10),
+            Text(
+              'Version $appVersion',
+              style: TextStyle(
+                fontSize: 12,
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _page(
+    BuildContext context,
+    String title,
+    List<Widget> Function() sections,
+  ) => AnimatedBuilder(
+    animation: _changes,
     builder: (context, _) => CupertinoPageScaffold(
       backgroundColor: CupertinoColors.systemGroupedBackground.resolveFrom(
         context,
@@ -44,7 +139,7 @@ class SettingsPage extends StatelessWidget {
       child: CustomScrollView(
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('Settings'),
+            largeTitle: Text(title),
             border: null,
             leading: Navigator.canPop(context)
                 ? CupertinoNavigationBarBackButton(
@@ -52,226 +147,269 @@ class SettingsPage extends StatelessWidget {
                   )
                 : null,
           ),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 24, 20, 20),
-                  child: MusynBrand(),
-                ),
-                _section(context, 'Appearance', [
-                  _row(
-                    context,
-                    'Theme',
-                    value: [
-                      'System',
-                      'Light',
-                      'Dark',
-                    ][themeModeSetting.value.clamp(0, 2)],
-                    onTap: () => _chooseTheme(context),
-                  ),
-                  if (isAppDarkMode(context))
-                    _toggle(
-                      context,
-                      'Pure black',
-                      usePureBlackColor,
-                      'usePureBlackColor',
-                      onChanged: syncThemeFromSettings,
-                    ),
-                ]),
-                _section(context, 'Playback', [
-                  _row(
-                    context,
-                    'Default source',
-                    value: _sourceLabel(preferredSource.value),
-                    onTap: () =>
-                        _selectProvider(context, preferredSource.value),
-                  ),
-                  _row(
-                    context,
-                    'YouTube quality',
-                    value: {
-                      'high': 'Highest available',
-                      'medium': 'Balanced',
-                      'low': 'Data saver',
-                    }[audioQualitySetting.value],
-                    onTap: () => _selectQuality(
-                      context,
-                      audioQualitySetting,
-                      'audioQuality',
-                      const {
-                        'high': 'Highest available',
-                        'medium': 'Balanced',
-                        'low': 'Data saver',
-                      },
-                    ),
-                  ),
-                  _row(
-                    context,
-                    'JioSaavn quality',
-                    value: '${jiosaavnQuality.value} kbps',
-                    onTap: () => _selectQuality(
-                      context,
-                      jiosaavnQuality,
-                      'jiosaavnQuality',
-                      const {'160': '160 kbps', '320': '320 kbps'},
-                    ),
-                  ),
-                  _toggle(
-                    context,
-                    'JioSaavn',
-                    jiosaavnEnabled,
-                    'jiosaavnEnabled',
-                  ),
-                  _toggle(
-                    context,
-                    'Autoplay',
-                    playNextSongAutomatically,
-                    'playNextSongAutomatically',
-                  ),
-                  _toggle(context, 'Offline mode', offlineMode, 'offlineMode'),
-                ]),
-                _section(
-                  context,
-                  'Downloads',
-                  [
-                    _row(
-                      context,
-                      'Download source',
-                      value: _sourceLabel(downloadSource.value),
-                      onTap: () => _selectQuality(
-                        context,
-                        downloadSource,
-                        'downloadSource',
-                        const {
-                          'best': 'Automatic',
-                          'saavn': 'JioSaavn',
-                          'youtube': 'YouTube Music',
-                        },
-                      ),
-                    ),
-                    _row(
-                      context,
-                      'Download quality',
-                      value: '${downloadQuality.value} kbps',
-                      onTap: () => _selectQuality(
-                        context,
-                        downloadQuality,
-                        'downloadQuality',
-                        const {'160': '160 kbps', '320': '320 kbps'},
-                      ),
-                    ),
-                  ],
-                  footer:
-                      'If your preferred download source is unavailable, Musyn tries the other enabled source.',
-                ),
-                _section(
-                  context,
-                  'YouTube Music',
-                  [
-                    _row(
-                      context,
-                      YouTubeAuthService().isSignedIn.value
-                          ? YouTubeAuthService().userName.value ??
-                                'YouTube Music connected'
-                          : 'Connect YouTube Music',
-                      value: YouTubeAuthService().isSignedIn.value
-                          ? 'Connected'
-                          : 'Sign In',
-                      onTap: () => _account(context),
-                    ),
-                    if (YouTubeAuthService().isSignedIn.value)
-                      _row(
-                        context,
-                        'Sync library',
-                        onTap: () async {
-                          await YouTubeMusicSyncService().fullSync();
-                          if (context.mounted)
-                            showToast(context, 'YouTube library synced');
-                        },
-                      ),
-                  ],
-                  footer:
-                      'Optional. Search, charts and playback work without an account.',
-                ),
-                _section(context, 'Support', [
-                  _row(
-                    context,
-                    'Walkthrough',
-                    onTap: () => Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        builder: (page) => OnboardingPage(
-                          onComplete: () async {
-                            Navigator.pop(page);
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  _row(
-                    context,
-                    'Repair YouTube playback',
-                    onTap: () => _syncYoutubeClient(context),
-                  ),
-                  _row(
-                    context,
-                    'Clear Audio Cache',
-                    onTap: () async {
-                      final cleared = await clearAllCache();
-                      if (cleared) {
-                        if (isAudioHandlerInitialized)
-                          audioHandler.clearPreparedStreams();
-                        await invalidateAllSongStreamCaches();
-                      }
-                      if (context.mounted)
-                        showToast(
-                          context,
-                          cleared
-                              ? 'Audio cache cleared'
-                              : 'Cache could not be cleared. Try again.',
-                        );
-                    },
-                  ),
-                  _row(
-                    context,
-                    'Clear History & Recents',
-                    onTap: () async {
-                      await deleteData('user', 'searchHistory');
-                      await deleteData('user', 'recentlyPlayed');
-                      userRecentlyPlayed.value = [];
-                      searchHistoryNotifier.value = [];
-                      if (context.mounted)
-                        showToast(context, 'Search & recent history cleared');
-                    },
-                  ),
-                  _row(
-                    context,
-                    'Diagnostic Logs',
-                    onTap: () => context.push('/settings/logs'),
-                  ),
-                ]),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 36),
-                  child: Text(
-                    'Musyn $appVersion · Voryn Labs\nMusic, in your rhythm.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.6,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(
-                        context,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 24, bottom: 32),
+            sliver: SliverList.list(children: sections()),
           ),
         ],
       ),
     ),
   );
+
+  void _open(
+    BuildContext context,
+    String title,
+    List<Widget> Function() sections,
+  ) => Navigator.push(
+    context,
+    CupertinoPageRoute(builder: (page) => _page(page, title, sections)),
+  );
+
+  List<Widget> _appearanceRows(BuildContext context) => [
+    _section(
+      context,
+      'Display',
+      [
+        _row(
+          context,
+          'Theme',
+          value: [
+            'System',
+            'Light',
+            'Dark',
+          ][themeModeSetting.value.clamp(0, 2)],
+          onTap: () => _chooseTheme(context),
+        ),
+        if (isAppDarkMode(context))
+          _toggle(
+            context,
+            'Pure black',
+            usePureBlackColor,
+            'usePureBlackColor',
+            onChanged: syncThemeFromSettings,
+          ),
+      ],
+      footer:
+          'System follows your iPhone’s appearance. Pure black uses a black canvas in dark mode.',
+    ),
+  ];
+
+  List<Widget> _playbackRows(BuildContext context) => [
+    _section(context, 'Sources', [
+      _row(
+        context,
+        'Default source',
+        value: _sourceLabel(preferredSource.value),
+        onTap: () => _selectProvider(context, preferredSource.value),
+      ),
+      _toggle(context, 'JioSaavn', jiosaavnEnabled, 'jiosaavnEnabled'),
+    ]),
+    _section(context, 'Audio quality', [
+      _row(
+        context,
+        'YouTube quality',
+        value: {
+          'high': 'Highest available',
+          'medium': 'Balanced',
+          'low': 'Data saver',
+        }[audioQualitySetting.value],
+        onTap: () =>
+            _selectQuality(context, audioQualitySetting, 'audioQuality', const {
+              'high': 'Highest available',
+              'medium': 'Balanced',
+              'low': 'Data saver',
+            }),
+      ),
+      _row(
+        context,
+        'JioSaavn quality',
+        value: '${jiosaavnQuality.value} kbps',
+        onTap: () => _selectQuality(
+          context,
+          jiosaavnQuality,
+          'jiosaavnQuality',
+          const {'160': '160 kbps', '320': '320 kbps'},
+        ),
+      ),
+    ]),
+    _section(context, 'Listening', [
+      _toggle(
+        context,
+        'Autoplay',
+        playNextSongAutomatically,
+        'playNextSongAutomatically',
+      ),
+      _toggle(context, 'Offline mode', offlineMode, 'offlineMode'),
+    ]),
+  ];
+
+  List<Widget> _downloadRows(BuildContext context) => [
+    _section(
+      context,
+      'Save music',
+      [
+        _row(
+          context,
+          'Download source',
+          value: _sourceLabel(downloadSource.value),
+          onTap: () =>
+              _selectQuality(context, downloadSource, 'downloadSource', const {
+                'best': 'Automatic',
+                'saavn': 'JioSaavn',
+                'youtube': 'YouTube Music',
+              }),
+        ),
+        _row(
+          context,
+          'Download quality',
+          value: '${downloadQuality.value} kbps',
+          onTap: () => _selectQuality(
+            context,
+            downloadQuality,
+            'downloadQuality',
+            const {'160': '160 kbps', '320': '320 kbps'},
+          ),
+        ),
+      ],
+      footer:
+          'Download starts with one tap on the player. If your preferred source is unavailable, Musyn tries the other enabled source.',
+    ),
+  ];
+
+  List<Widget> _accountRows(BuildContext context) {
+    final service = YouTubeMusicSyncService();
+    if (!YouTubeAuthService().isSignedIn.value)
+      return [
+        _section(
+          context,
+          'Your library',
+          [
+            _row(
+              context,
+              'Connect YouTube Music',
+              onTap: () => _account(context),
+            ),
+          ],
+          footer:
+              'Bring your liked music and playlists into Musyn. Search, charts and playback work without an account.',
+        ),
+      ];
+    return [
+      _section(
+        context,
+        YouTubeAuthService().userName.value ?? 'Connected account',
+        [
+          _row(
+            context,
+            service.isSyncing.value ? 'Syncing library…' : 'Sync library',
+            value: service.pendingLikes.value > 0
+                ? '${service.pendingLikes.value} pending'
+                : null,
+            onTap: service.isSyncing.value
+                ? null
+                : () async {
+                    final ok = await service.fullSync();
+                    if (context.mounted)
+                      showToast(
+                        context,
+                        ok
+                            ? 'YouTube library synced'
+                            : service.syncError.value ??
+                                  'Library could not sync. Retry.',
+                      );
+                  },
+          ),
+        ],
+        footer:
+            service.syncError.value ??
+            'Your local favorites stay saved if YouTube is unavailable.',
+      ),
+      _section(
+        context,
+        'Sync preferences',
+        [
+          _toggle(
+            context,
+            'Sync favorites',
+            ytAutoSyncLikes,
+            'ytAutoSyncLikes',
+            onChanged: () {
+              if (ytAutoSyncLikes.value) unawaited(service.fullSync());
+            },
+          ),
+          _toggle(
+            context,
+            'Sync playlists',
+            ytAutoSyncPlaylists,
+            'ytAutoSyncPlaylists',
+            onChanged: () {
+              if (ytAutoSyncPlaylists.value) unawaited(service.fullSync());
+            },
+          ),
+          _toggle(
+            context,
+            'Share listening history',
+            ytReportHistory,
+            'ytReportHistory',
+          ),
+        ],
+        footer:
+            'Favorites sync in both directions. Listening history is reported only while connected and enabled.',
+      ),
+      _section(context, 'Connection', [
+        _row(context, 'Sign Out', onTap: () => _account(context)),
+      ]),
+    ];
+  }
+
+  List<Widget> _supportRows(BuildContext context) => [
+    _section(context, 'Playback', [
+      _row(
+        context,
+        'Repair YouTube playback',
+        onTap: () => _syncYoutubeClient(context),
+      ),
+    ]),
+    _section(context, 'Storage', [
+      _row(
+        context,
+        'Clear Audio Cache',
+        onTap: () async {
+          final cleared = await clearAllCache();
+          if (cleared) {
+            if (isAudioHandlerInitialized) audioHandler.clearPreparedStreams();
+            await invalidateAllSongStreamCaches();
+          }
+          if (context.mounted)
+            showToast(
+              context,
+              cleared
+                  ? 'Audio cache cleared'
+                  : 'Cache could not be cleared. Try again.',
+            );
+        },
+      ),
+      _row(
+        context,
+        'Clear History & Recents',
+        onTap: () async {
+          await deleteData('user', 'searchHistory');
+          await deleteData('user', 'recentlyPlayedSongs');
+          userRecentlyPlayed.value = [];
+          searchHistoryNotifier.value = [];
+          if (context.mounted)
+            showToast(context, 'Search & recent history cleared');
+        },
+      ),
+    ]),
+    _section(context, 'Support', [
+      _row(
+        context,
+        'Diagnostic Logs',
+        onTap: () => context.push('/settings/logs'),
+      ),
+    ]),
+  ];
 
   String _sourceLabel(String value) => switch (value) {
     'saavn' || 'jiosaavn' => 'JioSaavn',
@@ -315,16 +453,23 @@ class SettingsPage extends StatelessWidget {
     String title, {
     String? value,
     VoidCallback? onTap,
-  }) => CupertinoListTile.notched(
-    title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
-    additionalInfo: value == null
-        ? null
-        : Flexible(
-            child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-    trailing: onTap == null ? null : const CupertinoListTileChevron(),
-    onTap: onTap,
-  );
+  }) {
+    final largeText = MediaQuery.textScalerOf(context).scale(17) > 22;
+    return CupertinoListTile.notched(
+      title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: largeText && value != null ? Text(value, maxLines: 2) : null,
+      additionalInfo: value == null || largeText
+          ? null
+          : ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * .43,
+              ),
+              child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+      trailing: onTap == null ? null : const CupertinoListTileChevron(),
+      onTap: onTap,
+    );
+  }
 
   Widget _toggle(
     BuildContext context,

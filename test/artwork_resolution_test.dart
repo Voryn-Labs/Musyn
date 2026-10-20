@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:musyn/utilities/mediaitem.dart';
 import 'package:musyn/services/audio/player_artwork_cache.dart';
 import 'dart:ui' as ui;
+import 'package:musyn/utilities/artwork_provider.dart' show artworkCandidates;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,22 @@ void main() {
       });
     },
   );
+  test('large players request HD artwork with a reliable video fallback', () {
+    expect(
+      artworkCandidates(
+        'https://i.ytimg.com/vi/abcdefghijk/mqdefault.jpg',
+        targetSize: 1024,
+      ),
+      [
+        'https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg',
+        'https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg',
+      ],
+    );
+    expect(
+      upgradeArtworkUrl('https://c.saavncdn.com/album-1500x1500.jpg'),
+      'https://c.saavncdn.com/album-1500x1500.jpg',
+    );
+  });
   test('small YouTube covers are upgraded without downgrading an HQ cover', () {
     expect(
       upgradeArtworkUrl('https://i.ytimg.com/vi/abcdefghijk/mqdefault.jpg'),

@@ -21,6 +21,8 @@ void main() {
       await tester.pump();
       expect(find.text('Musyn'), findsOneWidget);
       expect(find.text('By Voryn Labs'), findsOneWidget);
+      expect(find.text('Starting the player'), findsNothing);
+      await tester.pump(const Duration(seconds: 4));
       expect(find.text('Starting the player'), findsOneWidget);
       pending.complete();
       await tester.pumpAndSettle();

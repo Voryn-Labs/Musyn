@@ -1,5 +1,6 @@
 // ignore_for_file: cascade_invocations
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -55,7 +56,7 @@ class YouTubeAuthService {
     }
   }
 
-  void saveCookies(Map<String, String> cookies) {
+  Future<void> saveCookies(Map<String, String> cookies) async {
     try {
       if (!Hive.isBoxOpen('youtube_auth')) {
         logger.log('youtube_auth box is not open');
@@ -71,9 +72,9 @@ class YouTubeAuthService {
       }
 
       final box = Hive.box('youtube_auth');
-      box.put('cookies', cookies);
+      await box.put('cookies', cookies);
       isSignedIn.value = true;
-      fetchUserProfile();
+      unawaited(fetchUserProfile());
     } catch (e) {
       logger.log('Error saving cookies: $e');
     }
@@ -93,7 +94,7 @@ class YouTubeAuthService {
         if (typedCookies.containsKey('SAPISID') ||
             typedCookies.containsKey('__Secure-3PAPISID')) {
           isSignedIn.value = true;
-          fetchUserProfile();
+          unawaited(fetchUserProfile());
           return;
         }
       }

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:musyn/utilities/artwork_provider.dart' show artworkCandidates;
 
 /// Shares a square, locally cached cover with Now Playing and the app. Artwork
 /// fetching never blocks audio resolution or installation.
@@ -34,14 +35,39 @@ class PlayerArtworkCache {
     if (!{'https', 'http', 'file'}.contains(uri.scheme)) return null;
     try {
       final cache = DefaultCacheManager();
-      final key = '$uri#musyn-square-v2';
+      final key = '$uri#musyn-square-v3';
       final cached = await cache.getFileFromCache(key);
       if (cached != null && await cached.file.exists()) return cached.file.uri;
-      final original = uri.scheme == 'file'
-          ? File.fromUri(uri)
-          : await cache
-                .getSingleFile(uri.toString())
+      File? original;
+      if (uri.scheme == 'file') {
+        original = File.fromUri(uri);
+      } else {
+        for (final candidate in artworkCandidates(
+          uri.toString(),
+          targetSize: 1024,
+        )) {
+          try {
+            final file = await cache
+                .getSingleFile(candidate)
                 .timeout(const Duration(seconds: 8));
+            if (candidate.contains('/maxresdefault.')) {
+              final codec = await ui.instantiateImageCodec(
+                await file.readAsBytes(),
+              );
+              final image = (await codec.getNextFrame()).image;
+              final usable = image.width >= 480;
+              image.dispose();
+              codec.dispose();
+              if (!usable) continue;
+            }
+            original = file;
+            break;
+          } catch (_) {
+            /* Try the known thumbnail fallback. */
+          }
+        }
+      }
+      if (original == null) return null;
       final videoThumbnail =
           uri.host.endsWith('ytimg.com') &&
           (uri.path.contains('/vi/') || uri.path.contains('/vi_webp/'));
@@ -64,7 +90,7 @@ class PlayerArtworkCache {
   }) async {
     final codec = await ui.instantiateImageCodec(
       bytes,
-      targetWidth: 800,
+      targetWidth: 1440,
       allowUpscaling: false,
     );
     final ui.FrameInfo frame;
@@ -85,7 +111,7 @@ class PlayerArtworkCache {
         side,
         side,
       );
-      final size = math.min(side, 800).round();
+      final size = math.min(side, 1024).round();
       final recorder = ui.PictureRecorder();
       ui.Canvas(recorder).drawImageRect(
         image,
