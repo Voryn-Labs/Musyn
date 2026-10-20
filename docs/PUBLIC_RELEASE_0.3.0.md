@@ -21,3 +21,13 @@ This host has no full Xcode or iOS Simulator. Native compilation is performed in
 A same-track metadata refresh must redraw the mini player even when the media ID is unchanged. The stream filter now compares object identity because audio_service's MediaItem equality compares only IDs. A widget regression publishes position updates followed by a new artwork URI for the same ID.
 
 Local final checks: 214 deterministic tests passed, Flutter analysis reported no issues, source credential/automatic-upload guard passed, branding checks passed, and production native cover fixtures passed. CI compiles and packages the final iOS artifact separately.
+
+## Published artifact and withdrawal verification — 20 October 2026
+
+- Regular latest release: [0.3.1](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.1), build 13. Native build [39420229677](https://github.com/Voryn-Labs/Musyn/actions/runs/39420229677) completed successfully with Xcode 26.0.1.
+- Downloaded the public IPA and independently checked `com.vorynlabs.musyn`, display name Musyn, iOS 15 minimum, version/build, matching installer size (12,249,906 bytes), and SHA-256 `42f29e2f6d6c45b12bb0fe99150850a5c79aa639495ac8f9049bb4be41f4b05b`. The packaged credential scan passed.
+- The manually triggered shared-source refresh [39425199894](https://github.com/Voryn-Labs/Voryn-Labs.github.io/actions/runs/39425199894) succeeded. The live Pages source advertises Musyn 0.3.1 (13); Cloudified's full catalog entry is unchanged. No recurring source-refresh schedule was added.
+- Removed 47 earlier GitHub releases and their tags, plus 22 older Actions artifacts. The release API lists only v0.3.1; the artifact API lists only the verified current build. Published download counters exclude removed releases.
+- Prepared an offline Git backup, replaced the removed material in historical blobs/messages, and scanned the sanitized reachable history: 4,124 objects, zero matches. Main and the release tag have identical source trees before/after rewriting. Published both with explicit force-with-lease protection. Native build automation was restored immediately afterward.
+- Historical commit IDs changed. Existing clones, private development branches, backups, downloaded copies, forks and GitHub's cached/unreachable objects are outside this public-reference cleanup. Reclone before contributing; do not republish old branches. GitHub support may be required to purge cached historical objects.
+- No device, account, signing or user diagnostic data was uploaded for validation. Physical-device acceptance for iOS 26 glass and lock-screen video remains outstanding.
