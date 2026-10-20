@@ -29,3 +29,10 @@ Reviewed the supplied October 20 13:10–13:14 device log and the playable lands
 ## Remaining device checks
 
 Cold network resolution cannot be instantaneous. Compare the new timing fields on a fresh selection, a warmed selection, rapid skips while locked, and weak-network playback. The earlier approximately doubled native duration for some YouTube streams remains an independent observation; this release does not claim to repair a decoder issue.
+
+## Verified release
+
+- [Native release build 39390082870](https://github.com/Voryn-Labs/Musyn/actions/runs/39390082870) succeeded from `f60d6db6efb83a5dc85bcd37cb775a72a2eb96f8` using Xcode 26.0.1 (17A400). Native compilation took 123.8 seconds; CI analysis, Flutter tests, branding and the production native crop fixture passed.
+- [v0.2.0](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.2.0) is a regular latest release. Independently downloaded unsigned IPA: **11,969,560 bytes**, Musyn, `com.vorynlabs.musyn`, **0.2.0 (11)**, minimum iOS 15.0. Archive integrity, identity, feed size/version and downloaded checksum match. The Runner binary includes the native artwork channel and crop type; the removed synthetic animation API is absent.
+- SHA-256: `8bb9ffb563fa461bf5dfb5690eaaa047fc58b253a2a6dba2cdffaf30f0865de1`.
+- [Manual shared-source refresh 39390888057](https://github.com/Voryn-Labs/Voryn-Labs.github.io/actions/runs/39390888057) succeeded. The canonical public `https://voryn-labs.github.io/source.json` returned Musyn **0.2.0**, **11,969,560 bytes**, and retained Cloudified **0.3**. Refresh remains manual only.
