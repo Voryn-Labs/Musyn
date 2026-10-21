@@ -139,7 +139,13 @@
             result(@{});
         } else if ([@"musynVocalLevel" isEqualToString:call.method]) {
             BOOL applied = MusynApplyVocalMix(_player.currentItem, [request[@"level"] floatValue]);
-            if (applied) result(@{});
+            if (applied) {
+                // Keep the queued repeat item on the same vocal balance.
+                IndexedAudioSource *source = ((IndexedPlayerItem *)_player.currentItem).audioSource;
+                source.playerItem.audioMix = _player.currentItem.audioMix;
+                source.playerItem2.audioMix = _player.currentItem.audioMix;
+                result(@{});
+            }
             else result([FlutterError errorWithCode:@"not_stems" message:@"Current track has no prepared vocal stems" details:nil]);
         } else if ([@"setSkipSilence" isEqualToString:call.method]) {
             /// TODO on iOS side; Seems more involved, so someone with ObjectiveC experience might look at it.

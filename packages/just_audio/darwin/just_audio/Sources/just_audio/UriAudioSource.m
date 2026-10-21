@@ -192,6 +192,7 @@ BOOL MusynApplyVocalMix(AVPlayerItem *item, float level) {
     if (!_playerItem2) {
         _playerItem2 = [self createPlayerItem:_uri];
         _playerItem2.audioSource = _playerItem.audioSource;
+        _playerItem2.audioMix = _playerItem.audioMix;
     }
 }
 
