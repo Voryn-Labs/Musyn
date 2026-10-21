@@ -4,6 +4,7 @@ import CoreML
 
 /// Independent STFT adapter for the public separator's documented tensor contract.
 /// 44.1 kHz stereo, 2-second windows; real/imaginary bins for each channel.
+@available(iOS 18.0, macOS 15.0, *)
 final class MusynVocalDSP {
   static let frames = 88200, fft = 2048, hop = 441, columns = 201, bins = 1025
   static let shape = [1, 2050, 201, 2]
