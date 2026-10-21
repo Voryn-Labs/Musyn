@@ -16,3 +16,9 @@ Reviewed against current main while preparing 0.3.5 (17). This is source verific
 Removed the identity `_decodePathParameter` wrapper; route parameters use the router's decoded value directly. Tab paths have one source of string constants. The audio handler remains intact rather than being mechanically split. Existing image/clip/log/history limits and proxy-disabled playback are retained.
 
 Validation: clean Flutter analysis; **266 tests passed**. Added regressions cover suspension gaps, ended-state observations, pre-mount playlist import in the actual app, deferred-link deduplication, 40-job coalescing, ignored-Range stream cancellation/client closure, launch cleanup lifetime, nested mutation isolation, and same-song/different-entry Sing along state. Existing native timeline and artwork fixtures passed. Device acceptance is still needed for real iOS suspension, lock-screen updates and processing speed.
+
+## Published artifact
+
+Regular release: [Musyn 0.3.5 (17)](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.5). [iOS build 39582146580](https://github.com/Voryn-Labs/Musyn/actions/runs/39582146580) passed, including native fixtures and packaged credential scan. Downloaded IPA identity, version/build and checksum were independently verified. Size: 12,414,230 bytes. SHA-256: `c989a2db0800bbefe7537fe73d710e872347252a5a92a763b366e77a19b1b547`.
+
+The manually triggered [shared-source update 39583072888](https://github.com/Voryn-Labs/Voryn-Labs.github.io/actions/runs/39583072888) passed. The live public source serves Musyn 0.3.5 (17) and Cloudified 0.3 with the verified release download URLs and byte sizes. The source workflow remains manual-only. Website counters are absent; GitHub README badges remain.
