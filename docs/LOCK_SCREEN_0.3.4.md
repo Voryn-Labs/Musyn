@@ -23,3 +23,13 @@ Sing-along is a focused line-timed lyric stage. It retains original vocals. It i
 ## Verification
 
 Local validation: **249 tests passed** (including rendered UI flows), Flutter analysis is clean, branding and public-release credential guards pass, and native timeline fixtures pass against the actual production Objective-C helper functions. Swift source syntax parses. The production AVFoundation variant exporter and validator accepted the converted real clip. Native iOS compilation and published artifact details are recorded after the release build. Automated UI previews show fixture content, not physical-device native menu or lock-screen acceptance.
+
+
+## Release verification
+
+- Source commit `c7cc994b8fa589022044a160ac922ac47ba43692`; native workflow [39546630228](https://github.com/Voryn-Labs/Musyn/actions/runs/39546630228) passed all checks, Xcode compilation, packaging and the packaged-credential guard in 6m17s.
+- [v0.3.4](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.4) is a regular latest release, build **16**, `com.vorynlabs.musyn`, minimum iOS 15.0. The downloaded Info.plist agrees with release metadata.
+- Downloaded IPA: **12,321,017 bytes**; SHA-256 `bcee9e155692f39be5042271d25b177b78a2ebe9b58a470168525751d4abd095`. The checksum file, GitHub asset digest and generated shared-source checksum agree. The downloaded archive passed the provider-material scan.
+- Manual shared-source workflow [39547321135](https://github.com/Voryn-Labs/Voryn-Labs.github.io/actions/runs/39547321135) passed and generated 0.3.4 (16); the complete Cloudified entry is unchanged. No schedule was added.
+
+**Device acceptance remains open:** reproduce the original JioSaavn track on the affected phone, check elapsed/remaining time across pause, skip and source changes, confirm a known matching animated cover on iOS 26, and test the native More menu and lock-screen lyric line. Copy the new diagnostic snapshot if any symptom remains. The native build and arithmetic/video tests do not substitute for this phone check.
