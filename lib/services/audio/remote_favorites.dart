@@ -1,9 +1,9 @@
 import 'dart:async';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/services.dart';
 import 'package:musyn/services/audio/playback_controller.dart';
 import 'package:musyn/services/common_services.dart';
+import 'package:musyn/services/lock_screen_lyrics.dart';
 import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/utilities/mediaitem.dart';
 
@@ -14,6 +14,9 @@ class RemoteFavorites {
     this.channel = const MethodChannel('com.vorynlabs.musyn/remote_favorites'),
   });
   final MethodChannel channel;
+  final _lyrics = LockScreenLyrics(
+    load: (item) => getSongLyrics(item.artist, item.title),
+  );
   StreamSubscription<MediaItem?>? _subscription;
   PlaybackController? _handler;
 
@@ -22,12 +25,14 @@ class RemoteFavorites {
     userLikedSongsList.removeListener(_sync);
     motionArtworkEnabled.removeListener(_sync);
     MotionArtwork.instance.removeListener(_sync);
+    lockScreenLyricsEnabled.removeListener(_sync);
     _handler = handler;
     channel.setMethodCallHandler(handleCommand);
     _subscription = handler.mediaItem.listen((_) => _sync());
     userLikedSongsList.addListener(_sync);
     motionArtworkEnabled.addListener(_sync);
     MotionArtwork.instance.addListener(_sync);
+    lockScreenLyricsEnabled.addListener(_sync);
     _sync();
   }
 
@@ -36,6 +41,10 @@ class RemoteFavorites {
 
   void _sync() {
     MotionArtwork.instance.select(_handler?.mediaItem.valueOrNull);
+    _lyrics.select(
+      _handler?.mediaItem.valueOrNull,
+      enabled: lockScreenLyricsEnabled.value,
+    );
     final id = _id(_handler?.mediaItem.valueOrNull);
     unawaited(
       channel
@@ -77,6 +86,8 @@ class RemoteFavorites {
     userLikedSongsList.removeListener(_sync);
     motionArtworkEnabled.removeListener(_sync);
     MotionArtwork.instance.removeListener(_sync);
+    lockScreenLyricsEnabled.removeListener(_sync);
+    _lyrics.dispose();
     _handler = null;
     _sync();
     channel.setMethodCallHandler(null);

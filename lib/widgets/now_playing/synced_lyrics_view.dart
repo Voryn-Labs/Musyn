@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
@@ -10,6 +9,7 @@ import 'package:musyn/widgets/now_playing/lyrics/lrc_parser.dart';
 import 'package:musyn/widgets/now_playing/lyrics/lyrics_stage.dart';
 import 'package:musyn/widgets/now_playing/lyrics/lyrics_theme.dart';
 import 'package:musyn/widgets/now_playing/lyrics/plain_lyrics_reader.dart';
+import 'package:musyn/widgets/now_playing/lyrics/sing_along_stage.dart';
 
 /// Live synced lyrics — compact spotlight panel or full-screen stage.
 class SyncedLyricsView extends StatefulWidget {
@@ -21,6 +21,7 @@ class SyncedLyricsView extends StatefulWidget {
     required this.isActive,
     this.isFullScreen = false,
     this.isCompact = false,
+    this.singAlong = false,
   });
 
   final MediaItem metadata;
@@ -28,6 +29,7 @@ class SyncedLyricsView extends StatefulWidget {
   final bool isActive;
   final bool isFullScreen;
   final bool isCompact;
+  final bool singAlong;
 
   final VoidCallback? onExpand;
 
@@ -124,13 +126,13 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     return idx;
   }
 
-  double _progressForPosition(Duration position) {
+  double _progressForPosition(Duration position, int index) {
     final lyrics = _parsedLyrics;
-    if (lyrics == null || _currentIndex < 0) return 0;
+    if (lyrics == null || index < 0) return 0;
     final songDuration = widget.metadata.duration ?? Duration.zero;
-    final start = lyrics[_currentIndex].time;
+    final start = lyrics[index].time;
     final end =
-        lineEndTime(lyrics, _currentIndex, songDuration) ??
+        lineEndTime(lyrics, index, songDuration) ??
         start + const Duration(seconds: 8);
     final span = end - start;
     if (span.inMilliseconds <= 0) return 0;
@@ -142,7 +144,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     if (!mounted || _parsedLyrics == null) return;
 
     final newIndex = _findIndexForPosition(position);
-    final newProgress = _progressForPosition(position);
+    final newProgress = _progressForPosition(position, newIndex);
     final indexChanged = newIndex != _currentIndex;
     final progressChanged =
         (newProgress - _lineProgress).abs() > 0.02 || newProgress == 0;
@@ -240,14 +242,35 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     );
 
     if (_parsedLyrics == null) {
-      return PlainLyricsReader(
+      final reader = PlainLyricsReader(
         text: widget.lyrics,
         theme: theme,
         layout: widget.isCompact ? LyricsLayout.compact : LyricsLayout.stage,
         onExpand: widget.isCompact ? _openFullScreen : null,
       );
+      if (!widget.singAlong) return reader;
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Text(
+              'Timed lyrics are unavailable for this track.',
+              style: theme.captionStyle(),
+            ),
+          ),
+          Expanded(child: reader),
+        ],
+      );
     }
 
+    if (widget.singAlong) {
+      return SingAlongStage(
+        lines: _parsedLyrics!,
+        index: _currentIndex,
+        theme: theme,
+        onSeek: _seek,
+      );
+    }
     if (widget.isCompact) {
       return CompactLyricsPanel(
         lines: _parsedLyrics!,

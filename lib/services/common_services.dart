@@ -16,6 +16,7 @@ import 'package:musyn/services/io_service.dart';
 import 'package:musyn/services/library_state.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/lyrics_manager.dart';
+import 'package:musyn/services/lyrics_request_cache.dart';
 import 'package:musyn/services/offline_song_registry.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/source_resolver.dart';
@@ -1293,24 +1294,21 @@ Future<Map<String, dynamic>> getSongDetails(
   }
 }
 
+final _lyricRequests = LyricsRequestCache(LyricsManager().fetchLyrics);
+int _lyricRequestGeneration = 0;
 Future<String?> getSongLyrics(String? artist, String title) async {
   if (artist == null) return null;
-  if (lastFetchedLyrics != '$artist - $title') {
-    lyrics.value = null;
-    var _lyrics = await LyricsManager().fetchLyrics(artist, title);
-    if (_lyrics != null) {
-      _lyrics = _lyrics.replaceAll(RegExp(r'\n{4}'), '\n\n');
-      _lyrics = _lyrics.replaceAll(RegExp(r'\n{2}'), '\n');
-      lyrics.value = _lyrics;
-    } else {
-      return null;
-    }
-
-    lastFetchedLyrics = '$artist - $title';
-    return _lyrics;
+  final key = '$artist - $title';
+  if (lastFetchedLyrics == key) return lyrics.value;
+  final generation = ++_lyricRequestGeneration;
+  lyrics.value = null;
+  var result = await _lyricRequests.fetch(artist, title);
+  result = result?.replaceAll(RegExp(r'\n{2,}'), '\n');
+  if (generation == _lyricRequestGeneration) {
+    lyrics.value = result;
+    lastFetchedLyrics = result == null ? null : key;
   }
-
-  return lyrics.value;
+  return result;
 }
 
 final _offlineRegistry = OfflineSongRegistry(

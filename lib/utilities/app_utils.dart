@@ -137,9 +137,9 @@ Duration? parseSongDuration(dynamic value) {
         : ints[0] * 3600 + ints[1] * 60 + ints[2];
     return seconds > 0 ? Duration(seconds: seconds) : null;
   }
-  final parsed = int.tryParse(text);
-  if (parsed == null) return null;
-  return _durationFromNumber(parsed);
+  final parsed = double.tryParse(text);
+  if (parsed == null || !parsed.isFinite) return null;
+  return _durationFromNumber(parsed.toInt());
 }
 
 Duration? _durationFromNumber(int n) {

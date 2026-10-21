@@ -487,6 +487,7 @@ class MusynAudioHandler extends PlaybackController {
     final catalog =
         parseSongDuration(song['duration']) ??
         _catalogDurationFromExtras(currentItem?.extras);
+    if (catalog != null && song['resolvedSource'] == 'jiosaavn') return catalog;
     if (catalog != null &&
         playerDuration > catalog + const Duration(seconds: 5)) {
       return catalog;
@@ -513,6 +514,12 @@ class MusynAudioHandler extends PlaybackController {
   }
 
   void _publishMediaItem(MediaItem item, {bool force = false}) {
+    final previous = mediaItem.valueOrNull;
+    if (previous?.id == item.id &&
+        (item.duration == null || item.duration! <= Duration.zero) &&
+        previous?.duration != null) {
+      item = item.copyWith(duration: previous!.duration);
+    }
     final original = item.artUri;
     final prepared = item.extras?['_squareArtwork'] == true;
     final square = prepared || original == null

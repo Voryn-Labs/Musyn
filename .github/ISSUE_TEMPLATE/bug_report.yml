@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: Musyn version and build
-      placeholder: "0.3.3 (15)"
+      placeholder: "0.3.4 (16)"
     validations:
       required: true
   - type: input

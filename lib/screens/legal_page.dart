@@ -9,6 +9,8 @@ const privacySections = <String, String>{
       'Search, audio, artwork and downloads contact YouTube/YouTube Music and, only when configured and enabled, JioSaavn. Lyrics contact LRCLIB. Providers receive the requests and your IP address and apply their own policies.',
   'Automatic animated artwork':
       'On supported iOS versions, automatic artwork is enabled unless you turn it off in Appearance. It sends the selected track title, artist and album metadata to Apple’s public catalog/pages and downloads a matching artwork clip from Apple’s media servers. It sends no account cookies or provider keys. Clips are cached locally (up to 80 MB / 20 files); clear them in Storage & diagnostics. Offline mode, Reduce Motion and Low Power Mode suppress new lookups.',
+  'Optional lock-screen lyrics':
+      'When enabled, Musyn fetches timed lyrics from LRCLIB or existing fallback lyric providers and shows the current line in place of the lock-screen artist. People who can see your lock screen may see these lyrics. Turn it off in Appearance or the player menu to restore the artist. Plain lyrics are never assigned invented timestamps.',
   'Optional accounts and keys':
       'YouTube Music sessions are stored in local app storage for account sync. Your optional JioSaavn media URL key is stored in iOS Keychain, never bundled or included in logs. Keychain entries may survive reinstall; remove a key in Settings before uninstalling if you want it deleted.',
   'Sharing diagnostics':
@@ -43,7 +45,7 @@ class LegalPage extends StatelessWidget {
         children: [
           const Text('Musyn by Voryn Labs', style: TextStyle(fontSize: 13)),
           const SizedBox(height: 8),
-          const Text('Updated 20 October 2026', style: TextStyle(fontSize: 13)),
+          const Text('Updated 21 October 2026', style: TextStyle(fontSize: 13)),
           for (final entry in sections.entries) ...[
             const SizedBox(height: 28),
             Text(

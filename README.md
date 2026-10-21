@@ -14,7 +14,7 @@
 | Listen | Organize | Take it with you |
 | --- | --- | --- |
 | Keyless YouTube Music and optional user-configured JioSaavn AAC | Queue, favorites, folders and your own playlists | Offline tracks and playlist downloads |
-| Synced lyrics and a focused full player | Home, moods/genres, search and actual chart playlists | Progress, cancellation, retry and saved-track search |
+| Synced lyrics, line-timed sing-along and a focused full player | Home, moods/genres, search and actual chart playlists | Progress, cancellation, retry and saved-track search |
 | Highest/balanced/data-saver YouTube options and JioSaavn 160/320 kbps | Optional YouTube Music account sync | Dark/light appearance, branded walkthrough and opt-in iOS 26 native glass |
 
 See [public-release validation](docs/PUBLIC_RELEASE_0.3.0.md), [privacy](https://voryn-labs.github.io/musyn-privacy.html) and [terms](https://voryn-labs.github.io/musyn-terms.html).
@@ -29,7 +29,7 @@ These are automated Flutter renders with fictional sample tracks and placeholder
 
 ## Install Musyn
 
-Musyn combines YouTube Music integration, offline downloads, synced lyrics and a queue you control. More providers can be introduced as the project grows. On iOS 26, animated album covers are found and cached automatically from Apple’s public pages, with no upload or extra account. Tracks without a confident match keep still covers. Glass navigation is optional.
+Musyn combines YouTube Music integration, offline downloads, synced lyrics and a queue you control. More providers can be introduced as the project grows. On iOS 26, animated album covers are found and cached automatically from Apple’s public pages, with no upload or extra account. Tracks without a confident match keep still covers. Glass navigation is optional. The player’s More menu can enable current-line lock-screen lyrics in place of the artist. Sing-along follows timed lyric lines and leaves the original vocals unchanged.
 
 **JioSaavn is optional.** Musyn supplies no media URL key. Add your own in Settings → JioSaavn; it stays in iOS Keychain. YouTube works without it. [Source and artwork setup](docs/SOURCES_AND_ARTWORK.md).
 

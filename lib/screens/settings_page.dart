@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +11,7 @@ import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/discovery_state.dart';
+import 'package:musyn/services/lock_screen_lyrics.dart';
 import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/provider_access.dart';
 import 'package:musyn/services/settings_manager.dart';
@@ -30,6 +30,7 @@ class SettingsPage extends StatelessWidget {
     MotionArtwork.instance,
     ios26Design,
     motionArtworkEnabled,
+    lockScreenLyricsEnabled,
     themeModeSetting,
     usePureBlackColor,
     preferredSource,
@@ -278,6 +279,20 @@ class SettingsPage extends StatelessWidget {
       ],
       footer:
           'System follows your iPhone’s appearance. Pure black uses a black canvas in dark mode.',
+    ),
+    _section(
+      context,
+      'Lock screen',
+      [
+        _toggle(
+          context,
+          'Current lyric line',
+          lockScreenLyricsEnabled,
+          'lockScreenLyrics',
+        ),
+      ],
+      footer:
+          'Shows the current synced lyric in place of the artist. Turn off to restore the artist name. Songs without timed lyrics keep the artist.',
     ),
   ];
 

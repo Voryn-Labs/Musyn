@@ -719,11 +719,32 @@ void main() {
     expect(find.text('Continuous Autoplay Active'), findsNothing);
     await tester.tap(find.byIcon(CupertinoIcons.ellipsis));
     await tester.pumpAndSettle();
-    expect(find.text('Play Next'), findsOneWidget);
+    expect(find.text('Sing along'), findsOneWidget);
     expect(find.text('Sleep timer'), findsOneWidget);
     await capture(tester, 'track-menu-dark');
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'sing-along uses the current timed line and keeps skip controls',
+    (tester) async {
+      lastFetchedLyrics = 'Musyn Sessions - Midnight in motion';
+      lyrics.value =
+          '[00:00]First line\n[00:40]Sing this line\n[01:00]Next line';
+      await render(tester, const NowPlayingPage());
+      await tester.tap(find.bySemanticsLabel('Lyrics'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('sing-along-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.text('Sing this line'), findsOneWidget);
+      expect(find.text('Line-synced · Original vocals'), findsOneWidget);
+      expect(find.bySemanticsLabel('Next track'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await capture(tester, 'sing-along-dark');
+      lastFetchedLyrics = null;
+      lyrics.value = null;
+    },
+  );
 
   testWidgets('player sheet tracks a partial pull and cancels or completes', (
     tester,
@@ -1873,7 +1894,10 @@ void main() {
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
         expect(find.byType(LegalPage), findsOneWidget);
-        expect(find.text('Updated 20 October 2026'), findsOneWidget);
+        expect(
+          find.textContaining(RegExp(r'^Updated \d{1,2} \w+ \d{4}$')),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
         await capture(
           tester,

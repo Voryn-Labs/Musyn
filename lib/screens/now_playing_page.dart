@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
@@ -11,21 +10,26 @@ import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/download_activity.dart';
+import 'package:musyn/services/lock_screen_lyrics.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/async_loader.dart';
 import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/mediaitem.dart';
+import 'package:musyn/utilities/playlist_dialogs.dart';
+import 'package:musyn/utilities/song_info_dialog.dart';
 import 'package:musyn/widgets/audio_route_button.dart';
 import 'package:musyn/widgets/content_state.dart';
 import 'package:musyn/widgets/motion_artwork_view.dart';
+import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
 import 'package:musyn/widgets/now_playing/synced_lyrics_view.dart';
 import 'package:musyn/widgets/playback_icon_button.dart';
+import 'package:musyn/widgets/player_options_button.dart';
 import 'package:musyn/widgets/player_sheet_route.dart';
 import 'package:musyn/widgets/position_slider.dart';
 import 'package:musyn/widgets/queue_list_view.dart';
-import 'package:musyn/widgets/song_actions_sheet.dart';
+import 'package:musyn/widgets/sleep_timer_picker.dart';
 import 'package:musyn/widgets/song_artwork.dart';
 
 enum _PlayerPane { main, lyrics, queue }
@@ -42,6 +46,7 @@ class NowPlayingPage extends StatefulWidget {
 class _NowPlayingPageState extends State<NowPlayingPage>
     with SingleTickerProviderStateMixin {
   _PlayerPane _pane = _PlayerPane.main;
+  bool _singAlong = false;
   String? _lyricTrack;
   Future<String?>? _lyrics;
   double _coverDrag = 0;
@@ -229,79 +234,104 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     bool reduced,
   ) {
     _lyrics ??= getSongLyrics(item.artist, item.title);
+    final largeText = MediaQuery.textScalerOf(context).scale(16) > 23;
+    Widget controls() => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (item.isLive != true)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: PositionSlider(qualityLabel: _qualityLabel(item)),
+          ),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 4,
+          children: [
+            _button(
+              CupertinoIcons.backward_end_fill,
+              'Previous track',
+              () => unawaited(audioHandler.skipToPrevious()),
+            ),
+            buildPlaybackIconButton(
+              30,
+              CupertinoTheme.of(context).textTheme.textStyle.color!,
+              const Color(0x00000000),
+              padding: const EdgeInsets.all(8),
+            ),
+            _button(
+              CupertinoIcons.forward_end_fill,
+              'Next track',
+              () => unawaited(audioHandler.skipToNext()),
+            ),
+            _downloadControl(item),
+            _button(
+              CupertinoIcons.list_bullet,
+              'Queue',
+              () => setState(
+                () => _pane = _pane == _PlayerPane.queue
+                    ? _PlayerPane.lyrics
+                    : _PlayerPane.queue,
+              ),
+              selected: _pane == _PlayerPane.queue,
+            ),
+          ],
+        ),
+      ],
+    );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       child: Row(
         children: [
           Expanded(
-            flex: 4,
-            child: LayoutBuilder(
-              builder: (context, left) => SingleChildScrollView(
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: math.max(80, left.maxHeight - 180),
-                      child: LayoutBuilder(
-                        builder: (_, cover) =>
-                            _mainSleeve(item, cover, reduced),
-                      ),
-                    ),
-                    Row(
+            flex: 5,
+            child: largeText
+                ? SingleChildScrollView(
+                    child: Column(
                       children: [
-                        Expanded(child: _credits(item)),
-                        _downloadControl(item),
-                      ],
-                    ),
-                    if (!(item.extras?['isLive'] ?? false))
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: PositionSlider(
-                          qualityLabel: _qualityLabel(item),
-                        ),
-                      ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _button(
-                          CupertinoIcons.backward_end_fill,
-                          'Previous track',
-                          () => unawaited(audioHandler.skipToPrevious()),
-                        ),
-                        buildPlaybackIconButton(
-                          28,
-                          CupertinoTheme.of(context).textTheme.textStyle.color!,
-                          const Color(0x00000000),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                        _button(
-                          CupertinoIcons.forward_end_fill,
-                          'Next track',
-                          () => unawaited(audioHandler.skipToNext()),
-                        ),
-                        const AudioRouteButton(),
-                        _button(
-                          CupertinoIcons.list_bullet,
-                          'Queue',
-                          () => setState(
-                            () => _pane = _pane == _PlayerPane.queue
-                                ? _PlayerPane.lyrics
-                                : _PlayerPane.queue,
+                        SizedBox(
+                          height: 96,
+                          child: LayoutBuilder(
+                            builder: (_, art) =>
+                                _mainSleeve(item, art, reduced),
                           ),
-                          selected: _pane == _PlayerPane.queue,
                         ),
+                        _credits(item),
+                        controls(),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  )
+                : Column(
+                    children: [
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (_, art) => _mainSleeve(item, art, reduced),
+                        ),
+                      ),
+                      _credits(item),
+                      controls(),
+                    ],
+                  ),
+          ),
+          const SizedBox(width: 24),
+          Container(
+            width: 0.5,
+            margin: const EdgeInsets.symmetric(vertical: 20),
+            color: CupertinoColors.separator.resolveFrom(context),
           ),
           const SizedBox(width: 16),
           Expanded(
-            flex: 5,
-            child: _pane == _PlayerPane.queue
-                ? _queueStage(item)
-                : _lyricsStage(item),
+            flex: 6,
+            child: AnimatedSwitcher(
+              duration: reduced
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              child: KeyedSubtree(
+                key: ValueKey(_pane == _PlayerPane.queue),
+                child: _pane == _PlayerPane.queue
+                    ? _queueStage(item)
+                    : _lyricsStage(item),
+              ),
+            ),
           ),
         ],
       ),
@@ -474,32 +504,68 @@ class _NowPlayingPageState extends State<NowPlayingPage>
         _backDrag = 0;
       },
       onHorizontalDragCancel: () => _backDrag = 0,
-      child: AsyncLoader<String?>(
-        future: _lyrics!,
-        emptyWidget: const SingleChildScrollView(
-          child: ContentState(
-            icon: CupertinoIcons.quote_bubble,
-            title: 'No lyrics available',
-            message: 'Lyrics have not been found for this track.',
-          ),
-        ),
-        errorBuilder: (_, _, _) => SingleChildScrollView(
-          child: ContentState(
-            icon: CupertinoIcons.exclamationmark_bubble,
-            title: 'Could not load lyrics',
-            message: 'Your music is still playing.',
-            actionLabel: 'Retry lyrics',
-            onAction: () => setState(
-              () => _lyrics = getSongLyrics(item.artist, item.title),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _singAlong ? 'Sing along' : 'Lyrics',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Semantics(
+                  label: 'Sing along mode',
+                  selected: _singAlong,
+                  child: CupertinoButton(
+                    key: const ValueKey('sing-along-toggle'),
+                    padding: const EdgeInsets.all(10),
+                    onPressed: () => setState(() => _singAlong = !_singAlong),
+                    child: Icon(
+                      _singAlong ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        builder: (context, lyrics) => SyncedLyricsView(
-          metadata: item,
-          lyrics: lyrics ?? '',
-          isActive: true,
-          isFullScreen: true,
-        ),
+          Expanded(
+            child: AsyncLoader<String?>(
+              future: _lyrics!,
+              emptyWidget: const SingleChildScrollView(
+                child: ContentState(
+                  icon: CupertinoIcons.quote_bubble,
+                  title: 'No lyrics available',
+                  message: 'Lyrics have not been found for this track.',
+                ),
+              ),
+              errorBuilder: (_, _, _) => SingleChildScrollView(
+                child: ContentState(
+                  icon: CupertinoIcons.exclamationmark_bubble,
+                  title: 'Could not load lyrics',
+                  message: 'Your music is still playing.',
+                  actionLabel: 'Retry lyrics',
+                  onAction: () => setState(
+                    () => _lyrics = getSongLyrics(item.artist, item.title),
+                  ),
+                ),
+              ),
+              builder: (context, lyrics) => SyncedLyricsView(
+                metadata: item,
+                lyrics: lyrics ?? '',
+                isActive: true,
+                isFullScreen: true,
+                singAlong: _singAlong,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -633,10 +699,62 @@ class _NowPlayingPageState extends State<NowPlayingPage>
             );
           },
         ),
-        _button(
-          CupertinoIcons.ellipsis,
-          'Track options',
-          () => showSongActionsSheet(context, song: mediaItemToMap(item)),
+        PlayerOptionsButton(
+          trackId: item.id,
+          options: [
+            PlayerOption(
+              'Sing along',
+              'mic',
+              () => setState(() {
+                _pane = _PlayerPane.lyrics;
+                _singAlong = true;
+              }),
+              selected: _singAlong && _pane == _PlayerPane.lyrics,
+            ),
+            PlayerOption('Lock-screen lyrics', 'quote.bubble', () {
+              setState(
+                () => lockScreenLyricsEnabled.value =
+                    !lockScreenLyricsEnabled.value,
+              );
+              unawaited(
+                addOrUpdateData(
+                  'settings',
+                  'lockScreenLyrics',
+                  lockScreenLyricsEnabled.value,
+                ),
+              );
+              showToast(
+                context,
+                lockScreenLyricsEnabled.value
+                    ? 'Timed lyrics replace the lock-screen artist'
+                    : 'Lock-screen artist restored',
+              );
+            }, selected: lockScreenLyricsEnabled.value),
+            if (!offlineMode.value)
+              PlayerOption(
+                'Add to Playlist',
+                'text.badge.plus',
+                () => showAddToPlaylistDialog(
+                  context,
+                  song: mediaItemToMap(item),
+                ),
+              ),
+            PlayerOption(
+              'Playback source',
+              'waveform',
+              () => showAudioSourcePicker(context, item),
+            ),
+            PlayerOption(
+              'Sleep timer',
+              'moon',
+              () => showSleepTimerPicker(context),
+            ),
+            PlayerOption(
+              'Track details',
+              'info.circle',
+              () => showSongInfoDialog(context, mediaItemToMap(item)),
+            ),
+          ],
         ),
       ],
     ),

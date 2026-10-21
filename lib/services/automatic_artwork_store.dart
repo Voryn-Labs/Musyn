@@ -16,6 +16,7 @@ class AutomaticArtworkStore extends ChangeNotifier {
     required this.validate,
     required this.canFetch,
     this.retainedPaths,
+    this.report,
     AutomaticArtworkResolver Function()? resolverFactory,
     this.debounce = const Duration(milliseconds: 700),
     this.minimumLookupInterval = const Duration(seconds: 6),
@@ -27,6 +28,7 @@ class AutomaticArtworkStore extends ChangeNotifier {
   final Future<bool> Function(String) validate;
   final Future<bool> Function() canFetch;
   final Future<Set<String>> Function()? retainedPaths;
+  final void Function(String)? report;
   final AutomaticArtworkResolver Function() resolverFactory;
   final Duration debounce;
   final Duration minimumLookupInterval;
@@ -127,13 +129,17 @@ class AutomaticArtworkStore extends ChangeNotifier {
     AutomaticArtworkResolver? resolver;
     File? temporary;
     try {
-      if (!await canFetch() || !current()) return;
+      if (!await canFetch() || !current()) {
+        report?.call('suppressed by system or selection');
+        return;
+      }
       _lastLookup = now();
       resolver = resolverFactory();
       _resolver = resolver;
       final clip = await resolver.find(item, current: current);
       if (!current()) return;
       if (clip == null) {
+        report?.call('no confident match with a supported clip');
         final hadArtwork = _byId.remove(id) != null;
         if (hadArtwork) notifyListeners();
         await cache.put('$_prefix$fingerprint', {
@@ -164,13 +170,16 @@ class AutomaticArtworkStore extends ChangeNotifier {
       });
       if (!current()) return;
       _byId[id] = name;
+      report?.call('clip cached and ready');
       notifyListeners();
       await _trim(name);
     } on ArtworkLookupBusy {
+      report?.call('provider requested backoff');
       if (current()) _pausedUntil = now().add(const Duration(minutes: 10));
     } on ArtworkLookupCancelled {
       // A newer selection or an opt-out superseded this work.
-    } catch (_) {
+    } catch (error) {
+      report?.call('lookup failed: ${error.runtimeType}');
       // Fail quietly to still artwork; transient failures are not cached as absence.
       if (current())
         _retryAfter[fingerprint] = now().add(const Duration(minutes: 2));
@@ -181,6 +190,8 @@ class AutomaticArtworkStore extends ChangeNotifier {
         await temporary.delete();
     }
   }
+
+  Future<void> prune() async => _trim(_byId[_activeId] ?? '');
 
   Future<void> _trim(String protected) async {
     if (!await directory.exists()) return;

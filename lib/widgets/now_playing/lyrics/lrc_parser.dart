@@ -1,33 +1,40 @@
 /// Parsed timed line from LRC / synced lyrics.
 typedef LrcLine = ({Duration time, String text});
 
-final _lrcLineRegex = RegExp(r'^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)$');
+final _lrcLineRegex = RegExp(r'\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]');
 
-/// Parse LRC timestamps into timed lines. Returns empty when input is plain text.
+/// Common LRC variants, repeated timestamps and file-level offset metadata.
 List<LrcLine> parseLrcLyrics(String raw) {
   final parsed = <LrcLine>[];
+  final offset =
+      int.tryParse(
+        RegExp(
+              r'\[offset:([+-]?\d+)\]',
+              caseSensitive: false,
+            ).firstMatch(raw)?[1] ??
+            '',
+      ) ??
+      0;
   for (final line in raw.split('\n')) {
-    final match = _lrcLineRegex.firstMatch(line.trim());
-    if (match == null) continue;
-
-    final minutes = int.parse(match.group(1)!);
-    final seconds = int.parse(match.group(2)!);
-    final millisStr = match.group(3)!;
-    final millis = millisStr.length == 2
-        ? int.parse(millisStr) * 10
-        : int.parse(millisStr);
-    final text = match.group(4)!.trim();
+    final matches = _lrcLineRegex.allMatches(line).toList();
+    if (matches.isEmpty ||
+        line.substring(0, matches.first.start).trim().isNotEmpty)
+      continue;
+    final text = line.substring(matches.last.end).trim();
     if (text.isEmpty) continue;
-
-    parsed.add((
-      time: Duration(
-        minutes: minutes,
-        seconds: seconds,
-        milliseconds: millis,
-      ),
-      text: text,
-    ));
+    for (final match in matches) {
+      final seconds = int.parse(match[2]!);
+      if (seconds >= 60) continue;
+      final fraction = (match[3] ?? '').padRight(3, '0');
+      final ms =
+          int.parse(match[1]!) * 60000 +
+          seconds * 1000 +
+          int.parse(fraction) -
+          offset;
+      parsed.add((time: Duration(milliseconds: ms < 0 ? 0 : ms), text: text));
+    }
   }
+  parsed.sort((a, b) => a.time.compareTo(b.time));
   return parsed;
 }
 

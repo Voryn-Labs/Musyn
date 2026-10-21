@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,8 @@ import 'package:hive/hive.dart';
 import 'package:musyn/services/automatic_artwork_resolver.dart';
 import 'package:musyn/services/automatic_artwork_store.dart';
 import 'package:musyn/services/io_service.dart';
+import 'package:musyn/services/lock_screen_lyrics.dart';
+import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -18,9 +21,27 @@ class MotionArtwork extends ChangeNotifier {
   bool supported = false;
   AutomaticArtworkStore? _automatic;
   MediaItem? _selection;
+  String? _diagnosticTrack;
+  Timer? _diagnosticTimer;
   bool _listening = false;
 
   Future<void> initialize() async {
+    channel.setMethodCallHandler((call) async {
+      if (call.method == 'prepared') {
+        try {
+          await _automatic?.prune();
+        } catch (_) {}
+        try {
+          final info = await channel.invokeMapMethod<String, dynamic>(
+            'diagnostics',
+          );
+          logger.log(
+            'Lock screen artwork prepared',
+            data: info?.cast<String, Object?>(),
+          );
+        } catch (_) {}
+      }
+    });
     try {
       supported = await channel.invokeMethod<bool>('supported') ?? false;
     } on MissingPluginException {
@@ -28,6 +49,9 @@ class MotionArtwork extends ChangeNotifier {
     } on PlatformException {
       supported = false;
     }
+    lockScreenLyricsEnabled.value = Hive.box(
+      'settings',
+    ).get('lockScreenLyrics', defaultValue: false);
     ios26Design.value =
         supported &&
         Hive.box('settings').get('ios26Design', defaultValue: false);
@@ -43,6 +67,7 @@ class MotionArtwork extends ChangeNotifier {
         _automatic = AutomaticArtworkStore(
           directory: Directory('${root.path}/musyn-motion'),
           cache: Hive.box('cache'),
+          report: (state) => logger.log('Automatic artwork: $state'),
           resolverFactory: () => AutomaticArtworkResolver(
             country:
                 PlatformDispatcher.instance.locale.countryCode?.toLowerCase() ??
@@ -71,6 +96,21 @@ class MotionArtwork extends ChangeNotifier {
 
   void select(MediaItem? item) {
     _selection = item;
+    if (item?.id != _diagnosticTrack) {
+      _diagnosticTrack = item?.id;
+      _diagnosticTimer?.cancel();
+      _diagnosticTimer = Timer(const Duration(seconds: 8), () async {
+        try {
+          final info = await channel.invokeMapMethod<String, dynamic>(
+            'diagnostics',
+          );
+          logger.log(
+            'Lock screen snapshot',
+            data: info?.cast<String, Object?>(),
+          );
+        } catch (_) {}
+      });
+    }
     _automatic?.select(
       item,
       enabled: supported && motionArtworkEnabled.value && !offlineMode.value,

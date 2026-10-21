@@ -23,3 +23,12 @@ Clips are limited to 20 MB, 0.5–30 seconds and silent square or 3:4 video. The
 The app loops a matched real asset; iOS 26 Now Playing receives the same local video and matching first-frame preview. iOS controls its lock-screen presentation and can suppress it. No generated cover wiggle or fake artwork movie is used. Legacy manually imported overrides remain readable, but no import action is presented.
 
 [Taurus](https://github.com/samj-exe/taurus), whose source moved to GitLab, was studied as a behavior reference. Its Spotify Canvas flow runs inside the signed-in Spotify client; its Apple catalog flow extracts a web-player token. Neither mechanism or tweak code is included. Musyn independently uses public page metadata and Apple’s native artwork API. The documented audio_service fork only signals exact-entry metadata publication so optional artwork cannot replace the playback timeline. See [the patch](../packages/audio_service/MUSYN_PATCH.md).
+
+
+## Lock-screen lyrics and sing-along
+
+In the player’s More menu, enable **Lock-screen lyrics**, or use **Settings → Appearance → Lock screen → Current lyric line**. This optional mode replaces the artist row with the current timed lyric and restores the artist when disabled or when no timed lines are available. It is not a separate full-screen lock-screen lyrics panel.
+
+The microphone button on the lyrics screen opens a centered, line-synced sing-along view. Sources without timed lyrics stay readable with an explanation. It does not remove vocals, record the microphone or claim word-level timing from line-level LRC.
+
+Native artwork is adapted to the aspect ratios that iOS advertises. Unavailable clips still retain the static cover. Low Power, Reduce Motion, Auto-Play Animated Images and system presentation settings can prevent animation.

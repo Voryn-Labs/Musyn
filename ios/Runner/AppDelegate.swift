@@ -86,10 +86,12 @@ import Security
       }
       UIApplication.shared.open(url, options: [:]) { result($0) }
     }
+    registrar.register(MusynPlayerMenuFactory(messenger: registrar.messenger()), withId: "com.vorynlabs.musyn/player_menu")
     registrar.register(MusynGlassFactory(), withId: "com.vorynlabs.musyn/glass")
     registrar.register(MusynClipFactory(messenger: registrar.messenger()), withId: "com.vorynlabs.musyn/clip")
     let motionChannel = FlutterMethodChannel(name: "com.vorynlabs.musyn/motion", binaryMessenger: registrar.messenger())
     self.motionChannel = motionChannel
+    motion.onPrepared = { [weak self] in self?.motionChannel?.invokeMethod("prepared", arguments: nil) }
     motionChannel.setMethodCallHandler { [weak self] call, result in
       if call.method == "supported" {
         if #available(iOS 26.0, *) { result(true) } else { result(false) }
@@ -97,6 +99,11 @@ import Security
         result(self?.motion.retainedPath.map { [$0] } ?? [])
       } else if call.method == "clear" {
         self?.motion.clear()
+        result(nil)
+      } else if call.method == "diagnostics" {
+        result(self?.motion.diagnostics() ?? [:])
+      } else if call.method == "lyrics", let args = call.arguments as? [String: Any] {
+        self?.motion.updateLyrics(id: args["id"] as? String, rows: args["lines"] as? [[String: Any]] ?? [], enabled: args["enabled"] as? Bool ?? false)
         result(nil)
       } else if call.method == "canFetch" {
         result(!UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled)
@@ -312,76 +319,224 @@ private final class MusynClipView: NSObject, FlutterPlatformView {
   func view() -> UIView { surface }
 }
 
-/// Enrich only the exact item audio_service just published; never replace its timeline.
+/// A single enrichment pass over audio_service's canonical, timestamped snapshot.
 private final class MusynMotionArtwork {
-  private var observer: NSObjectProtocol?
+  var onPrepared: (() -> Void)?
+  private var observers: [NSObjectProtocol] = []
   private var mediaID: String?
   private var publishedID: String?
+  private var snapshot: [String: Any]?
+  private var snapshotAt = ProcessInfo.processInfo.systemUptime
   private var path: String?
   private var enabled = false
   private var artwork: Any?
+  private var artworkPath: String?
   private var portrait = false
+  private var preparing = false
+  private var failedPath: String?
+  private var lyricID: String?
+  private var lines: [(Double, String)] = []
+  private var lyricsEnabled = false
+  private var lyricTimer: DispatchSourceTimer?
+  private var lastLine: String?
   private(set) var retainedPath: String?
   init() {
-    observer = NotificationCenter.default.addObserver(forName: NSNotification.Name("MusynNowPlayingInfoUpdated"), object: nil, queue: .main) { [weak self] note in
-      self?.publishedID = note.userInfo?["mediaId"] as? String
-      self?.apply()
-    }
+    observers.append(NotificationCenter.default.addObserver(forName: NSNotification.Name("MusynNowPlayingInfoUpdated"), object: nil, queue: .main) { [weak self] note in
+      guard let self = self else { return }
+      self.publishedID = note.userInfo?["mediaId"] as? String
+      self.snapshot = MPNowPlayingInfoCenter.default().nowPlayingInfo
+      self.snapshotAt = ProcessInfo.processInfo.systemUptime
+      self.apply(); self.syncTimer(); self.prepare()
+    })
+    observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.failedPath = nil; self?.prepare(); self?.apply() })
   }
-  deinit { if let observer = observer { NotificationCenter.default.removeObserver(observer) } }
+  deinit { observers.forEach { NotificationCenter.default.removeObserver($0) }; lyricTimer?.cancel() }
   func update(mediaID: String?, path: String?, enabled: Bool) {
     let changed = self.path != path || self.mediaID != mediaID || self.enabled != enabled
     self.mediaID = mediaID; self.path = path; self.enabled = enabled
-    if changed {
-      artwork = nil
-      if enabled, let path = path, let mediaID = mediaID {
-        let url = URL(fileURLWithPath: path)
-        Task { [weak self] in
-          guard await MusynClipValidation.valid(url) else { return }
-          DispatchQueue.global(qos: .utility).async { [weak self] in
-            let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url)); generator.appliesPreferredTrackTransform = true
-            guard let image = try? generator.copyCGImage(at: .zero, actualTime: nil) else { return }
-            DispatchQueue.main.async { [weak self] in
-              guard let self = self, self.enabled, self.mediaID == mediaID, self.path == path else { return }
-              self.install(UIImage(cgImage: image), url: url)
-            }
+    if changed { artwork = nil; artworkPath = nil; preparing = false; failedPath = nil }
+    prepare(); apply()
+  }
+  func updateLyrics(id: String?, rows: [[String: Any]], enabled: Bool) {
+    lyricID = id; lyricsEnabled = enabled
+    lines = rows.prefix(1500).compactMap { row in
+      guard let at = row["at"] as? Double, at.isFinite, at >= 0, let text = row["text"] as? String, !text.isEmpty else { return nil }
+      return (at / 1000, String(text.prefix(400)))
+    }.sorted { $0.0 < $1.0 }
+    lastLine = nil; apply(); syncTimer()
+  }
+  private func prepare() {
+    guard enabled, artwork == nil, !preparing, let path = path, failedPath != path, let id = mediaID else { return }
+    if #available(iOS 26.0, *) {
+      let keys = MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys
+      guard !keys.isEmpty else { return } // Retry after the system starts publishing.
+      preparing = true
+      Task { [weak self] in
+        let source = URL(fileURLWithPath: path)
+        let prepared = try? await MusynArtworkVariant.prepare(source, keys: keys)
+        guard let url = prepared, await MusynClipValidation.valid(url) else {
+          DispatchQueue.main.async { [weak self] in if self?.path == path, self?.mediaID == id { self?.preparing = false; self?.failedPath = path } }
+          return
+        }
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+          let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url)); generator.appliesPreferredTrackTransform = true
+          let frame = try? generator.copyCGImage(at: .zero, actualTime: nil)
+          DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.enabled, self.mediaID == id, self.path == path else { return }
+            self.preparing = false
+            guard let frame = frame else { self.failedPath = path; return }
+            self.install(UIImage(cgImage: frame), url: url)
           }
         }
       }
     }
-    apply()
   }
   private func install(_ preview: UIImage, url: URL) {
     if #available(iOS 26.0, *) {
       portrait = preview.size.width / preview.size.height < 0.9
+      artworkPath = url.path
       artwork = MPMediaItemAnimatedArtwork(artworkID: url.lastPathComponent,
         previewImageRequestHandler: { _ in preview }, videoAssetFileURLRequestHandler: { _ in
           let allowed = await MainActor.run { !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled }
           return allowed && FileManager.default.fileExists(atPath: url.path) ? url : nil
         })
-      apply()
+      apply(); onPrepared?()
     }
   }
   func clear() {
-    enabled = false; path = nil; artwork = nil
-    if #available(iOS 26.0, *), var info = MPNowPlayingInfoCenter.default().nowPlayingInfo {
-      info.removeValue(forKey: MPNowPlayingInfoProperty1x1AnimatedArtwork)
-      info.removeValue(forKey: MPNowPlayingInfoProperty3x4AnimatedArtwork)
-      MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    enabled = false; path = nil; artwork = nil; artworkPath = nil
+    apply(); retainedPath = nil
+  }
+  private func elapsed() -> Double {
+    guard let info = snapshot else { return 0 }
+    let start = (info[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? NSNumber)?.doubleValue ?? 0
+    let rate = (info[MPNowPlayingInfoPropertyPlaybackRate] as? NSNumber)?.doubleValue ?? 0
+    let value = max(0, start + max(0, ProcessInfo.processInfo.systemUptime - snapshotAt) * rate)
+    let duration = (info[MPMediaItemPropertyPlaybackDuration] as? NSNumber)?.doubleValue ?? 0
+    return duration > 0 ? min(duration, value) : value
+  }
+  private func currentLine() -> String? {
+    guard lyricsEnabled, lyricID == publishedID else { return nil }
+    let position = elapsed()
+    guard let index = lines.lastIndex(where: { $0.0 <= position }) else { return nil }
+    // No timed ending exists in ordinary LRC; stop showing a stale last line.
+    if index == lines.count - 1 && position > lines[index].0 + 12 { return nil }
+    return lines[index].1
+  }
+  private func syncTimer() {
+    let rate = (snapshot?[MPNowPlayingInfoPropertyPlaybackRate] as? NSNumber)?.doubleValue ?? 0
+    let on = lyricsEnabled && lyricID == publishedID && !lines.isEmpty && rate > 0
+    if !on { lyricTimer?.cancel(); lyricTimer = nil; return }
+    guard lyricTimer == nil else { return }
+    let timer = DispatchSource.makeTimerSource(queue: .main)
+    timer.schedule(deadline: .now() + .milliseconds(250), repeating: .milliseconds(250), leeway: .milliseconds(50))
+    timer.setEventHandler { [weak self] in
+      guard let self = self else { return }
+      let line = self.currentLine()
+      if line != self.lastLine { self.apply() }
     }
-    retainedPath = nil
+    lyricTimer = timer; timer.resume()
   }
   private func apply() {
+    guard var info = snapshot else { return }
+    // Re-publishing metadata must advance the original clock, never rewind it.
+    info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed()
+    let line = currentLine(); lastLine = line
+    if let line = line { info[MPMediaItemPropertyArtist] = line }
     if #available(iOS 26.0, *) {
-      guard let mediaID = mediaID, mediaID == publishedID, var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
       info.removeValue(forKey: MPNowPlayingInfoProperty1x1AnimatedArtwork)
       info.removeValue(forKey: MPNowPlayingInfoProperty3x4AnimatedArtwork)
       let key = portrait ? MPNowPlayingInfoProperty3x4AnimatedArtwork : MPNowPlayingInfoProperty1x1AnimatedArtwork
       retainedPath = nil
-      if enabled, let artwork = artwork, MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(key) {
-        info[key] = artwork; retainedPath = path
+      if enabled, mediaID == publishedID, let artwork = artwork, MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(key) {
+        info[key] = artwork; retainedPath = artworkPath
       }
-      MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+    MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+  }
+  func diagnostics() -> [String: Any] {
+    let info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+    var result: [String: Any] = ["duration": info[MPMediaItemPropertyPlaybackDuration] ?? 0,
+      "elapsed": info[MPNowPlayingInfoPropertyElapsedPlaybackTime] ?? 0,
+      "rate": info[MPNowPlayingInfoPropertyPlaybackRate] ?? 0,
+      "live": info[MPNowPlayingInfoPropertyIsLiveStream] ?? false,
+      "preparationFailed": failedPath != nil, "clipReady": artwork != nil, "published": retainedPath != nil,
+      "sameItem": mediaID == publishedID, "lyrics": lyricsEnabled && !lines.isEmpty]
+    if #available(iOS 26.0, *) { result["formats"] = MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys }
+    return result
+  }
+}
+
+/// Adapt a real clip to a platform-supported ratio; no synthesized cover motion.
+private enum MusynArtworkVariant {
+  @available(iOS 26.0, *)
+  static func prepare(_ url: URL, keys: [String]) async throws -> URL {
+    let asset = AVURLAsset(url: url)
+    guard let track = try await asset.loadTracks(withMediaType: .video).first else { throw NSError(domain: "artwork", code: 1) }
+    let size = try await track.load(.naturalSize)
+    let transform = try await track.load(.preferredTransform)
+    let bounds = CGRect(origin: .zero, size: size).applying(transform)
+    let ratio = abs(bounds.width / bounds.height)
+    let square = keys.contains(MPNowPlayingInfoProperty1x1AnimatedArtwork)
+    let tall = keys.contains(MPNowPlayingInfoProperty3x4AnimatedArtwork)
+    if (abs(ratio - 1) < 0.03 && square) || (abs(ratio - 0.75) < 0.03 && tall) { return url }
+    guard square || tall else { throw NSError(domain: "artwork", code: 2) }
+    let target = tall ? CGSize(width: 720, height: 960) : CGSize(width: 720, height: 720)
+    let result = url.deletingPathExtension().appendingPathExtension(tall ? "portrait.mp4" : "square.mp4")
+    if FileManager.default.fileExists(atPath: result.path) { return result }
+    let output = result.deletingPathExtension().appendingPathExtension("partial")
+    try? FileManager.default.removeItem(at: output)
+    let composition = AVMutableVideoComposition()
+    composition.renderSize = target; composition.frameDuration = CMTime(value: 1, timescale: 30)
+    let instruction = AVMutableVideoCompositionInstruction()
+    instruction.timeRange = CMTimeRange(start: .zero, duration: try await asset.load(.duration))
+    let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
+    let scale = max(target.width / abs(bounds.width), target.height / abs(bounds.height))
+    let adjusted = transform.concatenating(CGAffineTransform(translationX: -bounds.minX, y: -bounds.minY))
+      .concatenating(CGAffineTransform(scaleX: scale, y: scale))
+      .concatenating(CGAffineTransform(translationX: (target.width - abs(bounds.width) * scale) / 2, y: (target.height - abs(bounds.height) * scale) / 2))
+    layer.setTransform(adjusted, at: .zero); instruction.layerInstructions = [layer]; composition.instructions = [instruction]
+    guard let exporter = AVAssetExportSession(asset: asset, presetName: AVAssetExportPreset1280x720) else { throw NSError(domain: "artwork", code: 3) }
+    exporter.videoComposition = composition
+    do {
+      try await exporter.export(to: output, as: .mp4)
+      let attrs = try FileManager.default.attributesOfItem(atPath: output.path)
+      guard (attrs[.size] as? NSNumber)?.intValue ?? Int.max <= 20 * 1024 * 1024 else { throw NSError(domain: "artwork", code: 4) }
+      try FileManager.default.moveItem(at: output, to: result)
+      return result
+    } catch { try? FileManager.default.removeItem(at: output); throw error }
+  }
+}
+
+private final class MusynPlayerMenuFactory: NSObject, FlutterPlatformViewFactory {
+  private let messenger: FlutterBinaryMessenger
+  init(messenger: FlutterBinaryMessenger) { self.messenger = messenger }
+  func create(withFrame frame: CGRect, viewIdentifier id: Int64, arguments args: Any?) -> FlutterPlatformView { MusynPlayerMenu(frame: frame, id: id, messenger: messenger) }
+}
+private final class MusynPlayerMenu: NSObject, FlutterPlatformView {
+  private let button = UIButton(type: .system)
+  private let channel: FlutterMethodChannel
+  init(frame: CGRect, id: Int64, messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(name: "com.vorynlabs.musyn/player_menu/\(id)", binaryMessenger: messenger)
+    super.init()
+    button.frame = frame
+    button.setImage(UIImage(systemName: "ellipsis", withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)), for: .normal)
+    button.accessibilityLabel = "Track options"
+    button.showsMenuAsPrimaryAction = true
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self = self, call.method == "configure", let args = call.arguments as? [String: Any], let id = args["id"] as? String else { result(FlutterMethodNotImplemented); return }
+      self.button.overrideUserInterfaceStyle = args["dark"] as? Bool == true ? .dark : .light
+      self.button.tintColor = .label
+      let rows = args["items"] as? [[String: Any]] ?? []
+      self.button.menu = UIMenu(children: rows.compactMap { row in
+        guard let index = row["index"] as? Int, let title = row["title"] as? String else { return nil }
+        return UIAction(title: title, image: UIImage(systemName: row["symbol"] as? String ?? "circle"), state: row["selected"] as? Bool == true ? .on : .off) { [weak self] _ in
+          self?.channel.invokeMethod("action", arguments: ["id": id, "index": index])
+        }
+      })
+      result(nil)
     }
   }
+  func view() -> UIView { button }
+  deinit { channel.setMethodCallHandler(nil) }
 }

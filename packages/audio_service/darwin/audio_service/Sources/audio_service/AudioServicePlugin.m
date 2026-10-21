@@ -1,6 +1,7 @@
 #import "./include/audio_service/AudioServicePlugin.h"
 #import <AVFoundation/AVFoundation.h>
 #import <MediaPlayer/MediaPlayer.h>
+#import <math.h>
 
 // If you'd like to help, please see the TODO comments below, then open a
 // GitHub issue to announce your intention to work on a particular feature, and
@@ -28,6 +29,31 @@ static NSNumber *fastForwardInterval = nil;
 static NSNumber *rewindInterval = nil;
 static MPMediaItemArtwork* artwork = nil;
 static NSMutableDictionary *nowPlayingInfo = nil;
+
+// Musyn timeline helpers: platform milliseconds, catalogue seconds, one clock.
+static NSString *musynDurationID;
+static double musynKnownDuration;
+static double MusynSeconds(id value, double scale) {
+    if (![value isKindOfClass:NSNumber.class] && ![value isKindOfClass:NSString.class]) return 0;
+    double seconds = [value doubleValue] * scale;
+    return isfinite(seconds) && seconds > 0 ? seconds : 0;
+}
+static double MusynDuration(NSString *identity, id platformMilliseconds, id catalogSeconds) {
+    if (![musynDurationID isEqual:identity]) {
+        musynDurationID = identity; musynKnownDuration = 0;
+    }
+    double seconds = MusynSeconds(platformMilliseconds, 0.001);
+    if (seconds <= 0) seconds = MusynSeconds(catalogSeconds, 1);
+    if (seconds > 0) musynKnownDuration = seconds;
+    return musynKnownDuration;
+}
+static double MusynElapsed(NSNumber *position, NSNumber *updated, double rate, double now) {
+    double elapsed = MAX(0, position.doubleValue / 1000.0);
+    double age = MAX(0, now - updated.doubleValue / 1000.0);
+    double value = elapsed + age * rate;
+    return isfinite(value) ? value : 0;
+}
+// End Musyn timeline helpers.
 
 @implementation AudioServicePlugin {
     FlutterMethodChannel *_channel;
@@ -165,6 +191,7 @@ static NSMutableDictionary *nowPlayingInfo = nil;
             int actionCode = 1 << [actionIndex intValue];
             actionBits |= actionCode;
         }
+        enum AudioProcessingState oldProcessingState = processingState;
         processingState = [stateMap[@"processingState"] intValue];
         BOOL oldPlaying = playing;
         NSNumber *oldSpeed = speed;
@@ -183,7 +210,7 @@ static NSMutableDictionary *nowPlayingInfo = nil;
             [self activateCommandCenter];
         }
         [self updateControls];
-        if (playing != oldPlaying ||
+        if (processingState != oldProcessingState || playing != oldPlaying ||
             speed.doubleValue != oldSpeed.doubleValue ||
             position.longLongValue != oldPosition.longLongValue) {
             [self updateNowPlayingInfo];
@@ -232,7 +259,13 @@ static NSMutableDictionary *nowPlayingInfo = nil;
         [commandCenter.togglePlayPauseCommand setEnabled:NO];
         [commandCenter.togglePlayPauseCommand removeTarget:nil];
         [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nil;
+#if TARGET_OS_IPHONE
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"MusynNowPlayingInfoUpdated" object:nil userInfo:@{@"mediaId": @""}];
+#endif
         processingState = ApsIdle;
+        playing = NO; mediaItem = nil; artwork = nil;
+        musynDurationID = nil; musynKnownDuration = 0;
+        [nowPlayingInfo removeAllObjects];
         actionBits = 0;
         [self updateControls];
         _controlsUpdated = NO;
@@ -274,9 +307,11 @@ static NSMutableDictionary *nowPlayingInfo = nil;
         updated |= [self updateNowPlayingField:MPMediaItemPropertyTitle value:mediaItem[@"title"]];
         updated |= [self updateNowPlayingField:MPMediaItemPropertyAlbumTitle value:mediaItem[@"album"]];
         updated |= [self updateNowPlayingField:MPMediaItemPropertyArtist value:mediaItem[@"artist"]];
-        NSNumber *duration = mediaItem[@"duration"];
-        if (duration == (id)[NSNull null]) duration = @(0);
-        updated |= [self updateNowPlayingField:MPMediaItemPropertyPlaybackDuration value:([NSNumber numberWithDouble: ([duration doubleValue] / 1000)])];
+        NSString *identity = mediaItem[@"id"];
+        NSDictionary *extras = [mediaItem[@"extras"] isKindOfClass:NSDictionary.class] ? mediaItem[@"extras"] : nil;
+        MusynDuration(identity, mediaItem[@"duration"], extras[@"catalogDurationSeconds"]);
+        updated |= [self updateNowPlayingField:MPMediaItemPropertyPlaybackDuration value:musynKnownDuration > 0 ? @(musynKnownDuration) : nil];
+        updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyExternalContentIdentifier value:identity];
         if (@available(iOS 3.0, macOS 10.13.2, *)) {
             updated |= [self updateNowPlayingField:MPMediaItemPropertyArtwork value:artwork];
         }
@@ -285,9 +320,13 @@ static NSMutableDictionary *nowPlayingInfo = nil;
     if (@available(iOS 10.0, macOS 10.12.2, *)) {
         updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyMediaType value:@(MPNowPlayingInfoMediaTypeAudio)];
     }
-    updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyPlaybackRate value:(playing ? speed : [NSNumber numberWithDouble: 0.0])];
-    updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyDefaultPlaybackRate value:(playing ? speed : [NSNumber numberWithDouble: 0.0])];
-    updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyElapsedPlaybackTime value:[NSNumber numberWithDouble:([position doubleValue] / 1000)]];
+    double normalRate = isfinite(speed.doubleValue) && speed.doubleValue > 0 ? speed.doubleValue : 1;
+    double rate = playing && processingState == ApsReady ? normalRate : 0;
+    updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyPlaybackRate value:@(rate)];
+    updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyDefaultPlaybackRate value:@(normalRate)];
+    double elapsed = MusynElapsed(position, updateTime, rate, NSDate.date.timeIntervalSince1970);
+    if (musynKnownDuration > 0) elapsed = MIN(elapsed, musynKnownDuration);
+    updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyElapsedPlaybackTime value:@(elapsed)];
     MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
 #if TARGET_OS_OSX
     if (@available(iOS 13.0, macOS 10.12.2, *)) {
@@ -295,7 +334,7 @@ static NSMutableDictionary *nowPlayingInfo = nil;
     }
 #endif
     if (@available(iOS 10.0, macOS 10.12.2, *)) {
-        updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyIsLiveStream value:mediaItem[@"isLive"]];
+        updated |= [self updateNowPlayingField:MPNowPlayingInfoPropertyIsLiveStream value:@([mediaItem[@"isLive"] respondsToSelector:@selector(boolValue)] && [mediaItem[@"isLive"] boolValue])];
     }
     if (updated) {
         //NSLog(@"### updating nowPlayingInfo");

@@ -1,10 +1,10 @@
 import 'dart:convert';
-
 import 'package:dart_des/dart_des.dart';
 import 'package:http/http.dart' as http;
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/provider_access.dart';
 import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/utilities/app_utils.dart' show parseSongDuration;
 
 class JioSaavnService {
   factory JioSaavnService() => _instance;
@@ -158,7 +158,7 @@ class JioSaavnService {
 
     // duration may be string seconds or int
     final rawDur = moreInfo?['duration'] ?? rawTrack['duration'] ?? '0';
-    final duration = int.tryParse(rawDur.toString()) ?? 0;
+    final duration = parseSongDuration(rawDur)?.inSeconds ?? 0;
 
     return {
       'saavnId': rawTrack['id']?.toString() ?? '',
