@@ -585,6 +585,7 @@ class MusynAudioHandler extends PlaybackController {
     bool allowOnlineRetry = true,
     int? transitionId,
     Duration? resumeAt,
+    bool recordHistory = true,
   }) {
     return _playback.setAudioSourceAndPlay(
       song: song,
@@ -598,7 +599,10 @@ class MusynAudioHandler extends PlaybackController {
       onDurationKnown: _updateCurrentMediaItemWithDuration,
       onPlaybackStateChanged: _updatePlaybackState,
       ensureActuallyPlaying: _ensureActuallyPlaying,
-      onRecentlyPlayed: (s) => updateRecentlyPlayed(s['ytid'], songFallback: s),
+      onRecentlyPlayed: (s) async {
+        if (recordHistory)
+          await updateRecentlyPlayed(s['ytid'], songFallback: s);
+      },
       schedulePreload: _preloadUpcomingSongs,
       mediaId: mediaId,
       allowOnlineRetry: allowOnlineRetry,
@@ -2753,6 +2757,66 @@ class MusynAudioHandler extends PlaybackController {
         _hub.queue.loadingIndex = -1;
         _currentLoadingTransitionId = -1;
       }
+    }
+  }
+
+  /// Install prepared stems through the same guarded source transaction as audio.
+  @override
+  Future<bool> installVocalStems(String entryId, String path) async {
+    final item = mediaItem.valueOrNull;
+    final song = currentSong;
+    if (item?.id != entryId ||
+        song == null ||
+        _playback.sourceSwitchInFlight ||
+        !path.endsWith('.musyn-stems.mov'))
+      return false;
+    final previous = audioPlayer.audioSource;
+    final position = audioPlayer.position;
+    final transition = ++_songTransitionCounter;
+    _playback.sourceSwitchInFlight = true;
+    _currentLoadingTransitionId = transition;
+    _hub.queue.markLoading(_hub.queue.currentIndex, _hub.queue.currentSong);
+    try {
+      final success = await _installPlayback(
+        song: cloneMap(song),
+        audioSource: AudioSource.file(path, tag: item),
+        songUrl: path,
+        isOffline: true,
+        mediaId: entryId,
+        allowOnlineRetry: false,
+        transitionId: transition,
+        resumeAt: position,
+        recordHistory: false,
+      );
+      if (_isStaleTransition(transition)) return false;
+      if (success) {
+        _publishMediaItem(
+          item!.copyWith(extras: {...?item.extras, 'vocalMix': true}),
+          force: true,
+        );
+        return true;
+      }
+      if (previous != null && !_isStaleTransition(transition)) {
+        await _installPlayback(
+          song: cloneMap(song),
+          audioSource: previous,
+          songUrl: '',
+          isOffline: false,
+          mediaId: entryId,
+          allowOnlineRetry: false,
+          transitionId: transition,
+          resumeAt: position,
+          recordHistory: false,
+        );
+      }
+      return false;
+    } finally {
+      if (_currentLoadingTransitionId == transition) {
+        _playback.sourceSwitchInFlight = false;
+        _currentLoadingTransitionId = -1;
+        _hub.queue.loadingIndex = -1;
+      }
+      _updatePlaybackState();
     }
   }
 

@@ -36,6 +36,7 @@ jobs:
           python3 scripts/check_public_release.py
           python3 scripts/test_native_artwork.py
           python3 scripts/test_native_now_playing.py
+          python3 scripts/test_native_sing.py
           plutil -lint ios/Runner/Info.plist
           plutil -lint ios/Runner.xcodeproj/project.pbxproj
       - name: Build unsigned iOS app

@@ -52,6 +52,11 @@ class MotionArtwork extends ChangeNotifier {
     lockScreenLyricsEnabled.value = Hive.box(
       'settings',
     ).get('lockScreenLyrics', defaultValue: false);
+    lockScreenArtworkLyricsEnabled.value =
+        supported &&
+        Hive.box(
+          'settings',
+        ).get('lockScreenArtworkLyrics', defaultValue: false);
     ios26Design.value =
         supported &&
         Hive.box('settings').get('ios26Design', defaultValue: false);

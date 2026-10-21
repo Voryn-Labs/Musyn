@@ -5,10 +5,12 @@ import AVKit
 import AVFoundation
 import ImageIO
 import Security
+import CryptoKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let motion = MusynMotionArtwork()
+  private var sing: MusynSingBridge?
   private var motionChannel: FlutterMethodChannel?
   private var favoritesChannel: FlutterMethodChannel?
   private var providerChannel: FlutterMethodChannel?
@@ -34,6 +36,7 @@ import Security
     let channel = FlutterMethodChannel(
       name: "com.vorynlabs.musyn/remote_favorites", binaryMessenger: registrar.messenger())
     favoritesChannel = channel
+    sing = MusynSingBridge(messenger: registrar.messenger())
     let covers = FlutterMethodChannel(
       name: "com.vorynlabs.musyn/artwork", binaryMessenger: registrar.messenger())
     artworkChannel = covers
@@ -103,7 +106,7 @@ import Security
       } else if call.method == "diagnostics" {
         result(self?.motion.diagnostics() ?? [:])
       } else if call.method == "lyrics", let args = call.arguments as? [String: Any] {
-        self?.motion.updateLyrics(id: args["id"] as? String, rows: args["lines"] as? [[String: Any]] ?? [], enabled: args["enabled"] as? Bool ?? false)
+        self?.motion.updateLyrics(id: args["id"] as? String, rows: args["lines"] as? [[String: Any]] ?? [], enabled: args["enabled"] as? Bool ?? false, artist: args["artist"] as? Bool ?? true, artwork: args["artwork"] as? Bool ?? false)
         result(nil)
       } else if call.method == "canFetch" {
         result(!UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled)
@@ -337,6 +340,14 @@ private final class MusynMotionArtwork {
   private var lyricID: String?
   private var lines: [(Double, String)] = []
   private var lyricsEnabled = false
+  private var artistLyrics = true
+  private var fullLyrics = false
+  private var lyricStatic: MPMediaItemArtwork?
+  private var lyricMotion: Any?
+  private var lyricPath: String?
+  private var lyricArtworkKey: String?
+  private var lyricArtworkID: String?
+  private var lyricTask: Task<Void, Never>?
   private var lyricTimer: DispatchSourceTimer?
   private var lastLine: String?
   private(set) var retainedPath: String?
@@ -350,15 +361,18 @@ private final class MusynMotionArtwork {
     })
     observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.failedPath = nil; self?.prepare(); self?.apply() })
   }
-  deinit { observers.forEach { NotificationCenter.default.removeObserver($0) }; lyricTimer?.cancel() }
+  deinit { observers.forEach { NotificationCenter.default.removeObserver($0) }; lyricTimer?.cancel(); lyricTask?.cancel() }
   func update(mediaID: String?, path: String?, enabled: Bool) {
     let changed = self.path != path || self.mediaID != mediaID || self.enabled != enabled
     self.mediaID = mediaID; self.path = path; self.enabled = enabled
     if changed { artwork = nil; artworkPath = nil; preparing = false; failedPath = nil }
     prepare(); apply()
   }
-  func updateLyrics(id: String?, rows: [[String: Any]], enabled: Bool) {
-    lyricID = id; lyricsEnabled = enabled
+  func updateLyrics(id: String?, rows: [[String: Any]], enabled: Bool, artist: Bool, artwork: Bool) {
+    if lyricID != id || fullLyrics != artwork || !enabled {
+      lyricTask?.cancel(); lyricTask = nil; lyricArtworkID = nil; lyricStatic = nil; lyricMotion = nil; lyricPath = nil
+    }
+    lyricID = id; lyricsEnabled = enabled; artistLyrics = artist; fullLyrics = artwork
     lines = rows.prefix(1500).compactMap { row in
       guard let at = row["at"] as? Double, at.isFinite, at >= 0, let text = row["text"] as? String, !text.isEmpty else { return nil }
       return (at / 1000, String(text.prefix(400)))
@@ -405,7 +419,7 @@ private final class MusynMotionArtwork {
   }
   func clear() {
     enabled = false; path = nil; artwork = nil; artworkPath = nil
-    apply(); retainedPath = nil
+    apply()
   }
   private func elapsed() -> Double {
     guard let info = snapshot else { return 0 }
@@ -442,18 +456,69 @@ private final class MusynMotionArtwork {
     // Re-publishing metadata must advance the original clock, never rewind it.
     info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed()
     let line = currentLine(); lastLine = line
-    if let line = line { info[MPMediaItemPropertyArtist] = line }
+    if artistLyrics, let line = line { info[MPMediaItemPropertyArtist] = line }
+    prepareLyricArtwork(line: line)
+    if fullLyrics, lyricID == publishedID, line != nil, let poster = lyricStatic { info[MPMediaItemPropertyArtwork] = poster }
     if #available(iOS 26.0, *) {
       info.removeValue(forKey: MPNowPlayingInfoProperty1x1AnimatedArtwork)
       info.removeValue(forKey: MPNowPlayingInfoProperty3x4AnimatedArtwork)
       let key = portrait ? MPNowPlayingInfoProperty3x4AnimatedArtwork : MPNowPlayingInfoProperty1x1AnimatedArtwork
       retainedPath = nil
-      if enabled, mediaID == publishedID, let artwork = artwork, MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(key) {
+      if fullLyrics, lyricID == publishedID, line != nil, let clip = lyricMotion, let lyricKey = lyricArtworkKey,
+        MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(lyricKey) {
+        info[lyricKey] = clip; retainedPath = lyricPath
+      } else if enabled, mediaID == publishedID, let artwork = artwork, MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(key) {
         info[key] = artwork; retainedPath = artworkPath
       }
     }
     MPNowPlayingInfoCenter.default().nowPlayingInfo = info
   }
+  private func prepareLyricArtwork(line: String?) {
+    guard fullLyrics, lyricsEnabled, lyricID == publishedID, let id = lyricID, let line = line,
+      let index = lines.lastIndex(where: { $0.0 <= elapsed() }) else {
+      lyricTask?.cancel(); lyricTask = nil; lyricArtworkID = nil; lyricStatic = nil; lyricMotion = nil; lyricPath = nil
+      return
+    }
+    let next = index + 1 < lines.count ? lines[index + 1].1 : nil
+    let identity = SHA256.hash(data: Data("\(id):\(index):\(line)".utf8)).map { String(format: "%02x", $0) }.joined()
+    if identity == lyricArtworkID { return }
+    lyricArtworkID = identity; lyricTask?.cancel()
+    var tall = true
+    if #available(iOS 26.0, *) { tall = MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys.contains(MPNowPlayingInfoProperty3x4AnimatedArtwork) }
+    let isTall = tall
+    let root = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("musyn-lock-lyrics", isDirectory: true)
+    let output = root.appendingPathComponent(identity + (isTall ? "-tall.mp4" : "-square.mp4"))
+    lyricTask = Task.detached(priority: .userInitiated) { [weak self] in
+      do {
+        let image = try MusynLyricArtwork.poster(current: line, next: next, height: isTall ? 960 : 720)
+        let url = try await MusynLyricArtwork.clip(image: image, at: output)
+        try Task.checkCancellation()
+        await MainActor.run { [weak self] in
+          guard let self = self, self.lyricArtworkID == identity, self.lyricID == id, self.publishedID == id else { return }
+          let preview = UIImage(cgImage: image)
+          self.lyricStatic = MPMediaItemArtwork(boundsSize: preview.size) { _ in preview }
+          self.lyricPath = url.path
+          if #available(iOS 26.0, *) {
+            self.lyricArtworkKey = isTall ? MPNowPlayingInfoProperty3x4AnimatedArtwork : MPNowPlayingInfoProperty1x1AnimatedArtwork
+            self.lyricMotion = MPMediaItemAnimatedArtwork(artworkID: url.lastPathComponent,
+              previewImageRequestHandler: { _ in preview }, videoAssetFileURLRequestHandler: { _ in
+                FileManager.default.fileExists(atPath: url.path) ? url : nil
+              })
+          }
+          self.apply()
+          self.trimLyricFiles(root, keeping: url)
+        }
+      } catch { /* The normal cover remains when lyric artwork cannot be prepared. */ }
+    }
+  }
+  private func trimLyricFiles(_ folder: URL, keeping current: URL) {
+    // Called on the main queue: never remove a clip published by a newer seek.
+    let files = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [])
+      .filter { $0.pathExtension == "mp4" && !$0.lastPathComponent.contains("partial") }
+      .sorted { ((try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast) > ((try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast) }
+    for file in files.dropFirst(6) where file != current && file.path != retainedPath && file.path != lyricPath { try? FileManager.default.removeItem(at: file) }
+  }
+
   func diagnostics() -> [String: Any] {
     let info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
     var result: [String: Any] = ["duration": info[MPMediaItemPropertyPlaybackDuration] ?? 0,

@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:musyn/widgets/now_playing/lyrics/lrc_parser.dart';
 import 'package:musyn/widgets/now_playing/lyrics/lyrics_theme.dart';
 
-/// A focused, line-timed singing view. No invented word timings or vocal mix.
+/// A focused, line-timed singing view. Vocal mixing is controlled separately.
 class SingAlongStage extends StatelessWidget {
   const SingAlongStage({
     super.key,
@@ -68,7 +68,7 @@ class SingAlongStage extends StatelessWidget {
                 ],
                 const SizedBox(height: 24),
                 Text(
-                  'Line-synced · Original vocals',
+                  'Line-synced lyrics',
                   textAlign: TextAlign.center,
                   style: theme.captionStyle(),
                 ),

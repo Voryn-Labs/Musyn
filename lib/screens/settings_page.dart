@@ -31,6 +31,7 @@ class SettingsPage extends StatelessWidget {
     ios26Design,
     motionArtworkEnabled,
     lockScreenLyricsEnabled,
+    lockScreenArtworkLyricsEnabled,
     themeModeSetting,
     usePureBlackColor,
     preferredSource,
@@ -286,13 +287,20 @@ class SettingsPage extends StatelessWidget {
       [
         _toggle(
           context,
-          'Current lyric line',
+          'Lyrics in artist line',
           lockScreenLyricsEnabled,
           'lockScreenLyrics',
         ),
+        if (MotionArtwork.instance.supported)
+          _toggle(
+            context,
+            'Lyrics in artwork',
+            lockScreenArtworkLyricsEnabled,
+            'lockScreenArtworkLyrics',
+          ),
       ],
       footer:
-          'Shows the current synced lyric in place of the artist. Turn off to restore the artist name. Songs without timed lyrics keep the artist.',
+          'Show timed lyrics in the artist line, artwork, or both. Artwork lyrics require iOS 26; tap the lock-screen artwork to expand it. iOS controls expansion and background updates. Songs without timed lyrics keep their normal metadata.',
     ),
   ];
 

@@ -59,6 +59,26 @@ void main() {
       expect(calls.every((c) => c['enabled'] == false), true);
     },
   );
+  test(
+    'artist and artwork modes are independent and changes republish',
+    () async {
+      final service = LockScreenLyrics(
+        channel: channel,
+        load: (_) async => '[00:01]Line',
+      );
+      service.select(a, enabled: false, artwork: true);
+      await service.pending;
+      expect(calls.last['artist'], false);
+      expect(calls.last['artwork'], true);
+      service.select(a, enabled: true, artwork: true);
+      await service.pending;
+      expect(calls.last['artist'], true);
+      expect(calls.last['artwork'], true);
+      service.select(a, enabled: true);
+      await service.pending;
+      expect(calls.last['artwork'], false);
+    },
+  );
   test('plain lyrics carry no invented lock-screen timing', () async {
     final service = LockScreenLyrics(
       channel: channel,

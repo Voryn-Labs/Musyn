@@ -737,7 +737,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('sing-along-toggle')));
       await tester.pumpAndSettle();
       expect(find.text('Sing this line'), findsOneWidget);
-      expect(find.text('Line-synced · Original vocals'), findsOneWidget);
+      expect(find.text('Line-synced lyrics'), findsOneWidget);
       expect(find.bySemanticsLabel('Next track'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await capture(tester, 'sing-along-dark');

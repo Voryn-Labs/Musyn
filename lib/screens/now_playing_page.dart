@@ -11,7 +11,9 @@ import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/download_activity.dart';
 import 'package:musyn/services/lock_screen_lyrics.dart';
+import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/vocal_reduction.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/async_loader.dart';
@@ -31,6 +33,7 @@ import 'package:musyn/widgets/position_slider.dart';
 import 'package:musyn/widgets/queue_list_view.dart';
 import 'package:musyn/widgets/sleep_timer_picker.dart';
 import 'package:musyn/widgets/song_artwork.dart';
+import 'package:musyn/widgets/vocal_reduction_controls.dart';
 
 enum _PlayerPane { main, lyrics, queue }
 
@@ -98,6 +101,56 @@ class _NowPlayingPageState extends State<NowPlayingPage>
       ),
     ),
   );
+
+  Future<void> _chooseLockLyrics() async {
+    final selected = await showCupertinoModalPopup<int>(
+      context: context,
+      builder: (sheet) => CupertinoActionSheet(
+        title: const Text('Lock-screen lyrics'),
+        message: const Text(
+          'Timed lyrics can replace the artist line or artwork. Tap the lock-screen artwork to expand it. iOS controls the final presentation.',
+        ),
+        actions: [
+          for (final option in [
+            0,
+            1,
+            if (MotionArtwork.instance.supported) ...[2, 3],
+          ])
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(sheet, option),
+              child: Text(
+                [
+                  'Off',
+                  'Artist line',
+                  'Artwork',
+                  'Artist line and artwork',
+                ][option],
+              ),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheet),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+    if (selected == null) return;
+    lockScreenLyricsEnabled.value = selected == 1 || selected == 3;
+    lockScreenArtworkLyricsEnabled.value = selected >= 2;
+    await Future.wait([
+      addOrUpdateData(
+        'settings',
+        'lockScreenLyrics',
+        lockScreenLyricsEnabled.value,
+      ),
+      addOrUpdateData(
+        'settings',
+        'lockScreenArtworkLyrics',
+        lockScreenArtworkLyricsEnabled.value,
+      ),
+    ]);
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) => PopScope(
@@ -525,7 +578,14 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                   child: CupertinoButton(
                     key: const ValueKey('sing-along-toggle'),
                     padding: const EdgeInsets.all(10),
-                    onPressed: () => setState(() => _singAlong = !_singAlong),
+                    onPressed: () {
+                      setState(() => _singAlong = !_singAlong);
+                      unawaited(
+                        _singAlong
+                            ? vocalReduction.enable(item)
+                            : vocalReduction.disable(),
+                      );
+                    },
                     child: Icon(
                       _singAlong ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
                       size: 22,
@@ -535,6 +595,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               ],
             ),
           ),
+          if (_singAlong) VocalReductionControls(item: item),
           Expanded(
             child: AsyncLoader<String?>(
               future: _lyrics!,
@@ -708,28 +769,18 @@ class _NowPlayingPageState extends State<NowPlayingPage>
               () => setState(() {
                 _pane = _PlayerPane.lyrics;
                 _singAlong = true;
+                unawaited(vocalReduction.enable(item));
               }),
               selected: _singAlong && _pane == _PlayerPane.lyrics,
             ),
-            PlayerOption('Lock-screen lyrics', 'quote.bubble', () {
-              setState(
-                () => lockScreenLyricsEnabled.value =
-                    !lockScreenLyricsEnabled.value,
-              );
-              unawaited(
-                addOrUpdateData(
-                  'settings',
-                  'lockScreenLyrics',
-                  lockScreenLyricsEnabled.value,
-                ),
-              );
-              showToast(
-                context,
-                lockScreenLyricsEnabled.value
-                    ? 'Timed lyrics replace the lock-screen artist'
-                    : 'Lock-screen artist restored',
-              );
-            }, selected: lockScreenLyricsEnabled.value),
+            PlayerOption(
+              'Lock-screen lyrics',
+              'quote.bubble',
+              _chooseLockLyrics,
+              selected:
+                  lockScreenLyricsEnabled.value ||
+                  lockScreenArtworkLyricsEnabled.value,
+            ),
             if (!offlineMode.value)
               PlayerOption(
                 'Add to Playlist',

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:musyn/widgets/now_playing/lyrics/lrc_parser.dart';
 
 final lockScreenLyricsEnabled = ValueNotifier<bool>(false);
+final lockScreenArtworkLyricsEnabled = ValueNotifier<bool>(false);
 
 /// Sends timed lines once per selection. Native playback drives their clock,
 /// including when Flutter's UI is suspended. Plain lyrics never get fake timing.
@@ -20,36 +21,47 @@ class LockScreenLyrics {
   int _epoch = 0;
   Future<void> pending = Future.value();
 
-  void select(MediaItem? item, {required bool enabled}) {
+  void select(MediaItem? item, {required bool enabled, bool artwork = false}) {
     _item = item;
-    final key = enabled && item != null
-        ? '${item.id}|${item.artist}|${item.title}'
+    final key = (enabled || artwork) && item != null
+        ? '${item.id}|${item.artist}|${item.title}|$enabled|$artwork'
         : null;
     if (key == _selection) return;
     _selection = key;
     final epoch = ++_epoch;
-    pending = _publish(item, enabled, epoch);
+    pending = _publish(item, enabled, artwork, epoch);
   }
 
   void refresh() {
     _selection = 'refresh';
-    select(_item, enabled: lockScreenLyricsEnabled.value);
+    select(
+      _item,
+      enabled: lockScreenLyricsEnabled.value,
+      artwork: lockScreenArtworkLyricsEnabled.value,
+    );
   }
 
-  Future<void> _publish(MediaItem? item, bool enabled, int epoch) async {
+  Future<void> _publish(
+    MediaItem? item,
+    bool enabled,
+    bool artwork,
+    int epoch,
+  ) async {
     try {
       await channel.invokeMethod<void>('lyrics', {
         'id': item?.id,
         'enabled': false,
         'lines': <Map<String, dynamic>>[],
       });
-      if (!enabled || item == null || epoch != _epoch) return;
+      if ((!enabled && !artwork) || item == null || epoch != _epoch) return;
       final raw = await load(item);
       if (epoch != _epoch) return;
       final lines = parseLrcLyrics(raw ?? '');
       await channel.invokeMethod<void>('lyrics', {
         'id': item.id,
         'enabled': true,
+        'artist': enabled,
+        'artwork': artwork,
         'lines': lines
             .take(1500)
             .map(

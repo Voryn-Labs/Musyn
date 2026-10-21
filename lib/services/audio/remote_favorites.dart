@@ -5,6 +5,7 @@ import 'package:musyn/services/audio/playback_controller.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/lock_screen_lyrics.dart';
 import 'package:musyn/services/motion_artwork.dart';
+import 'package:musyn/services/vocal_reduction.dart';
 import 'package:musyn/utilities/mediaitem.dart';
 
 /// audio_service does not expose MPFeedbackCommand on iOS. Keep the native
@@ -26,6 +27,7 @@ class RemoteFavorites {
     motionArtworkEnabled.removeListener(_sync);
     MotionArtwork.instance.removeListener(_sync);
     lockScreenLyricsEnabled.removeListener(_sync);
+    lockScreenArtworkLyricsEnabled.removeListener(_sync);
     _handler = handler;
     channel.setMethodCallHandler(handleCommand);
     _subscription = handler.mediaItem.listen((_) => _sync());
@@ -33,6 +35,7 @@ class RemoteFavorites {
     motionArtworkEnabled.addListener(_sync);
     MotionArtwork.instance.addListener(_sync);
     lockScreenLyricsEnabled.addListener(_sync);
+    lockScreenArtworkLyricsEnabled.addListener(_sync);
     _sync();
   }
 
@@ -41,9 +44,11 @@ class RemoteFavorites {
 
   void _sync() {
     MotionArtwork.instance.select(_handler?.mediaItem.valueOrNull);
+    vocalReduction.select(_handler?.mediaItem.valueOrNull);
     _lyrics.select(
       _handler?.mediaItem.valueOrNull,
       enabled: lockScreenLyricsEnabled.value,
+      artwork: lockScreenArtworkLyricsEnabled.value,
     );
     final id = _id(_handler?.mediaItem.valueOrNull);
     unawaited(
@@ -87,6 +92,7 @@ class RemoteFavorites {
     motionArtworkEnabled.removeListener(_sync);
     MotionArtwork.instance.removeListener(_sync);
     lockScreenLyricsEnabled.removeListener(_sync);
+    lockScreenArtworkLyricsEnabled.removeListener(_sync);
     _lyrics.dispose();
     _handler = null;
     _sync();
