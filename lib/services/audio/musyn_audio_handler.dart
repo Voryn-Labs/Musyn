@@ -668,6 +668,7 @@ class MusynAudioHandler extends PlaybackController {
   /// lock screen before it returns. The next queue item plays instead.
   Future<bool> _tryAlternateSourceOnce(Map song, {int? transitionId}) async {
     if (offlineMode.value ||
+        !jiosaavnAvailable ||
         song['forceSource'] != null ||
         _isStaleTransition(transitionId))
       return false;
@@ -1677,7 +1678,8 @@ class MusynAudioHandler extends PlaybackController {
               '_preloadedStreamUrl',
             );
             _hub.preloadCache.drop(failedYtid);
-            unawaited(invalidateSongStreamCache(failedYtid));
+            await invalidateSongStreamCache(failedYtid);
+            if (_isStaleTransition(currentTransitionId)) return false;
           }
           // A failed explicit selection stays selected and offers Play to retry.
           _completion.handlePlaybackError(
@@ -1699,7 +1701,8 @@ class MusynAudioHandler extends PlaybackController {
           if (failedYtid != null && failedYtid.isNotEmpty) {
             _hub.queue.items[idx].remove('_preloadedStreamUrl');
             _hub.preloadCache.drop(failedYtid);
-            unawaited(invalidateSongStreamCache(failedYtid));
+            await invalidateSongStreamCache(failedYtid);
+            if (_isStaleTransition(currentTransitionId)) return false;
           }
         }
       }

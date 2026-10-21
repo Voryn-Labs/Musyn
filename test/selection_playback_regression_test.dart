@@ -128,6 +128,21 @@ void main() {
       expect(player.playing, true);
     },
   );
+  test(
+    'missing key and legacy Saavn metadata never repeat a failed YouTube lookup',
+    () async {
+      await handler.playSingleSong(a);
+      var requests = 0;
+      resolve = (_, _) async {
+        requests++;
+        return null;
+      };
+      await handler.playSingleSong({...b, 'resolvedSource': 'jiosaavn'});
+      expect(requests, 1);
+      expect(handler.mediaItem.value!.title, 'Casa');
+      expect(player.playing, false);
+    },
+  );
   test('late lookup cannot override a newer selected track', () async {
     await handler.playSingleSong(a);
     final gate = Completer<String?>();

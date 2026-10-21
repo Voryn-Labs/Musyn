@@ -864,7 +864,9 @@ Future<void> invalidateSongStreamCache(String songId) async {
     await deleteData('cache', key);
     await deleteData('cache', _songStreamCacheMetaKey(songId, source));
   }
-  await SourceResolver().deleteCachedMatch(songId);
+  if (jiosaavnAvailable || Hive.isBoxOpen('saavn_match_cache')) {
+    await SourceResolver().deleteCachedMatch(songId);
+  }
   // Remove the pre-source cache key written by older builds. It is unsafe to
   // reuse because it does not say which service produced the URL.
   await deleteData('cache', 'song_${songId}_${audioQualitySetting.value}_url');
