@@ -16,7 +16,7 @@ The native timeline continues from the canonical audio snapshot; lyric changes n
 
 ## Validation
 
-- 256 Flutter tests: quick-skip/stale preparation, cancellation during install/mix, vocal level, metadata/source identity and independent lyric destinations.
+- 258 Flutter tests: quick-skip/stale preparation, cancellation during install/mix, vocal level, metadata/source identity and independent lyric destinations.
 - Production STFT round trip mean error 1.36e-8. Real public model inference and full ~9-second generated voice/music separation passed locally on macOS. Recombining two AAC stems produced 0.79% relative reconstruction error. This fixture does not establish subjective quality on all music.
 - Production AVAudioMix rendered at vocal gain 0 / 0.4 / 1: backing unchanged, voice gain applied correctly.
 - English/Hindi 720×960 posters visually inspected; silent two-second H.264 assets validated.

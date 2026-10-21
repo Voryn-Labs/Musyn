@@ -115,6 +115,43 @@ void main() {
       expect(controller.phase, VocalPhase.off);
     },
   );
+  test('failed installation does not poison a later retry', () async {
+    var attempts = 0;
+    controller = make(
+      install: (_, _) async {
+        if (++attempts == 1) throw StateError('native load failed');
+        return true;
+      },
+    );
+    await controller.enable(a);
+    expect(controller.phase, VocalPhase.failed);
+    await controller.enable(a);
+    expect(controller.phase, VocalPhase.ready);
+    expect(attempts, 2);
+  });
+  test('old cancelled mix cannot overwrite a newly enabled mix', () async {
+    final oldMix = Completer<void>();
+    var first = true;
+    controller = make(
+      mix: (level) {
+        levels.add(level);
+        if (first) {
+          first = false;
+          return oldMix.future;
+        }
+        return Future.value();
+      },
+    );
+    final old = controller.enable(a);
+    await Future<void>.delayed(Duration.zero);
+    await controller.disable();
+    await controller.enable(a);
+    oldMix.complete();
+    await old;
+    expect(levels, [0, 0]);
+    expect(controller.phase, VocalPhase.ready);
+    expect(controller.level, 0);
+  });
   test('failure never calls mix or replaces audio', () async {
     controller = make(
       prepare: (_, _, _) => Future.error(StateError('unavailable')),

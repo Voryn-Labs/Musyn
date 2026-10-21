@@ -83,8 +83,12 @@ class VocalReductionController extends ChangeNotifier {
       notifyListeners();
       final installation = install(item.id, path);
       _installing = installation;
-      final installed = await installation;
-      if (identical(_installing, installation)) _installing = null;
+      late final bool installed;
+      try {
+        installed = await installation;
+      } finally {
+        if (identical(_installing, installation)) _installing = null;
+      }
       if (!installed)
         throw StateError(
           'The selection changed or the prepared audio could not be loaded',
@@ -92,7 +96,7 @@ class VocalReductionController extends ChangeNotifier {
       if (epoch != _epoch || !wanted) return;
       await mix(0);
       if (epoch != _epoch || !wanted) {
-        if (_key == identity(item)) await mix(1);
+        if (_key == identity(item) && !wanted) await mix(1);
         return;
       }
       phase = VocalPhase.ready;
