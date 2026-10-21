@@ -21,6 +21,7 @@ import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/source_resolver.dart';
 import 'package:musyn/services/stream_url_probe.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
+import 'package:musyn/services/youtube_backoff.dart';
 import 'package:musyn/services/youtube_client.dart';
 import 'package:musyn/services/youtube_music_sync_service.dart';
 import 'package:musyn/services/ytdlp_client_sync_service.dart';
@@ -106,6 +107,8 @@ void reloadSongLibraryStateFromStorage() {
 const Duration _cacheValidationDuration = songCacheDuration;
 const Duration _headRevalidateAge = Duration(minutes: 30);
 
+final youtubeStreamBackoff = YoutubeBackoff();
+
 String? _pendingYoutubeStreamError;
 
 void setYoutubeStreamError(String message) {
@@ -119,6 +122,8 @@ String? consumeYoutubeStreamError() {
 }
 
 String _youtubeStreamFailureMessage() {
+  if (youtubeStreamBackoff.active)
+    return 'YouTube is temporarily limiting requests. Wait a moment, then retry this song.';
   final label = YtdlpClientSyncService.instance.clientLabel;
   return "Couldn't load YouTube stream ($label). "
       'Try Sync YouTube Client in Settings.';
@@ -189,11 +194,12 @@ String? _youtubeClientUserAgent(YoutubeApiClient client) {
 Future<({StreamManifest manifest, YoutubeApiClient? client})?> _tryGetManifest(
   String songId, {
   required String attempt,
+  required YoutubeExplode requestClient,
   required Duration timeout,
   List<YoutubeApiClient>? ytClients,
 }) async {
   try {
-    final manifest = await ytClient.videos.streams
+    final manifest = await requestClient.videos.streams
         .getManifest(songId, ytClients: ytClients)
         .timeout(timeout);
     if (manifest.audioOnly.isNotEmpty) {
@@ -207,6 +213,11 @@ Future<({StreamManifest manifest, YoutubeApiClient? client})?> _tryGetManifest(
       'YouTube manifest via $attempt for $songId had no audio streams',
     );
   } catch (error) {
+    if (error is RequestLimitExceededException) {
+      youtubeStreamBackoff.limited();
+      setYoutubeStreamError(_youtubeStreamFailureMessage());
+      rethrow;
+    }
     logger.log('$attempt getManifest failed for $songId: $error');
   }
   return null;
@@ -214,23 +225,34 @@ Future<({StreamManifest manifest, YoutubeApiClient? client})?> _tryGetManifest(
 
 Future<({StreamManifest manifest, YoutubeApiClient? client})?>
 _fetchStreamManifest(String songId) async {
-  // Try each client alone so the returned client matches the stream URLs
-  // (CDN ties User-Agent to the minting client).
-  for (final client in youtubeStreamClients()) {
-    final name =
-        client.payload['context']?['client']?['clientName']?.toString() ??
-        'unknown';
-    final result = await _tryGetManifest(
-      songId,
-      attempt: name,
-      timeout: const Duration(seconds: 12),
-      ytClients: [client],
-    );
-    if (result != null) {
-      return (manifest: result.manifest, client: client);
+  if (youtubeStreamBackoff.active) return null;
+  // A manifest owns its transport. Closing it aborts SDK retries left behind
+  // by a timeout, without closing unrelated playback/catalogue requests.
+  final requestClient = YoutubeExplode();
+  final clock = Stopwatch()..start();
+  try {
+    for (final client in youtubeStreamClients()) {
+      if (youtubeStreamBackoff.active) return null;
+      final remaining = const Duration(seconds: 12) - clock.elapsed;
+      if (remaining <= Duration.zero) return null;
+      final name =
+          client.payload['context']?['client']?['clientName']?.toString() ??
+          'unknown';
+      final result = await _tryGetManifest(
+        songId,
+        attempt: name,
+        requestClient: requestClient,
+        timeout: remaining > const Duration(seconds: 6)
+            ? const Duration(seconds: 6)
+            : remaining,
+        ytClients: [client],
+      );
+      if (result != null) return (manifest: result.manifest, client: client);
     }
+    return null;
+  } finally {
+    requestClient.close();
   }
-  return null;
 }
 
 DateTime? _parseCacheTimestamp(dynamic raw) {
@@ -996,6 +1018,7 @@ Future<String?> _fetchSongStreamUrl(Map song, bool isLive) async {
     // Saavn search ONLY when the user pinned JioSaavn. `auto` must never wait
     // on a title/artist lookup between tracks — iOS suspends on silence gaps.
     final allowSaavnSearch =
+        jiosaavnAvailable &&
         !resolveYoutube &&
         (forceJiosaavn || pref == 'jiosaavn' || pref == 'saavn');
     final preference = resolveYoutube

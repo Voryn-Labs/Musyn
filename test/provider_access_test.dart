@@ -48,6 +48,29 @@ void main() {
     );
   });
   test(
+    'missing key overrides stale default, resolved and forced Saavn preferences',
+    () {
+      final old = preferredSource.value;
+      preferredSource.value = 'jiosaavn';
+      addTearDown(() => preferredSource.value = old);
+      for (final song in <Map>[
+        {},
+        {'resolvedSource': 'jiosaavn'},
+        {'forceSource': 'jiosaavn'},
+      ]) {
+        expect(preferredStreamSourceForSong(song), 'youtube');
+        expect(songShouldResolveYoutube(song), true);
+        expect(
+          streamUrlMatchesPreferredSource(
+            'https://rr1.googlevideo.com/videoplayback?expire=9999999999',
+            song,
+          ),
+          true,
+        );
+      }
+    },
+  );
+  test(
     'user-provided key decrypts fixture and removal revokes stream access',
     () async {
       await ProviderAccess.instance.save('fixture!');

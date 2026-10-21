@@ -356,7 +356,7 @@ class AudioCompletionCoordinator {
         'Max consecutive errors reached — skipping to next instead of stopping',
       );
       consecutiveErrors = 0;
-      if (ctx.canRetryPlayback()) {
+      if (advance && ctx.canRetryPlayback()) {
         unawaited(
           ctx.skipToNext().catchError((Object error, StackTrace stackTrace) {
             logger.log(

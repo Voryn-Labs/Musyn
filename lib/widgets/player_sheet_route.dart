@@ -93,7 +93,9 @@ class PlayerSheetRoute extends PageRoute<void> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) => HeroMode(
-    enabled: initialProgress == 0 && !interactive,
+    // The sheet owns its gesture transition. Hero flights can lose their
+    // destination when track artwork changes or the phone rotates mid-flight.
+    enabled: false,
     child: builder(context),
   );
   @override

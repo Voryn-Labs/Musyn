@@ -19,9 +19,11 @@ class AudioPlaybackCoordinator {
     required this.audioPlayer,
     this.offlineTransitionTimeout = const Duration(seconds: 6),
     this.streamTransitionTimeout = const Duration(seconds: 12),
+    this.resolveUrl,
   });
 
   final AudioPlayer audioPlayer;
+  final Future<String?> Function(Map, bool Function()?)? resolveUrl;
   final Duration offlineTransitionTimeout;
   final Duration streamTransitionTimeout;
 
@@ -276,7 +278,9 @@ class AudioPlaybackCoordinator {
       rejectStale('preloaded', cached);
     }
 
-    return fetchSongStreamUrl(song, song['isLive'] ?? false, abandon: abandon);
+    return resolveUrl != null
+        ? resolveUrl!(song, abandon)
+        : fetchSongStreamUrl(song, song['isLive'] ?? false, abandon: abandon);
   }
 
   Future<PlaybackSource?> resolvePlaybackSource(

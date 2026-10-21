@@ -239,6 +239,7 @@ bool songIsYoutubeCatalog(Map song) {
 /// Returns `auto` when the global preference is auto and nothing has been
 /// forced/resolved yet — callers must accept either Saavn or YouTube URLs.
 String preferredStreamSourceForSong(Map song) {
+  if (!jiosaavnAvailable) return 'youtube';
   final force = song['forceSource']?.toString();
   if (force == 'youtube') return 'youtube';
   if (force == 'jiosaavn' || force == 'saavn')
@@ -289,6 +290,7 @@ bool streamUrlMatchesPreferredSource(String url, Map song) {
 /// match is already cached on the song (`resolvedSource` / Hive).
 /// Explicit `forceSource` always wins over catalog metadata.
 bool songShouldResolveYoutube(Map song) {
+  if (!jiosaavnAvailable) return true;
   final force = song['forceSource']?.toString();
   if (force == 'youtube') return true;
   if (force == 'jiosaavn' || force == 'saavn') return !jiosaavnAvailable;

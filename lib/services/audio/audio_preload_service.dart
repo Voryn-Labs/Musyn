@@ -76,9 +76,9 @@ class AudioPreloadService {
     required Future<void> Function(Map song) preloadOne,
   }) async {
     for (final song in songs) {
-      if (isLoadInProgress()) return;
+      if (isLoadInProgress() || youtubeStreamBackoff.active) return;
       while (cache.activeCount >= maxConcurrent) {
-        if (isLoadInProgress()) return;
+        if (isLoadInProgress() || youtubeStreamBackoff.active) return;
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
@@ -94,7 +94,11 @@ class AudioPreloadService {
     required bool Function() isLoadInProgress,
   }) async {
     final ytid = nextSong['ytid']?.toString();
-    if (ytid == null || offlineModeEnabled || isLoadInProgress()) return;
+    if (ytid == null ||
+        offlineModeEnabled ||
+        isLoadInProgress() ||
+        youtubeStreamBackoff.active)
+      return;
 
     final ticket = cache.begin(ytid, maxConcurrent: maxConcurrent);
     if (ticket == null) return;

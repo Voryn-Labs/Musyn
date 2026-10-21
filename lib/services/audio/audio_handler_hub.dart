@@ -12,6 +12,7 @@ class AudioHandlerHub {
   AudioHandlerHub({
     this.queueLookahead = defaultQueueLookahead,
     this.maxConcurrentPreloads = defaultMaxConcurrentPreloads,
+    this.fetchUrl,
   });
 
   /// Warm URLs for the next several tracks so lock-screen auto-advance and
@@ -20,6 +21,7 @@ class AudioHandlerHub {
   static const int defaultQueueLookahead = 3;
   static const int defaultMaxConcurrentPreloads = 2;
 
+  final Future<String?> Function(Map)? fetchUrl;
   final int queueLookahead;
   final int maxConcurrentPreloads;
 
@@ -29,6 +31,7 @@ class AudioHandlerHub {
   late final AudioQueueController queueOps = AudioQueueController(queue);
   late final AudioPreloadService preload = AudioPreloadService(
     cache: preloadCache,
+    fetchUrl: fetchUrl,
     lookahead: queueLookahead,
     maxConcurrent: maxConcurrentPreloads,
   );

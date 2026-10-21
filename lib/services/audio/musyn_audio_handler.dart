@@ -33,6 +33,7 @@ class MusynAudioHandler extends PlaybackController {
   MusynAudioHandler({
     AudioPlayer? player,
     Future<Uri?> Function(Uri)? prepareArtwork,
+    Future<String?> Function(Map, bool Function()?)? resolveUrl,
   }) : _prepareArtwork = prepareArtwork ?? PlayerArtworkCache.prepare {
     // This handler owns interruption intent. A second automatic listener in
     // just_audio can resume after a call even when the user pressed Pause.
@@ -50,7 +51,13 @@ class MusynAudioHandler extends PlaybackController {
             ),
           ),
         );
-    _playback = AudioPlaybackCoordinator(audioPlayer: audioPlayer);
+    _hub = AudioHandlerHub(
+      fetchUrl: resolveUrl == null ? null : (song) => resolveUrl(song, null),
+    );
+    _playback = AudioPlaybackCoordinator(
+      audioPlayer: audioPlayer,
+      resolveUrl: resolveUrl,
+    );
     _setupEventSubscriptions();
     _updatePlaybackState();
     _initialize();
@@ -127,7 +134,7 @@ class MusynAudioHandler extends PlaybackController {
   bool sleepTimerExpired = false;
   bool sleepTimerEndOfSong = false;
 
-  final AudioHandlerHub _hub = AudioHandlerHub();
+  late final AudioHandlerHub _hub;
   final AudioCompletionCoordinator _completion = AudioCompletionCoordinator();
   late final AudioPlaybackCoordinator _playback;
   final BehaviorSubject<List<Map>> _queueMapStream =
@@ -158,6 +165,8 @@ class MusynAudioHandler extends PlaybackController {
   @override
   final ValueNotifier<int> queueItemCount = ValueNotifier<int>(0);
   String? _lastPublishedMediaSignature;
+  String? _installedMediaId;
+  bool _failedSelection = false;
   int? _eagerPreparedForNextIndex;
   late final _navigator = LatestQueueNavigator(
     isValid: (index) => index >= 0 && index < _hub.queue.items.length,
@@ -366,7 +375,11 @@ class MusynAudioHandler extends PlaybackController {
                 !transitionInProgress ||
                 _playback.installedSourceTransitionId ==
                     _currentLoadingTransitionId;
-            if (sourceBelongsToCurrentTransition &&
+            if (!_failedSelection &&
+                sourceBelongsToCurrentTransition &&
+                (_installedMediaId == null ||
+                    _installedMediaId == mediaItem.valueOrNull?.id) &&
+                _hub.queue.currentIndex >= 0 &&
                 _hub.queue.currentIndex < _hub.queue.items.length &&
                 duration != null) {
               _updateCurrentMediaItemWithDuration(duration);
@@ -385,15 +398,24 @@ class MusynAudioHandler extends PlaybackController {
             .throttleTime(const Duration(milliseconds: 100))
             .listen(
               (state) {
-                if (state.processingState == ProcessingState.idle &&
+                if (_playbackWanted &&
+                    !_userPaused &&
+                    !_failedSelection &&
+                    _currentLoadingTransitionId < 0 &&
+                    state.processingState == ProcessingState.idle &&
                     !state.playing &&
                     _playback.lastError != null &&
                     !_isStalePlayFutureTimeout(_playback.lastError)) {
-                  Future.microtask(
-                    () => _completion.handlePlaybackError(
-                      _playbackErrorContext(),
-                    ),
-                  );
+                  final selection = _selectionRevision;
+                  Future.microtask(() {
+                    if (selection == _selectionRevision &&
+                        _playbackWanted &&
+                        !_userPaused &&
+                        !_failedSelection &&
+                        _currentLoadingTransitionId < 0) {
+                      _completion.handlePlaybackError(_playbackErrorContext());
+                    }
+                  });
                 }
                 _debouncedStateUpdate();
               },
@@ -576,6 +598,8 @@ class MusynAudioHandler extends PlaybackController {
 
   void _clearPublishedMediaState() {
     _lastPublishedMediaSignature = null;
+    _installedMediaId = null;
+    _failedSelection = false;
     currentPlayingYtid.value = null;
   }
 
@@ -589,8 +613,8 @@ class MusynAudioHandler extends PlaybackController {
     int? transitionId,
     Duration? resumeAt,
     bool recordHistory = true,
-  }) {
-    return _playback.setAudioSourceAndPlay(
+  }) async {
+    final success = await _playback.setAudioSourceAndPlay(
       song: song,
       audioSource: audioSource,
       songUrl: songUrl,
@@ -612,6 +636,11 @@ class MusynAudioHandler extends PlaybackController {
       transitionId: transitionId,
       resumeAt: resumeAt,
     );
+    if (success && !_isStaleTransition(transitionId)) {
+      _installedMediaId = mediaId ?? _hub.queue.entryIds.ensureId(song);
+      _failedSelection = false;
+    }
+    return success;
   }
 
   PlaybackErrorContext _playbackErrorContext() {
@@ -928,15 +957,19 @@ class MusynAudioHandler extends PlaybackController {
           _playback.installedSourceTransitionId !=
               _currentLoadingTransitionId &&
           !_playback.sourceSwitchInFlight;
-      final currentPosition = loadingFreshTrack
+      final currentPosition = (loadingFreshTrack || _failedSelection)
           ? Duration.zero
           : audioPlayer.position;
-      final isPlaying = audioPlayer.playing;
+      final isPlaying =
+          !loadingFreshTrack && !_failedSelection && audioPlayer.playing;
       final currentState = playbackState.valueOrNull;
-      final newProcessingState =
-          _processingStateMap[audioPlayer.processingState] ??
-          AudioProcessingState.idle;
-      final bufferedPosition = loadingFreshTrack
+      final newProcessingState = _failedSelection
+          ? AudioProcessingState.error
+          : loadingFreshTrack
+          ? AudioProcessingState.loading
+          : _processingStateMap[audioPlayer.processingState] ??
+                AudioProcessingState.idle;
+      final bufferedPosition = (loadingFreshTrack || _failedSelection)
           ? Duration.zero
           : audioPlayer.bufferedPosition;
 
@@ -968,7 +1001,9 @@ class MusynAudioHandler extends PlaybackController {
       if (shouldUpdate) {
         playbackState.add(
           PlaybackState(
-            controls: _controls(isPlaying),
+            controls: _controls(
+              loadingFreshTrack ? _playbackWanted && !_userPaused : isPlaying,
+            ),
             systemActions: const {
               MediaAction.seek,
               MediaAction.seekForward,
@@ -977,6 +1012,8 @@ class MusynAudioHandler extends PlaybackController {
               MediaAction.setRepeatMode,
             },
             processingState: newProcessingState,
+            errorCode: _failedSelection ? 1 : null,
+            errorMessage: _failedSelection ? _playback.lastError : null,
             playing: isPlaying,
             updatePosition: currentPosition,
             bufferedPosition: bufferedPosition,
@@ -1159,7 +1196,8 @@ class MusynAudioHandler extends PlaybackController {
         return;
       }
 
-      final snapshot = _captureQueuePlaybackState();
+      if (audioPlayer.playing) await audioPlayer.pause();
+      if (selection != _selectionRevision) return;
       _hub.queueOps.replaceWithSingle(song);
       _hydrateQueueEntryIds();
       _updateQueueMediaItems();
@@ -1167,12 +1205,10 @@ class MusynAudioHandler extends PlaybackController {
       if (!success &&
           selection == _selectionRevision &&
           _currentLoadingTransitionId < 0) {
-        _restoreQueuePlaybackState(snapshot);
-        _hydrateQueueEntryIds();
         _updateQueueMediaItems();
         _updatePlaybackState();
         logger.log(
-          'playSingleSong failed — restored previous queue',
+          'Selected song could not load; retained for retry',
           data: {'ytid': ytid, 'title': song['title']},
         );
         _showPlaybackStreamError();
@@ -1260,6 +1296,11 @@ class MusynAudioHandler extends PlaybackController {
         _navigator.cancel();
         _userPaused = false;
         _playbackWanted = true;
+      }
+      final selection = _selectionRevision;
+      if ((replace || startIndex != null) && audioPlayer.playing) {
+        await audioPlayer.pause();
+        if (selection != _selectionRevision) return;
       }
       final manuallyAddedSongs = replace ? _getUnplayedManualSongs() : <Map>[];
       if (replace) {
@@ -1499,79 +1540,24 @@ class MusynAudioHandler extends PlaybackController {
     }
   }
 
-  void _rollbackFailedQueuePlay({
-    required int previousQueueIndex,
-    required MediaItem? previousMediaItem,
-    required bool resumePlayback,
-  }) {
-    if (_hub.queue.items.isEmpty) {
-      _hub.queue.currentIndex = -1;
-    }
-    // Keep the track the user picked — never rewind UI to the previous song.
-    final currentIndex = _hub.queue.currentIndex;
-    if (currentIndex >= 0 && currentIndex < _hub.queue.items.length) {
+  Future<void> _rollbackFailedQueuePlay() async {
+    _failedSelection = true;
+    _userPaused = true;
+    _playbackWanted = false;
+    _stallWatch?.cancel();
+    _stallWatch = null;
+    final generation = _songTransitionCounter;
+    await _playback.recoverPlayerAfterLoadFailure(
+      abandon: () => generation != _songTransitionCounter,
+    );
+    if (generation != _songTransitionCounter) return;
+    if (_hub.queue.containsIndex(_hub.queue.currentIndex)) {
       _publishMediaItem(
-        _getMediaItemForQueue(_hub.queue.items[currentIndex]),
+        _getMediaItemForQueue(_hub.queue.items[_hub.queue.currentIndex]),
         force: true,
       );
-    } else if (previousMediaItem != null && _hub.queue.items.isNotEmpty) {
-      _hub.queue.currentIndex = previousQueueIndex.clamp(
-        0,
-        _hub.queue.items.length - 1,
-      );
-      _publishMediaItem(previousMediaItem, force: true);
     }
-    final generation = _songTransitionCounter;
-    unawaited(
-      _playback.recoverPlayerAfterLoadFailure(
-        abandon: () => generation != _songTransitionCounter,
-      ),
-    );
     _updatePlaybackState();
-  }
-
-  ({
-    List<Map> items,
-    List<Map> originals,
-    List<Map> history,
-    int currentIndex,
-    MediaItem? mediaItem,
-  })
-  _captureQueuePlaybackState() {
-    return (
-      items: cloneMaps(_hub.queue.items),
-      originals: cloneMaps(_hub.queue.originalItems),
-      history: cloneMaps(_hub.queue.history),
-      currentIndex: _hub.queue.currentIndex,
-      mediaItem: mediaItem.valueOrNull,
-    );
-  }
-
-  void _restoreQueuePlaybackState(
-    ({
-      List<Map> items,
-      List<Map> originals,
-      List<Map> history,
-      int currentIndex,
-      MediaItem? mediaItem,
-    })
-    snapshot,
-  ) {
-    _hub.queue.items
-      ..clear()
-      ..addAll(cloneMaps(snapshot.items));
-    _hub.queue.originalItems
-      ..clear()
-      ..addAll(cloneMaps(snapshot.originals));
-    _hub.queue.history
-      ..clear()
-      ..addAll(cloneMaps(snapshot.history));
-    _hub.queue.currentIndex = snapshot.items.isEmpty
-        ? -1
-        : snapshot.currentIndex.clamp(0, snapshot.items.length - 1);
-    if (snapshot.mediaItem != null) {
-      _publishMediaItem(snapshot.mediaItem!, force: true);
-    }
   }
 
   // --- Playback load ---
@@ -1627,12 +1613,12 @@ class MusynAudioHandler extends PlaybackController {
           .catchError((_) => false),
     );
 
-    final wasPlayingBeforeLoad = audioPlayer.playing;
-    final previousQueueIndex = _hub.queue.currentIndex;
-    final previousMediaItem = mediaItem.valueOrNull;
     var succeeded = false;
 
     try {
+      if (audioPlayer.playing) await audioPlayer.pause();
+      if (_isStaleTransition(currentTransitionId)) return false;
+      _failedSelection = false;
       _hub.queue.currentIndex = index;
 
       final currentSong = _hub.queue.items[_hub.queue.currentIndex];
@@ -1682,11 +1668,8 @@ class MusynAudioHandler extends PlaybackController {
           }
         } else {
           if (_isStaleTransition(currentTransitionId)) return false;
-          _rollbackFailedQueuePlay(
-            previousQueueIndex: previousQueueIndex,
-            previousMediaItem: previousMediaItem,
-            resumePlayback: wasPlayingBeforeLoad,
-          );
+          await _rollbackFailedQueuePlay();
+          if (_isStaleTransition(currentTransitionId)) return false;
           final failedYtid = _hub.queue.items[_hub.queue.currentIndex]['ytid']
               ?.toString();
           if (failedYtid != null && failedYtid.isNotEmpty) {
@@ -1696,9 +1679,11 @@ class MusynAudioHandler extends PlaybackController {
             _hub.preloadCache.drop(failedYtid);
             unawaited(invalidateSongStreamCache(failedYtid));
           }
-          // After both sources fail, skip forward instead of leaving the
-          // player idle mid-queue.
-          _completion.handlePlaybackError(_playbackErrorContext());
+          // A failed explicit selection stays selected and offers Play to retry.
+          _completion.handlePlaybackError(
+            _playbackErrorContext(),
+            advance: false,
+          );
           _showPlaybackStreamError();
         }
       }
@@ -1706,11 +1691,8 @@ class MusynAudioHandler extends PlaybackController {
       logger.log('Error playing from queue', error: e, stackTrace: stackTrace);
       if (_isStaleTransition(currentTransitionId)) return false;
       if (currentTransitionId == _currentLoadingTransitionId) {
-        _rollbackFailedQueuePlay(
-          previousQueueIndex: previousQueueIndex,
-          previousMediaItem: previousMediaItem,
-          resumePlayback: wasPlayingBeforeLoad,
-        );
+        await _rollbackFailedQueuePlay();
+        if (_isStaleTransition(currentTransitionId)) return false;
         final idx = _hub.queue.currentIndex;
         if (idx >= 0 && idx < _hub.queue.items.length) {
           final failedYtid = _hub.queue.items[idx]['ytid']?.toString();
@@ -1721,7 +1703,7 @@ class MusynAudioHandler extends PlaybackController {
           }
         }
       }
-      _completion.handlePlaybackError(_playbackErrorContext());
+      _completion.handlePlaybackError(_playbackErrorContext(), advance: false);
       _showPlaybackStreamError();
     } finally {
       // Always clear if this is still the latest transition. A rapid skip sets
@@ -2103,7 +2085,17 @@ class MusynAudioHandler extends PlaybackController {
       _playbackWanted = true;
       _armStallWatch();
       sleepTimerExpired = false;
-      if (_currentLoadingTransitionId >= 0) return;
+      if (_currentLoadingTransitionId >= 0 || _navigator.running) {
+        _updatePlaybackState();
+        return;
+      }
+      final selected = currentSong;
+      if (selected != null &&
+          (_failedSelection ||
+              _installedMediaId != _hub.queue.entryIds.ensureId(selected))) {
+        await _playFromQueue(_hub.queue.currentIndex);
+        return;
+      }
       try {
         final session = await AudioSession.instance;
         await session.setActive(true);
@@ -2473,9 +2465,12 @@ class MusynAudioHandler extends PlaybackController {
       }
       _scrubStaleStreamState(songData);
 
-      // Do not stop the player before the URL exists. A lock-screen skip onto
-      // a song that is not warmed yet must keep the current audio running
-      // while YouTube or JioSaavn resolves; stop() here ends the session.
+      // Pause the old audio before publishing a different selection. Keep its
+      // item/session attached; stop() would deactivate background audio.
+      if (!_playback.sourceSwitchInFlight && audioPlayer.playing) {
+        await audioPlayer.pause();
+        if (_isStaleTransition(effectiveTransitionId)) return false;
+      }
       _emitOptimisticLoadingState(
         song: songData,
         includeMediaItem: true,
@@ -2847,7 +2842,7 @@ class MusynAudioHandler extends PlaybackController {
 
   /// One load at a time. Extra skips move [_navCursor] and cancel the load
   /// that is no longer the landing track, so five fast skips resolve one song.
-  /// The current song keeps playing until that URL is ready, YouTube or Saavn.
+  /// The old item is paused before publishing the newly selected track.
   Future<void> _requestQueueIndex(int index) => _navigator.select(index);
 
   @override
@@ -2861,20 +2856,12 @@ class MusynAudioHandler extends PlaybackController {
       final targetIndex = base + 1;
       if (targetIndex < _hub.queue.items.length) {
         final targetSong = _hub.queue.items[targetIndex];
-        _emitOptimisticLoadingState(
-          song: targetSong,
-          queueIndex: targetIndex,
-          includeMediaItem: true,
-        );
+        _emitOptimisticLoadingState(song: targetSong, queueIndex: targetIndex);
         await _requestQueueIndex(targetIndex);
       } else if (repeatNotifier.value == AudioServiceRepeatMode.all &&
           _hub.queue.items.isNotEmpty) {
         final targetSong = _hub.queue.items[0];
-        _emitOptimisticLoadingState(
-          song: targetSong,
-          queueIndex: 0,
-          includeMediaItem: true,
-        );
+        _emitOptimisticLoadingState(song: targetSong, queueIndex: 0);
         await _requestQueueIndex(0);
       } else if (playNextSongAutomatically.value &&
           !offlineMode.value &&
@@ -2932,22 +2919,14 @@ class MusynAudioHandler extends PlaybackController {
       final targetIndex = base - 1;
       if (targetIndex >= 0) {
         final targetSong = _hub.queue.items[targetIndex];
-        _emitOptimisticLoadingState(
-          song: targetSong,
-          queueIndex: targetIndex,
-          includeMediaItem: true,
-        );
+        _emitOptimisticLoadingState(song: targetSong, queueIndex: targetIndex);
         await _requestQueueIndex(targetIndex);
       } else if (_hub.queue.history.isNotEmpty && _navCursor == null) {
         final lastSong = cloneMap(_hub.queue.history.removeAt(0));
         _hub.queue.items.insert(0, lastSong);
         _hub.queue.currentIndex = 0;
         _updateQueueMediaItems();
-        _emitOptimisticLoadingState(
-          song: lastSong,
-          queueIndex: 0,
-          includeMediaItem: true,
-        );
+        _emitOptimisticLoadingState(song: lastSong, queueIndex: 0);
         await _requestQueueIndex(0);
       }
 
