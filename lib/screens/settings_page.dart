@@ -515,6 +515,8 @@ class SettingsPage extends StatelessWidget {
         onTap: () async {
           try {
             await MotionArtwork.instance.clearCache();
+            await clearArtworkImageCache();
+            if (isAudioHandlerInitialized) audioHandler.clearPreparedArtwork();
             if (context.mounted) showToast(context, 'Artwork cache cleared');
           } catch (_) {
             if (context.mounted)

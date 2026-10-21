@@ -15,6 +15,7 @@ import 'package:musyn/screens/search_page.dart';
 import 'package:musyn/screens/settings_page.dart';
 import 'package:musyn/screens/user_songs_page.dart';
 import 'package:musyn/services/app_navigation_state.dart';
+import 'package:musyn/services/navigation_paths.dart';
 import 'package:musyn/services/playlist_download_service.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/widgets/content_state.dart';
@@ -92,9 +93,7 @@ class NavigationManager {
         }
 
         if (isOffline && currentPath.contains('/artist/')) {
-          final artistId = _decodePathParameter(
-            state.pathParameters['artistId'],
-          );
+          final artistId = state.pathParameters['artistId'] ?? '';
           if (!offlinePlaylistService.isPlaylistDownloaded(artistId)) {
             return homePath;
           }
@@ -140,11 +139,11 @@ class NavigationManager {
   GoRouteInformationParser get routeInformationParser =>
       router.routeInformationParser;
 
-  static const String homePath = '/home';
-  static const String explorePath = '/explore';
+  static const String homePath = NavigationPaths.homePath;
+  static const String explorePath = NavigationPaths.explorePath;
   static const String settingsPath = '/settings';
-  static const String searchPath = '/search';
-  static const String libraryPath = '/library';
+  static const String searchPath = NavigationPaths.searchPath;
+  static const String libraryPath = NavigationPaths.libraryPath;
 
   /// Refresh the router configuration when offline mode changes
   static void refreshRouter() {
@@ -305,7 +304,7 @@ class NavigationManager {
     path: 'playlist/:playlistId',
     pageBuilder: (context, state) => _pushPage(
       child: PlaylistPage(
-        playlistId: _decodePathParameter(state.pathParameters['playlistId']),
+        playlistId: state.pathParameters['playlistId'] ?? '',
         playlistData: state.extra,
       ),
       state: state,
@@ -316,8 +315,8 @@ class NavigationManager {
     path: 'folder/:folderId/:folderName',
     pageBuilder: (context, state) => _pushPage(
       child: PlaylistFolderPage(
-        folderId: _decodePathParameter(state.pathParameters['folderId']),
-        folderName: _decodePathParameter(state.pathParameters['folderName']),
+        folderId: state.pathParameters['folderId'] ?? '',
+        folderName: state.pathParameters['folderName'] ?? '',
       ),
       state: state,
     ),
@@ -329,7 +328,7 @@ class NavigationManager {
       path: 'artist/:artistId',
       pageBuilder: (context, state) => _pushPage(
         child: ArtistPage(
-          artistId: _decodePathParameter(state.pathParameters['artistId']),
+          artistId: state.pathParameters['artistId'] ?? '',
           artistData: _extraAsMap(state.extra),
         ),
         state: state,
@@ -339,9 +338,7 @@ class NavigationManager {
           path: 'songs',
           pageBuilder: (context, state) => _pushPage(
             child: PlaylistPage(
-              playlistId: _decodePathParameter(
-                state.pathParameters['artistId'],
-              ),
+              playlistId: state.pathParameters['artistId'] ?? '',
               playlistData: _extraAsMap(state.extra),
               cubeIcon: CupertinoIcons.person_crop_circle_fill,
               isArtist: true,
@@ -360,19 +357,13 @@ class NavigationManager {
       path: 'album/:albumId',
       pageBuilder: (context, state) => _pushPage(
         child: PlaylistPage(
-          playlistId: _decodePathParameter(state.pathParameters['albumId']),
+          playlistId: state.pathParameters['albumId'] ?? '',
           playlistData: _extraAsMap(state.extra),
           cubeIcon: CupertinoIcons.music_albums,
         ),
         state: state,
       ),
     );
-  }
-
-  static String _decodePathParameter(String? value) {
-    if (value == null || value.isEmpty) return '';
-    // go_router already decodes path parameters during route matching.
-    return value;
   }
 
   static Map? _extraAsMap(Object? extra) {
@@ -402,9 +393,6 @@ class NavigationManager {
     required Widget child,
     required GoRouterState state,
   }) {
-    return CupertinoPage<void>(
-      key: state.pageKey,
-      child: child,
-    );
+    return CupertinoPage<void>(key: state.pageKey, child: child);
   }
 }

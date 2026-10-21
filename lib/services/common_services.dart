@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/widgets.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
@@ -20,6 +19,7 @@ import 'package:musyn/services/lyrics_request_cache.dart';
 import 'package:musyn/services/offline_song_registry.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/source_resolver.dart';
+import 'package:musyn/services/stream_url_probe.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
 import 'package:musyn/services/youtube_client.dart';
 import 'package:musyn/services/youtube_music_sync_service.dart';
@@ -240,26 +240,6 @@ DateTime? _parseCacheTimestamp(dynamic raw) {
   return null;
 }
 
-Future<bool> _isCachedStreamUrlAlive(String url, {String? userAgent}) async {
-  try {
-    final headers = <String, String>{
-      if (userAgent != null && userAgent.isNotEmpty) 'User-Agent': userAgent,
-    };
-    final uri = Uri.parse(url);
-    final head = await http
-        .head(uri, headers: headers.isEmpty ? null : headers)
-        .timeout(const Duration(seconds: 4));
-    if (head.statusCode == 200 || head.statusCode == 206) return true;
-    if (head.statusCode != 405) return false;
-    final probe = await http
-        .get(uri, headers: {...headers, 'Range': 'bytes=0-1'})
-        .timeout(const Duration(seconds: 4));
-    return probe.statusCode == 200 || probe.statusCode == 206;
-  } catch (_) {
-    return false;
-  }
-}
-
 /// Returns a cached song URL if present and still valid.
 Future<String?> _getCachedSongUrl(
   String cacheKey,
@@ -289,7 +269,7 @@ Future<String?> _getCachedSongUrl(
 
   if (cachedAt != null &&
       DateTime.now().difference(cachedAt) > _headRevalidateAge) {
-    if (!await _isCachedStreamUrlAlive(cachedUrl, userAgent: userAgent)) {
+    if (!await isStreamUrlAlive(cachedUrl, userAgent: userAgent)) {
       logger.log('Stale cached stream URL rejected for $cacheKey');
       await deleteData('cache', cacheKey);
       await deleteData('cache', '${cacheKey}_meta');
@@ -297,7 +277,7 @@ Future<String?> _getCachedSongUrl(
     }
   } else if (cachedAt == null) {
     // Legacy entries without a stored date must be probed once.
-    if (!await _isCachedStreamUrlAlive(cachedUrl, userAgent: userAgent)) {
+    if (!await isStreamUrlAlive(cachedUrl, userAgent: userAgent)) {
       logger.log('Untimestamped cached stream URL rejected for $cacheKey');
       await deleteData('cache', cacheKey);
       await deleteData('cache', '${cacheKey}_meta');

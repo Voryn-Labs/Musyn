@@ -741,6 +741,11 @@ void main() {
       expect(find.bySemanticsLabel('Next track'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await capture(tester, 'sing-along-dark');
+      final original = handler.mediaItem.value!;
+      handler.mediaItem.add(original.copyWith(id: 'repeated-entry'));
+      await tester.pumpAndSettle();
+      expect(find.text('Line-synced lyrics'), findsNothing);
+      expect(find.byIcon(CupertinoIcons.mic_fill), findsNothing);
       lastFetchedLyrics = null;
       lyrics.value = null;
     },

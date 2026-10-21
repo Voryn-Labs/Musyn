@@ -15,6 +15,7 @@ import 'package:musyn/services/audio/remote_favorites.dart';
 import 'package:musyn/services/audio_service.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
+import 'package:musyn/services/deferred_links.dart';
 import 'package:musyn/services/io_service.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/motion_artwork.dart';
@@ -41,6 +42,7 @@ export 'package:musyn/services/logger_service.dart' show logger, Logger;
 
 // Re-exported from logger_service for files that import main.dart.
 final appLinks = AppLinks();
+final _incomingPlaylists = DeferredLinks(_importPlaylistLink);
 
 class MusynApp extends StatefulWidget {
   const MusynApp({super.key});
@@ -104,6 +106,9 @@ class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     logger.log('Musyn started');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _incomingPlaylists.attach();
+    });
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
@@ -147,6 +152,7 @@ class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _incomingPlaylists.detach();
     WidgetsBinding.instance.removeObserver(this);
     offlineMode.removeListener(_onOfflineModeChanged);
     themeModeSetting.removeListener(_onThemeChanged);
@@ -409,7 +415,16 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
 }
 
 Future<void> handleIncomingLink(Uri? uri) async {
-  if (uri == null || uri.scheme != 'musyn' || uri.host != 'playlist') return;
+  if (uri == null ||
+      uri.scheme != 'musyn' ||
+      uri.host != 'playlist' ||
+      uri.toString().length > 66000)
+    return;
+  _incomingPlaylists.receive(uri);
+}
+
+Future<void> _importPlaylistLink(Uri uri) async {
+  if (uri.scheme != 'musyn' || uri.host != 'playlist') return;
 
   if (uri.pathSegments.length < 2 || uri.pathSegments[0] != 'custom') return;
 
@@ -447,23 +462,19 @@ Future<void> handleIncomingLink(Uri? uri) async {
 
     final navContext =
         NavigationManager.router.routerDelegate.navigatorKey.currentContext;
-    if (navContext == null) {
-      logger.log('Deep link received before navigator mounted');
-      return;
-    }
 
     if (isDuplicate) {
-      showToast(navContext, navContext.l10n.playlistAlreadyExists);
+      if (navContext != null)
+        showToast(navContext, navContext.l10n.playlistAlreadyExists);
     } else {
       userCustomPlaylists.value = [...userCustomPlaylists.value, playlist];
-      unawaited(
-        addOrUpdateData<List>(
-          'user',
-          'customPlaylists',
-          userCustomPlaylists.value,
-        ),
+      await addOrUpdateData<List>(
+        'user',
+        'customPlaylists',
+        userCustomPlaylists.value,
       );
-      showToast(navContext, '${navContext.l10n.addedSuccess}!');
+      if (navContext != null)
+        showToast(navContext, '${navContext.l10n.addedSuccess}!');
     }
   } catch (e, stackTrace) {
     logger.log(

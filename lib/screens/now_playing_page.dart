@@ -51,6 +51,7 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   _PlayerPane _pane = _PlayerPane.main;
   bool _singAlong = false;
   String? _lyricTrack;
+  String? _vocalSelection;
   Future<String?>? _lyrics;
   double _coverDrag = 0;
   double _horizontalDrag = 0;
@@ -184,6 +185,11 @@ class _NowPlayingPageState extends State<NowPlayingPage>
         if (_pane == _PlayerPane.lyrics ||
             MediaQuery.orientationOf(context) == Orientation.landscape) {
           _lyrics ??= getSongLyrics(item.artist, item.title);
+        }
+        final vocalKey = VocalReductionController.identity(item);
+        if (_vocalSelection != vocalKey) {
+          _vocalSelection = vocalKey;
+          _singAlong = false;
         }
         final dark = isAppDarkMode(context);
 

@@ -3,33 +3,40 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:musyn/services/bounded_jobs.dart';
 import 'package:musyn/utilities/artwork_provider.dart' show artworkCandidates;
 
 /// Shares a square, locally cached cover with Now Playing and the app. Artwork
 /// fetching never blocks audio resolution or installation.
 class PlayerArtworkCache {
-  static final _pending = <String, Future<Uri?>>{};
+  static final _pending = BoundedJobs<String, Uri>(capacity: 40);
+  static bool _clearing = false;
   static final _resolved = <String, Uri>{};
   static const _channel = MethodChannel('com.vorynlabs.musyn/artwork');
 
   static Uri? cached(Uri remote) => _resolved[remote.toString()];
 
   static Future<Uri?> prepare(Uri uri) {
+    if (_clearing) return Future.value();
     final key = uri.toString();
-    final existing = _pending[key];
-    if (existing != null) return existing;
-    final future = _prepare(uri).then((local) {
+    return _pending.run(key, () async {
+      final local = await _prepare(uri);
       if (local != null) {
         _resolved[key] = local;
         if (_resolved.length > 40) _resolved.remove(_resolved.keys.first);
       }
       return local;
     });
-    _pending[key] = future;
-    if (_pending.length > 40) _pending.remove(_pending.keys.first);
-    return future.whenComplete(() {
-      if (identical(_pending[key], future)) _pending.remove(key);
-    });
+  }
+
+  static Future<void> clear() async {
+    _clearing = true;
+    try {
+      await _pending.drain();
+      _resolved.clear();
+    } finally {
+      _clearing = false;
+    }
   }
 
   static Future<Uri?> _prepare(Uri uri) async {

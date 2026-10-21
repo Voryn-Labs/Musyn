@@ -39,6 +39,8 @@ abstract class PlaybackController extends BaseAudioHandler {
   void clearPinnedSources();
   void clearPreparedStreams();
   Future<String?> switchSource(String source);
+  void clearPreparedArtwork() {}
+
   Future<bool> installVocalStems(String entryId, String path) async => false;
   Future<void> setSleepTimer(Duration duration);
   void cancelSleepTimer();

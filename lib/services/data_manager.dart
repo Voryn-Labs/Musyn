@@ -1,8 +1,9 @@
 // ignore_for_file: cascade_invocations
-
+import 'dart:typed_data';
 import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:hive/hive.dart';
+import 'package:musyn/services/audio/player_artwork_cache.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/utilities/artwork_provider.dart';
 
@@ -16,18 +17,31 @@ const Duration defaultCacheDuration = Duration(days: 2);
 final _memoryCache = <String, _CacheEntry>{};
 
 class _CacheEntry {
-  _CacheEntry(this.data, this.timestamp);
+  _CacheEntry(this.data, this.timestamp, this.lifetime);
   final dynamic data;
   final DateTime timestamp;
+  final Duration lifetime;
 
   bool isValid(Duration cacheDuration) {
     return DateTime.now().difference(timestamp) < cacheDuration;
   }
 }
 
+dynamic _copyCacheValue(dynamic value) {
+  if (value is Uint8List) return Uint8List.fromList(value);
+  if (value is Map)
+    return value.map((key, item) => MapEntry(key, _copyCacheValue(item)));
+  if (value is List) return value.map(_copyCacheValue).toList();
+  return value;
+}
+
+void _pruneMemoryCache() =>
+    _memoryCache.removeWhere((_, entry) => !entry.isValid(entry.lifetime));
+
 DateTime? _parseCacheDate(dynamic value) {
   if (value is DateTime) return value;
   if (value is String) return DateTime.tryParse(value);
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
   return null;
 }
 
@@ -36,6 +50,7 @@ const int _maxMemoryCacheSize = 200;
 const int _memoryCacheTrimSize = 50;
 
 void _setMemoryCacheEntry(String key, _CacheEntry entry) {
+  _pruneMemoryCache();
   _memoryCache
     ..remove(key)
     ..[key] = entry;
@@ -69,9 +84,17 @@ Future<void> addOrUpdateData<T>(String category, String key, T value) async {
   final _box = await _openBox(category);
 
   if (category == 'cache') {
-    await _box.putAll({key: value, '${key}_date': DateTime.now()});
+    final snapshot = _copyCacheValue(value);
+    await _box.putAll({key: snapshot, '${key}_date': DateTime.now()});
     final cacheKey = '${category}_$key';
-    _setMemoryCacheEntry(cacheKey, _CacheEntry(value, DateTime.now()));
+    _setMemoryCacheEntry(
+      cacheKey,
+      _CacheEntry(
+        _copyCacheValue(snapshot),
+        DateTime.now(),
+        _getCacheDurationForKey(key),
+      ),
+    );
   } else {
     await _box.put(key, value);
   }
@@ -87,11 +110,12 @@ Future<dynamic> getData(
   cachingDuration ??= _getCacheDurationForKey(key);
 
   // Check memory cache first
+  _pruneMemoryCache();
   final cacheKey = '${category}_$key';
   final memCacheEntry = _memoryCache[cacheKey];
   if (memCacheEntry != null && memCacheEntry.isValid(cachingDuration)) {
     _touchMemoryCacheEntry(cacheKey);
-    return memCacheEntry.data;
+    return _copyCacheValue(memCacheEntry.data);
   }
   _trimMemoryCacheIfNeeded();
 
@@ -111,10 +135,13 @@ Future<dynamic> getData(
   if (data != null && category == 'cache') {
     final timestamp =
         _parseCacheDate(await _box.get('${key}_date')) ?? DateTime.now();
-    _setMemoryCacheEntry(cacheKey, _CacheEntry(data, timestamp));
+    _setMemoryCacheEntry(
+      cacheKey,
+      _CacheEntry(_copyCacheValue(data), timestamp, cachingDuration),
+    );
   }
 
-  return data;
+  return category == 'cache' ? _copyCacheValue(data) : data;
 }
 
 Future<void> deleteData(String category, String key) async {
@@ -133,38 +160,13 @@ Future<void> deleteData(String category, String key) async {
   }
 }
 
-Future<bool> clearCache() async {
-  try {
-    _memoryCache.clear();
-    ArtworkProvider.clearCache();
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
-
-    final cacheBox = await _openBox('cache');
-    await cacheBox.clear();
-
-    try {
-      if (Hive.isBoxOpen('saavn_match_cache')) {
-        await Hive.box('saavn_match_cache').clear();
-      } else {
-        final box = await Hive.openBox('saavn_match_cache');
-        await box.clear();
-      }
-    } catch (e) {
-      logger.log('Failed to clear saavn match cache', error: e);
-    }
-
-    try {
-      await DefaultCacheManager().emptyCache();
-    } catch (e) {
-      logger.log('Failed to clear image disk cache', error: e);
-    }
-
-    return true;
-  } catch (e, stackTrace) {
-    logger.log('Failed to clear cache', error: e, stackTrace: stackTrace);
-    return false;
-  }
+/// Square covers, remote images and decoded images; audio caches stay intact.
+Future<void> clearArtworkImageCache() async {
+  await PlayerArtworkCache.clear();
+  ArtworkProvider.clearCache();
+  PaintingBinding.instance.imageCache.clear();
+  PaintingBinding.instance.imageCache.clearLiveImages();
+  await DefaultCacheManager().emptyCache();
 }
 
 // Clean up old cache entries to prevent excessive storage usage
@@ -180,7 +182,15 @@ Future<void> cleanupOldCacheEntries() async {
 
     for (final key in keys) {
       final dateKey = '${key}_date';
-      final date = cacheBox.get(dateKey);
+      final row = cacheBox.get(key);
+      final automatic =
+          key is String && key.startsWith('automatic-artwork:') && row is Map;
+      final date = automatic ? row['at'] : cacheBox.get(dateKey);
+      final lifetime = automatic
+          ? (row['missing'] == true
+                ? const Duration(days: 1)
+                : const Duration(days: 7))
+          : const Duration(days: 2);
       final cacheKey = 'cache_$key';
 
       if (_parseCacheDate(date) == null) {
@@ -192,13 +202,14 @@ Future<void> cleanupOldCacheEntries() async {
 
       final age = now.difference(_parseCacheDate(date)!);
       // Very old cache entries (older than 2 days) should be removed
-      if (age > const Duration(days: 2)) {
+      if (age > lifetime) {
         await cacheBox.delete(key);
         await cacheBox.delete(dateKey);
         _memoryCache.remove(cacheKey);
       }
     }
 
+    _pruneMemoryCache();
     await _trimSaavnMatchCache();
   } catch (e, stackTrace) {
     logger.log(
@@ -260,7 +271,11 @@ Future<bool> clearAllCache() async {
   try {
     _memoryCache.clear();
     final box = await _openBox('cache');
-    await box.clear();
+    await box.deleteAll(
+      box.keys
+          .where((key) => !key.toString().startsWith('automatic-artwork:'))
+          .toList(),
+    );
     final saavnBox = Hive.isBoxOpen('saavn_match_cache')
         ? Hive.box('saavn_match_cache')
         : await Hive.openBox('saavn_match_cache');

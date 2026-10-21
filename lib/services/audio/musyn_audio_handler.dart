@@ -18,6 +18,7 @@ import 'package:musyn/services/audio/audio_queue_controller.dart';
 import 'package:musyn/services/audio/audio_queue_state.dart';
 import 'package:musyn/services/audio/latest_queue_navigator.dart';
 import 'package:musyn/services/audio/playback_controller.dart';
+import 'package:musyn/services/audio/playback_stall_watch.dart';
 import 'package:musyn/services/audio/player_artwork_cache.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/logger_service.dart';
@@ -58,6 +59,9 @@ class MusynAudioHandler extends PlaybackController {
   final Future<Uri?> Function(Uri) _prepareArtwork;
   final _coverJobs = <Uri, Future<Uri?>>{};
   final _readyCovers = <Uri, Uri>{};
+
+  @override
+  void clearPreparedArtwork() => _readyCovers.clear();
 
   Future<Uri?> _warmCover(Uri uri) {
     final ready = _readyCovers[uri];
@@ -144,8 +148,7 @@ class MusynAudioHandler extends PlaybackController {
   bool _backgroundFetchInProgress = false;
   int? _foregroundRecommendationRevision;
   Timer? _stallWatch;
-  Duration? _stallPosition;
-  DateTime _stallMark = DateTime.now();
+  final _stallPolicy = PlaybackStallWatch();
 
   /// Shared playing indicator for list tiles (avoids per-row mediaItem streams).
   @override
@@ -1608,8 +1611,7 @@ class MusynAudioHandler extends PlaybackController {
     final currentTransitionId = _songTransitionCounter;
     _hub.queue.markLoading(index, _hub.queue.songAt(index));
     _currentLoadingTransitionId = currentTransitionId;
-    _stallMark = DateTime.now();
-    _stallPosition = null;
+    _stallPolicy.reset();
     // Request the session during transition. Device testing is still required:
     // activation alone does not grant background execution during silence.
     unawaited(
@@ -2023,8 +2025,7 @@ class MusynAudioHandler extends PlaybackController {
   }
 
   void _armStallWatch() {
-    _stallMark = DateTime.now();
-    _stallPosition = null;
+    _stallPolicy.reset();
     _stallWatch ??= Timer.periodic(const Duration(seconds: 2), (_) {
       unawaited(_recoverLockScreenStall());
     });
@@ -2053,31 +2054,14 @@ class MusynAudioHandler extends PlaybackController {
     if (_completion.isEventPendingFresh) return;
 
     final state = audioPlayer.processingState;
-    if (state == ProcessingState.buffering ||
-        state == ProcessingState.loading) {
-      // Actively buffering or loading stream from the network; not a frozen stall.
-      _stallMark = DateTime.now();
-      return;
-    }
-
-    final position = audioPlayer.position;
-    if (audioPlayer.playing && position != _stallPosition) {
-      _stallPosition = position;
-      _stallMark = DateTime.now();
-      return;
-    }
-
-    final quietFor = DateTime.now().difference(_stallMark);
-    final ended =
-        state == ProcessingState.completed ||
-        (state == ProcessingState.idle && audioPlayer.audioSource != null);
-    final frozenWhilePlaying =
-        audioPlayer.playing &&
-        state == ProcessingState.ready &&
-        quietFor > const Duration(seconds: 12);
-    if (!ended && !frozenWhilePlaying) return;
-    if (ended && quietFor < const Duration(seconds: 2)) return;
-
+    final action = _stallPolicy.sample(
+      now: DateTime.now(),
+      position: audioPlayer.position,
+      playing: audioPlayer.playing,
+      state: state,
+    );
+    if (action == StallAction.wait || audioPlayer.audioSource == null) return;
+    final transition = _songTransitionCounter;
     _recoveringStall = true;
     logger.log(
       'Playback stalled with session still alive — recovering',
@@ -2085,7 +2069,7 @@ class MusynAudioHandler extends PlaybackController {
         'state': state.name,
         'playing': audioPlayer.playing,
         'index': _hub.queue.currentIndex,
-        'quietMs': quietFor.inMilliseconds,
+        'action': action.name,
         'title': currentSong?['title'],
         'source': currentSong?['resolvedSource'] ?? currentSong?['source'],
       },
@@ -2093,8 +2077,13 @@ class MusynAudioHandler extends PlaybackController {
     try {
       final session = await AudioSession.instance;
       await session.setActive(true);
-      if (_userPaused || !_playbackWanted || _interrupted) return;
-      if (hasNext) {
+      if (_userPaused ||
+          !_playbackWanted ||
+          _interrupted ||
+          transition != _songTransitionCounter ||
+          audioPlayer.processingState != state)
+        return;
+      if (action == StallAction.advanceEnded && hasNext) {
         await skipToNext();
       } else {
         unawaited(audioPlayer.play());
@@ -2103,7 +2092,7 @@ class MusynAudioHandler extends PlaybackController {
       logger.log('Stall recovery failed', error: e, stackTrace: stackTrace);
     } finally {
       _recoveringStall = false;
-      _stallMark = DateTime.now();
+      _stallPolicy.reset();
     }
   }
 
