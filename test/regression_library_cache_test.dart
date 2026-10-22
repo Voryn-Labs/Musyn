@@ -57,7 +57,7 @@ void main() {
       );
       await http.runWithClient(() async {
         for (var i = 0; i < 205; i++) {
-          final id = 'PLaudit$i';
+          final id = 'PLregression$i';
           // Exercise the former catalogue-append path as well as cold fetches.
           if (i < 3)
             onlinePlaylists.value = [
@@ -70,14 +70,14 @@ void main() {
       }, () => client);
       expect(playlists.length, originalSize);
       expect(onlinePlaylists.value.length, lessThanOrEqualTo(200));
-      expect(onlinePlaylists.value.last['ytid'], 'PLaudit204');
+      expect(onlinePlaylists.value.last['ytid'], 'PLregression204');
     },
   );
 
   test(
     'completed unlike invalidates an earlier unresolved like and permits later updates',
     () async {
-      const id = 'PLauditlike';
+      const id = 'PLregressionlike';
       final like = updatePlaylistLikeStatus(
         id,
         true,

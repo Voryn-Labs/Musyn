@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:musyn/services/audio/remote_favorites.dart';
 import 'package:musyn/services/common_services.dart';
-import 'bitchord_ui_test.dart' show UiPlayback;
+import 'musyn_ui_test.dart' show UiPlayback;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

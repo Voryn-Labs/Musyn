@@ -1,4 +1,4 @@
-"""Generate the public 0.1 feed only from an existing built IPA."""
+"""Generate the public release feed only from an existing built IPA."""
 import argparse
 import datetime
 import json

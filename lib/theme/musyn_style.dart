@@ -23,7 +23,7 @@ abstract final class MusynStyle {
   static const Color secondaryLabel = Color(0x99EBEBF5);
   static const Color tertiaryLabel = Color(0x4DEBEBF5);
 
-  /// BitChord / Apple Music tokens
+  /// Musyn player tokens.
   static const Color brandCoral = Color(0xFFFFC5A7);
   static const Color brandCoralLight = Color(0xFFAA4937);
   static const Color appleRed = Color(0xFFFA2D48);

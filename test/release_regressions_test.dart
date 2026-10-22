@@ -109,7 +109,9 @@ void main() {
   group('persistent cache', () {
     late Directory directory;
     setUp(() async {
-      directory = await Directory.systemTemp.createTemp('musyn-audit-cache-');
+      directory = await Directory.systemTemp.createTemp(
+        'musyn-regression-cache-',
+      );
       Hive.init(directory.path);
       await Hive.openBox('cache');
     });

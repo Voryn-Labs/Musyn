@@ -21,12 +21,6 @@
 
 **Coming soon: Sing Along.** Turn down the singer’s voice while the backing music and live lyrics continue. We’re improving startup speed; vocal reduction is currently disabled. Synced lyrics work now.
 
-## A look inside
-
-<p><img src="docs/ui-review/home-dark.png" width="210" alt="Musyn Home"><img src="docs/ui-review/player-dark.png" width="210" alt="Musyn player"><img src="docs/ui-review/downloads-dark.png" width="210" alt="Musyn downloads"></p>
-
-UI previews with sample tracks and placeholder artwork. [More views](docs/ui-review/README.md).
-
 ## Get Musyn
 
 **[Download 0.3.7](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.7)** · iOS 15+ · Unsigned IPA
@@ -37,18 +31,18 @@ Sign the IPA with your preferred compatible installer. Add the shared Voryn Labs
 https://voryn-labs.github.io/source.json
 ```
 
-**Optional JioSaavn:** add your own authorized media URL key in Settings → JioSaavn. Setup search phrase: **“JioSaavn media URL key.”** Musyn supplies no key; YouTube works without one. [Setup guide](docs/SOURCES_AND_ARTWORK.md).
+**Optional JioSaavn:** add your own authorized media URL key in Settings → JioSaavn. Setup search phrase: **“JioSaavn media URL key.”** Musyn supplies no key; YouTube works without one.
 
 ## Open source, open to ideas
 
-Built by **[Voryn Labs](https://voryn-labs.github.io/)** under [GPL-3.0](LICENSE), with BitChord as an interface reference (evolved from the original Musify project). [Credits](docs/CREDITS.md) · [Privacy](https://voryn-labs.github.io/musyn-privacy.html) · [Terms](https://voryn-labs.github.io/musyn-terms.html).
+Built by **[Voryn Labs](https://voryn-labs.github.io/)** under [GPL-3.0](LICENSE). Required upstream attribution and dependency notices are kept in [Credits](docs/CREDITS.md). [Privacy](https://voryn-labs.github.io/musyn-privacy.html) · [Terms](https://voryn-labs.github.io/musyn-terms.html).
 
 [Report a bug or suggest a feature](https://github.com/Voryn-Labs/Musyn/issues/new/choose). You can review and share diagnostic logs from Settings; nothing uploads automatically. Keep keys and account credentials out of reports. The download badge counts release asset downloads, not unique users.
 
 <details>
 <summary>Build it yourself</summary>
 
-Use Flutter 3.47.7 and full Xcode. [Build guide](docs/BUILD.md).
+Use Flutter 3.47.7 and full Xcode.
 
 ```sh
 flutter pub get

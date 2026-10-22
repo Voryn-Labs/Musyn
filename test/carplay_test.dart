@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musyn/services/audio/audio_browse_catalog.dart';
 import 'package:musyn/services/audio/carplay.dart';
-import 'bitchord_ui_test.dart' show UiPlayback;
+import 'musyn_ui_test.dart' show UiPlayback;
 
 class CarPlayback extends UiPlayback {
   List<MediaItem> songs = const [

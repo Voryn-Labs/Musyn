@@ -10,7 +10,7 @@ import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/widgets/player_drawer.dart';
 import 'package:musyn/widgets/song_artwork.dart';
 
-/// BitChord-styled action sheet for selecting JioSaavn, YouTube Music, or Offline source.
+/// Musyn action sheet for selecting JioSaavn, YouTube Music, or offline audio.
 void showAudioSourcePicker(
   BuildContext context,
   MediaItem metadata, {

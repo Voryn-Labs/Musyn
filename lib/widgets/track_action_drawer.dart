@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/widgets/player_drawer.dart';
 
-/// BitChord's rounded track drawer: sleeve header, grabber and aligned actions.
+/// Musyn's rounded track drawer with a sleeve header and aligned actions.
 class TrackActionDrawer extends StatelessWidget {
   const TrackActionDrawer({
     super.key,

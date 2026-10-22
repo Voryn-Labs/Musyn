@@ -266,7 +266,7 @@ void main() {
     await tester.runAsync(() async {
       final image = await boundary.toImage();
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
-      final directory = Directory('docs/ui-review')
+      final directory = Directory('build/ui-review')
         ..createSync(recursive: true);
       await File(
         '${directory.path}/$name.png',
@@ -362,7 +362,7 @@ void main() {
           lessThanOrEqualTo(tester.getTopLeft(find.byType(MiniPlayer)).dy),
         );
         expect(
-          tester.getBottomRight(find.byType(BitChordTabBar)).dy,
+          tester.getBottomRight(find.byType(MusynTabBar)).dy,
           lessThanOrEqualTo(840),
         );
         expect(tester.takeException(), isNull);
@@ -397,7 +397,7 @@ void main() {
       tester,
       CupertinoPageScaffold(
         child: Center(
-          child: BitChordTabBar(
+          child: MusynTabBar(
             selectedIndex: 0,
             onSelect: (index) => selected = index,
           ),
@@ -531,7 +531,7 @@ void main() {
       CupertinoPageScaffold(
         child: Center(
           child: StatefulBuilder(
-            builder: (context, update) => BitChordTabBar(
+            builder: (context, update) => MusynTabBar(
               selectedIndex: selected,
               onSelect: (index) => update(() => selected = index),
             ),
@@ -633,7 +633,7 @@ void main() {
       tester,
       CupertinoPageScaffold(
         child: Center(
-          child: BitChordTabBar(selectedIndex: 0, onSelect: (_) {}),
+          child: MusynTabBar(selectedIndex: 0, onSelect: (_) {}),
         ),
       ),
     );
@@ -852,7 +852,7 @@ void main() {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const MiniPlayer(),
-                    BitChordTabBar(selectedIndex: index, onSelect: (_) {}),
+                    MusynTabBar(selectedIndex: index, onSelect: (_) {}),
                   ],
                 ),
               ),

@@ -4,7 +4,7 @@ import 'package:musyn/widgets/position_slider.dart';
 import 'package:musyn/models/position_data.dart';
 import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:rxdart/rxdart.dart';
-import 'bitchord_ui_test.dart' show UiPlayback;
+import 'musyn_ui_test.dart' show UiPlayback;
 
 class SliderProbe extends UiPlayback {
   final positions = BehaviorSubject<PositionData>.seeded(

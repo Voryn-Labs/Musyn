@@ -6,25 +6,28 @@ void main() {
     'idle progress is released after the UI detaches, never while listening',
     () async {
       final service = OfflinePlaylistService();
-      final notifier = service.getProgressNotifier('audit-test');
+      final notifier = service.getProgressNotifier('regression-test');
       void listener() {}
       notifier.addListener(listener);
-      service.cleanupProgressNotifier('audit-test');
-      expect(service.downloadProgressNotifiers['audit-test'], same(notifier));
+      service.cleanupProgressNotifier('regression-test');
+      expect(
+        service.downloadProgressNotifiers['regression-test'],
+        same(notifier),
+      );
       notifier.removeListener(listener);
       await Future<void>.delayed(Duration.zero);
       expect(
-        service.downloadProgressNotifiers.containsKey('audit-test'),
+        service.downloadProgressNotifiers.containsKey('regression-test'),
         isFalse,
       );
     },
   );
   test('completion releases a notifier with no UI listeners', () {
     final service = OfflinePlaylistService();
-    service.getProgressNotifier('audit-unobserved');
-    service.cleanupProgressNotifier('audit-unobserved');
+    service.getProgressNotifier('regression-unobserved');
+    service.cleanupProgressNotifier('regression-unobserved');
     expect(
-      service.downloadProgressNotifiers.containsKey('audit-unobserved'),
+      service.downloadProgressNotifiers.containsKey('regression-unobserved'),
       isFalse,
     );
   });

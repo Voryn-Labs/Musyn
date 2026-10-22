@@ -80,7 +80,7 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                     ),
                     child: Ios26Surface(
                       radius: 28,
-                      child: BitChordTabBar(
+                      child: MusynTabBar(
                         selectedIndex: widget.child.currentIndex,
                         onSelect: _select,
                       ),
@@ -107,8 +107,8 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
 }
 
 /// Four peer tabs; dragging selects the destination under the finger.
-class BitChordTabBar extends StatelessWidget {
-  const BitChordTabBar({
+class MusynTabBar extends StatelessWidget {
+  const MusynTabBar({
     super.key,
     required this.selectedIndex,
     required this.onSelect,

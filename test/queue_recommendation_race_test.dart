@@ -111,7 +111,7 @@ void main() {
       '$action invalidates an already-running end-of-queue recommendation',
       () async {
         final directory = await Directory.systemTemp.createTemp(
-          'musyn-audit-queue-',
+          'musyn-regression-queue-',
         );
         Hive.init(directory.path);
         for (final box in [
