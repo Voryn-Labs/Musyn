@@ -13,7 +13,14 @@ version = re.search(r'^version: (\S+)\+', text, re.M)[1]
 assert f"'{version}'" in (root / 'lib/constants/version.dart').read_text()
 project = (root / 'ios/Runner.xcodeproj/project.pbxproj').read_text()
 ids = re.findall(r'PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);', project)
-assert len(ids) == 6 and all(item in {'com.vorynlabs.musyn', 'com.vorynlabs.musyn.RunnerTests'} for item in ids)
+expected_ids = {
+    'com.vorynlabs.musyn',
+    'com.vorynlabs.musyn.RunnerTests',
+    'com.vorynlabs.musyn.widgets',
+}
+assert len(ids) == 9 and all(item in expected_ids for item in ids)
+widget_info = plistlib.loads((root / 'ios/MusynWidgets/Info.plist').read_bytes())
+assert widget_info['NSExtension']['NSExtensionPointIdentifier'] == 'com.apple.widgetkit-extension'
 info = plistlib.loads((root / 'ios/Runner/Info.plist').read_bytes())
 assert info['CFBundleDisplayName'] == info['CFBundleName'] == 'Musyn'
 assert info['UIBackgroundModes'] == ['audio']

@@ -15,6 +15,7 @@ import 'package:musyn/services/lock_screen_lyrics.dart';
 import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/provider_access.dart';
 import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/smart_library.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
 import 'package:musyn/services/youtube_music_sync_service.dart';
 import 'package:musyn/services/ytdlp_client_sync_service.dart';
@@ -34,6 +35,8 @@ class SettingsPage extends StatelessWidget {
     lockScreenArtworkLyricsEnabled,
     themeModeSetting,
     usePureBlackColor,
+    musynSkinSetting,
+    smartShuffleEnabled,
     preferredSource,
     audioQualitySetting,
     jiosaavnQuality,
@@ -103,6 +106,15 @@ class SettingsPage extends StatelessWidget {
           ][themeModeSetting.value.clamp(0, 2)],
           onTap: () =>
               _open(context, 'Appearance', () => _appearanceRows(context)),
+        ),
+        _row(
+          context,
+          'Library & personalization',
+          onTap: () => _open(
+            context,
+            'Library & personalization',
+            () => _libraryRows(context),
+          ),
         ),
       ]),
       _section(context, 'Help', [
@@ -269,6 +281,14 @@ class SettingsPage extends StatelessWidget {
           ][themeModeSetting.value.clamp(0, 2)],
           onTap: () => _chooseTheme(context),
         ),
+        _row(
+          context,
+          'Accent',
+          value: const ['Musyn', 'Violet', 'Mint', 'Mono'][
+            musynSkinSetting.value.clamp(0, 3)
+          ],
+          onTap: () => _chooseSkin(context),
+        ),
         if (isAppDarkMode(context))
           _toggle(
             context,
@@ -301,6 +321,64 @@ class SettingsPage extends StatelessWidget {
       ],
       footer:
           'Show timed lyrics in the artist line, artwork, or both. Artwork lyrics require iOS 26; tap the lock-screen artwork to expand it. iOS controls expansion and background updates. Songs without timed lyrics keep their normal metadata.',
+    ),
+  ];
+
+  List<Widget> _libraryRows(BuildContext context) => [
+    _section(
+      context,
+      'Smart Library',
+      [
+        _row(
+          context,
+          'Open Smart Library',
+          onTap: () => context.go('/library/smart'),
+        ),
+        _toggle(
+          context,
+          'Smart shuffle',
+          smartShuffleEnabled,
+          'smartShuffleEnabled',
+        ),
+      ],
+      footer:
+          'Ratings, tags, moods and listening history are stored only on this device. Smart shuffle favors highly rated music and avoids recent repeats.',
+    ),
+    _section(
+      context,
+      'Home Screen widgets',
+      [
+        CupertinoListTile.notched(
+          title: const Text('Now Playing & Library'),
+          subtitle: const Text('Add from the iPhone Home Screen editor'),
+          trailing: const Icon(CupertinoIcons.square_grid_2x2),
+        ),
+      ],
+      footer:
+          'Widgets open Musyn directly to the current track or your library. Your listening data stays on your iPhone.',
+    ),
+    _section(
+      context,
+      'Backup',
+      [
+        _row(
+          context,
+          'Copy library backup',
+          onTap: () async {
+            await Clipboard.setData(
+              ClipboardData(text: SmartLibrary.instance.exportJson()),
+            );
+            if (context.mounted) showToast(context, 'Library backup copied');
+          },
+        ),
+        _row(
+          context,
+          'Restore copied backup',
+          onTap: () => _restoreLibraryBackup(context),
+        ),
+      ],
+      footer:
+          'The backup contains your ratings, tags, moods and smart collections. It does not contain downloaded audio.',
     ),
   ];
 
@@ -601,6 +679,7 @@ class SettingsPage extends StatelessWidget {
       'Playback': CupertinoIcons.play_circle,
       'Downloads': CupertinoIcons.arrow_down_circle,
       'Appearance': CupertinoIcons.paintbrush,
+      'Library & personalization': CupertinoIcons.sparkles,
       'Walkthrough': CupertinoIcons.hand_draw,
       'Storage & diagnostics': CupertinoIcons.archivebox,
       'Privacy': CupertinoIcons.lock_shield,
@@ -671,6 +750,45 @@ class SettingsPage extends StatelessWidget {
       ),
     ),
   );
+
+  void _chooseSkin(BuildContext context) => showCupertinoModalPopup<void>(
+    context: context,
+    builder: (sheet) => CupertinoActionSheet(
+      title: const Text('Accent'),
+      message: const Text('A restrained color accent across Musyn.'),
+      actions: [
+        for (var i = 0; i < 4; i++)
+          CupertinoActionSheetAction(
+            isDefaultAction: musynSkinSetting.value == i,
+            onPressed: () {
+              Navigator.pop(sheet);
+              musynSkinSetting.value = i;
+              unawaited(addOrUpdateData('settings', 'musynSkin', i));
+            },
+            child: Text(const ['Musyn', 'Violet', 'Mint', 'Mono'][i]),
+          ),
+      ],
+      cancelButton: CupertinoActionSheetAction(
+        onPressed: () => Navigator.pop(sheet),
+        child: const Text('Cancel'),
+      ),
+    ),
+  );
+
+  Future<void> _restoreLibraryBackup(BuildContext context) async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.trim().isEmpty) {
+      if (context.mounted) showToast(context, 'No copied backup found');
+      return;
+    }
+    try {
+      await SmartLibrary.instance.importJson(text);
+      if (context.mounted) showToast(context, 'Library restored');
+    } catch (_) {
+      if (context.mounted) showToast(context, 'That is not a Musyn library backup');
+    }
+  }
 
   void _account(BuildContext context) {
     if (!YouTubeAuthService().isSignedIn.value) {

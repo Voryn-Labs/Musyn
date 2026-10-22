@@ -162,10 +162,17 @@ class _LibraryPageState extends State<LibraryPage> {
                   onPressed: () =>
                       context.push('/library/userSongs/mostPlayed'),
                   cubeIcon: CupertinoIcons.chart_bar_fill,
-                  borderRadius: commonCustomBarRadiusLast,
                   showBuildActions: false,
                 );
               },
+            ),
+            PlaylistBar(
+              'Smart Library',
+              subtitle: 'Ratings, tags, moods and rules',
+              onPressed: () => context.push('/library/smart'),
+              cubeIcon: CupertinoIcons.sparkles,
+              borderRadius: commonCustomBarRadiusLast,
+              showBuildActions: false,
             ),
           ],
         ),

@@ -59,6 +59,10 @@ Locale languageSetting = getLocaleFromLanguageCode(
 );
 
 final themeModeSetting = ValueNotifier<int>(_safeBoxGet<int>('themeIndex', 0));
+final musynSkinSetting = ValueNotifier<int>(_safeBoxGet<int>('musynSkin', 0));
+final smartShuffleEnabled = ValueNotifier<bool>(
+  _safeBoxGet<bool>('smartShuffleEnabled', true),
+);
 
 String playlistSortSetting = _safeBoxGet<String>(
   'playlistSortType',
@@ -176,6 +180,11 @@ void reloadSettingsFromStorage() {
   final restoredThemeIndex =
       settings.get('themeIndex') ?? settings.get('themeMode') ?? 0;
   if (restoredThemeIndex is int) themeModeSetting.value = restoredThemeIndex;
+  musynSkinSetting.value = settings.get('musynSkin', defaultValue: 0);
+  smartShuffleEnabled.value = settings.get(
+    'smartShuffleEnabled',
+    defaultValue: true,
+  );
 
   final restoredLanguageCode = settings.get('languageCode', defaultValue: 'en');
   if (restoredLanguageCode is String) {

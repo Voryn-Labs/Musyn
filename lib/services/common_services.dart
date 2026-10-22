@@ -19,6 +19,7 @@ import 'package:musyn/services/lyrics_request_cache.dart';
 import 'package:musyn/services/offline_song_registry.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/source_resolver.dart';
+import 'package:musyn/services/smart_library.dart';
 import 'package:musyn/services/stream_url_probe.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
 import 'package:musyn/services/youtube_backoff.dart';
@@ -1801,6 +1802,9 @@ Future<void> updateRecentlyPlayed(dynamic songId, {Map? songFallback}) async {
           YouTubeMusicSyncService().reportSongPlayed(songId.toString()),
         );
       }
+      if (songFallback != null) {
+        unawaited(SmartLibrary.instance.recordPlayed(songFallback));
+      }
       return;
     }
 
@@ -1847,6 +1851,9 @@ Future<void> updateRecentlyPlayed(dynamic songId, {Map? songFallback}) async {
     // Report playback to YouTube Music history (even if streamed via JioSaavn)
     if (YouTubeAuthService().isSignedIn.value && ytReportHistory.value) {
       unawaited(YouTubeMusicSyncService().reportSongPlayed(songId.toString()));
+    }
+    if (songFallback != null) {
+      unawaited(SmartLibrary.instance.recordPlayed(songFallback));
     }
   } catch (e, stackTrace) {
     logger.log(

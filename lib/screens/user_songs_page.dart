@@ -9,6 +9,7 @@ import 'package:musyn/services/audio/audio_runtime.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/smart_library.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/flutter_toast.dart';
@@ -220,9 +221,12 @@ class _UserSongsPageState extends State<UserSongsPage> {
                   ? userOfflineSongs.value
                   : userRecentlyPlayed.value;
               if (songs.isEmpty) return;
-              final shuffled = List<Map>.from(
+              final candidates = List<Map>.from(
                 _getDisplayList(songs).whereType<Map>(),
-              )..shuffle();
+              );
+              final shuffled = smartShuffleEnabled.value
+                  ? SmartLibrary.instance.smartShuffle(candidates)
+                  : (candidates..shuffle());
               await audioHandler.addPlaylistToQueue(
                 shuffled,
                 replace: true,

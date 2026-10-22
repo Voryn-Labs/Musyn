@@ -15,15 +15,19 @@
 - **Take music offline** — song and playlist downloads, source and quality preferences, progress and retry.
 - **Follow every line** — synced lyrics, lyric seeking and optional lock-screen lyrics.
 - **Make the queue yours** — play next, reorder, shuffle, favorites, playlists and folders.
+- **Build a smarter library** — local ratings, tags, moods, rule-based collections and a shuffle that avoids recent repeats.
 - **Bring your YouTube library** — connect YouTube Music for liked music and playlist sync.
 - **Enjoy the player** — portrait and landscape layouts, light/dark themes, and optional glass and automatic animated artwork on iOS 26. Covers stay still when no matching animation is available.
 - **Listen with CarPlay** — browse your queue, downloads, favorites and recent tracks. Requires CarPlay-enabled signing.
+- **Come back from the Home Screen** — small and medium Now Playing widgets open Musyn straight into your music.
 
 **Coming soon: Sing Along.** Turn down the singer’s voice while the backing music and live lyrics continue. We’re improving startup speed; vocal reduction is currently disabled. Synced lyrics work now.
 
 ## Get Musyn
 
 **[Download 0.3.7](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.7)** · iOS 15+ · Unsigned IPA
+
+Preview builds with Smart Library and widgets are published as GitHub prereleases and do not replace the stable installer feed.
 
 Sign the IPA with your preferred compatible installer. Add the shared Voryn Labs source to browse **Musyn and Cloudified**:
 

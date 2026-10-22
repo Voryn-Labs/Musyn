@@ -54,6 +54,24 @@ bool isAppDarkMode(BuildContext context) {
   return CupertinoTheme.brightnessOf(context) == Brightness.dark;
 }
 
+const _darkSkinColors = [
+  MusynStyle.brandCoral,
+  Color(0xFFB8A7FF),
+  Color(0xFF7ED7C4),
+  Color(0xFFF2F2F7),
+];
+const _lightSkinColors = [
+  MusynStyle.brandCoralLight,
+  Color(0xFF6548B8),
+  Color(0xFF147A68),
+  Color(0xFF242426),
+];
+
+Color musynAccent(bool isDark) {
+  final index = musynSkinSetting.value.clamp(0, _darkSkinColors.length - 1);
+  return isDark ? _darkSkinColors[index] : _lightSkinColors[index];
+}
+
 /// Scaffold / page canvas. OLED on = `#000000`, OLED off = elevated `#121214`.
 Color musynCanvas(bool isDark) => isDark
     ? (usePureBlackColor.value ? MusynStyle.oledBlack : MusynStyle.elevated)
@@ -102,7 +120,7 @@ CupertinoThemeData buildCupertinoTheme({
         : CupertinoColors.white,
     primaryColor:
         primaryColor ??
-        (isDark ? MusynStyle.brandCoral : MusynStyle.brandCoralLight),
+        musynAccent(isDark),
     scaffoldBackgroundColor: isDark
         ? (useOled ? MusynStyle.oledBlack : MusynStyle.elevated)
         : MusynStyle.lightCanvas,
@@ -112,7 +130,7 @@ CupertinoThemeData buildCupertinoTheme({
     textTheme: CupertinoTextThemeData(
       primaryColor:
           primaryColor ??
-          (isDark ? MusynStyle.brandCoral : MusynStyle.brandCoralLight),
+          musynAccent(isDark),
       textStyle: TextStyle(
         fontFamily: MusynStyle.uiFont,
         fontSize: 17,

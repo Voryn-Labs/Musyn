@@ -18,6 +18,7 @@ import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/data_manager.dart';
 import 'package:musyn/services/deferred_links.dart';
 import 'package:musyn/services/io_service.dart';
+import 'package:musyn/services/home_widget_bridge.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/playlist_download_service.dart';
@@ -27,6 +28,7 @@ import 'package:musyn/services/provider_access.dart';
 import 'package:musyn/services/router_service.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'package:musyn/services/source_resolver.dart';
+import 'package:musyn/services/smart_library.dart';
 import 'package:musyn/services/youtube_auth_service.dart';
 import 'package:musyn/services/youtube_music_sync_service.dart';
 import 'package:musyn/services/ytdlp_client_sync_service.dart';
@@ -116,6 +118,7 @@ class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
     offlineMode.addListener(_onOfflineModeChanged);
     themeModeSetting.addListener(_onThemeChanged);
     usePureBlackColor.addListener(_onThemeChanged);
+    musynSkinSetting.addListener(_onThemeChanged);
 
     try {
       LicenseRegistry.addLicense(() async* {
@@ -158,6 +161,7 @@ class _MusynAppState extends State<MusynApp> with WidgetsBindingObserver {
     offlineMode.removeListener(_onOfflineModeChanged);
     themeModeSetting.removeListener(_onThemeChanged);
     usePureBlackColor.removeListener(_onThemeChanged);
+    musynSkinSetting.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -306,6 +310,7 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
     syncThemeFromSettings();
     await YtdlpClientSyncService.instance.ensureLoaded();
     reloadSongLibraryStateFromStorage();
+    await SmartLibrary.instance.initialize();
     reloadPlaylistsStateFromStorage();
     OfflinePlaylistService().reloadOfflinePlaylistsFromStorage();
     // Restore YouTube Music session if previously signed in
@@ -374,6 +379,9 @@ Future<void> initialisation({ValueChanged<String>? onProgress}) async {
     }
   }
   audioHandlerReady.value = audioHandlerInstance != null;
+  if (audioHandlerInstance != null) {
+    HomeWidgetBridge.start(audioHandlerInstance!);
+  }
   // Warm a single likely selection during the splash, without autoplay or a
   // native player item. A tap shares the pending lookup if it arrives first.
   final recent = userRecentlyPlayed.value.whereType<Map>().firstOrNull;

@@ -12,6 +12,7 @@ import 'package:musyn/widgets/download_picker_sheet.dart';
 import 'package:musyn/widgets/now_playing/source_picker_sheet.dart';
 import 'package:musyn/widgets/sleep_timer_picker.dart';
 import 'package:musyn/widgets/song_artwork.dart';
+import 'package:musyn/widgets/track_organization_sheet.dart';
 
 /// Native grouped actions share the player's typography and neutral surfaces.
 void showSongActionsSheet(
@@ -92,6 +93,11 @@ void showSongActionsSheet(
             liked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
             liked ? 'Remove from Favorites' : 'Add to Favorites',
             () => unawaited(updateSongLikeStatus(id, !liked, songData: song)),
+          ),
+          action(
+            CupertinoIcons.star,
+            'Rate & organize',
+            () => showTrackOrganizationSheet(context, song),
           ),
           if (!offlineMode.value)
             action(

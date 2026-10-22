@@ -13,6 +13,8 @@ import 'package:musyn/screens/playlist_folder_page.dart';
 import 'package:musyn/screens/playlist_page.dart';
 import 'package:musyn/screens/search_page.dart';
 import 'package:musyn/screens/settings_page.dart';
+import 'package:musyn/screens/smart_collection_page.dart';
+import 'package:musyn/screens/smart_library_page.dart';
 import 'package:musyn/screens/user_songs_page.dart';
 import 'package:musyn/services/app_navigation_state.dart';
 import 'package:musyn/services/navigation_paths.dart';
@@ -234,6 +236,25 @@ class NavigationManager {
               return getPage(child: const LibraryPage(), state: state);
             },
             routes: [
+              GoRoute(
+                path: 'smart',
+                pageBuilder: (context, state) =>
+                    _pushPage(child: const SmartLibraryPage(), state: state),
+                routes: [
+                  GoRoute(
+                    path: ':collectionId',
+                    pageBuilder: (context, state) => _pushPage(
+                      child: SmartCollectionPage(
+                        collectionId:
+                            state.pathParameters['collectionId'] ?? '',
+                        collection:
+                            state.extra is Map ? state.extra as Map : null,
+                      ),
+                      state: state,
+                    ),
+                  ),
+                ],
+              ),
               GoRoute(
                 path: 'userSongs/:page',
                 pageBuilder: (context, state) => _pushPage(

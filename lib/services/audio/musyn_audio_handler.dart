@@ -23,6 +23,7 @@ import 'package:musyn/services/audio/player_artwork_cache.dart';
 import 'package:musyn/services/common_services.dart';
 import 'package:musyn/services/logger_service.dart';
 import 'package:musyn/services/settings_manager.dart';
+import 'package:musyn/services/smart_library.dart';
 import 'package:musyn/utilities/app_utils.dart';
 import 'package:musyn/utilities/flutter_toast.dart';
 import 'package:musyn/utilities/map_utils.dart';
@@ -2855,6 +2856,14 @@ class MusynAudioHandler extends PlaybackController {
   // --- Transport ---
   Future<void> skipToNext() async {
     try {
+      final skippedSong = currentSong;
+      final duration = audioPlayer.duration;
+      if (skippedSong != null &&
+          duration != null &&
+          duration > Duration.zero &&
+          audioPlayer.position < duration * .7) {
+        unawaited(SmartLibrary.instance.recordSkipped(skippedSong));
+      }
       final base = _navCursor ?? _hub.queue.currentIndex;
       final targetIndex = base + 1;
       if (targetIndex < _hub.queue.items.length) {

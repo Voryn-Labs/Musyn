@@ -6,6 +6,7 @@ import AVFoundation
 import ImageIO
 import Security
 import CryptoKit
+import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -94,6 +95,19 @@ import CryptoKit
         result(FlutterMethodNotImplemented); return
       }
       UIApplication.shared.open(url, options: [:]) { result($0) }
+    }
+    let widgets = FlutterMethodChannel(name: "com.vorynlabs.musyn/widgets", binaryMessenger: registrar.messenger())
+    widgets.setMethodCallHandler { call, result in
+      guard call.method == "update", let values = call.arguments as? [String: Any] else {
+        result(FlutterMethodNotImplemented); return
+      }
+      let defaults = UserDefaults(suiteName: "group.com.vorynlabs.musyn")
+      defaults?.set(values["title"] as? String, forKey: "widget.title")
+      defaults?.set(values["artist"] as? String, forKey: "widget.artist")
+      defaults?.set(values["id"] as? String, forKey: "widget.id")
+      defaults?.set(values["artUri"] as? String, forKey: "widget.artUri")
+      WidgetCenter.shared.reloadTimelines(ofKind: "MusynNowPlayingWidget")
+      result(nil)
     }
     registrar.register(MusynPlayerMenuFactory(messenger: registrar.messenger()), withId: "com.vorynlabs.musyn/player_menu")
     registrar.register(MusynGlassFactory(), withId: "com.vorynlabs.musyn/glass")
