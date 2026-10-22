@@ -166,6 +166,38 @@ class NativeVocalPreparation {
     });
   }
   static const channel = MethodChannel('com.vorynlabs.musyn/sing');
+
+  // A signed stream URL changes on each resolution; its recording ID does not.
+  // Unknown provider identities deliberately fall back to content hashing.
+  static String? cacheIdentity(MediaItem item, Uri uri) {
+    final extras = item.extras ?? const <String, dynamic>{};
+    final provider = extras['resolvedSource'] ?? extras['downloadSource'];
+    final recording = provider == 'jiosaavn'
+        ? extras['saavnId']?.toString()
+        : provider == 'youtube'
+        ? extras['ytid']?.toString()
+        : null;
+    if (recording == null || recording.isEmpty || uri.scheme != 'https') {
+      return null;
+    }
+    return sha256
+        .convert(
+          utf8.encode(
+            jsonEncode([
+              'sing-cache-v1', provider, recording, extras['resolvedBitrate'],
+              extras['resolvedFormat'],
+              // YouTube's CDN identifies a specific encode with id/itag. JioSaavn
+              // recording paths are stable even when query authentication rotates.
+              if (provider == 'youtube')
+                [uri.queryParameters['id'], uri.queryParameters['itag']]
+              else
+                uri.path,
+            ]),
+          ),
+        )
+        .toString();
+  }
+
   http.Client? _client;
   int? _request;
   void Function(String, double)? _progress;
@@ -207,14 +239,35 @@ class NativeVocalPreparation {
         message: 'This audio source cannot be separated',
       );
     final uri = source.uri;
+    final alias = cacheIdentity(item, uri);
+    if (alias != null) {
+      final cached = await channel.invokeMethod<String>('cached', {
+        'alias': alias,
+      });
+      if (_request != request) throw const FormatException('Selection changed');
+      if (cached != null) {
+        progress('Using prepared audio', 1);
+        return cached;
+      }
+    }
     File? temporary;
     final client = http.Client();
     _client = client;
+    var complete = false;
     try {
+      if (uri.scheme == 'file' && uri.path.endsWith('.musyn-stems.mov')) {
+        complete = true;
+        return uri.toFilePath();
+      }
+      // This is inside prepare(), never startup/select(): the user's tap is
+      // the only trigger. Model and source downloads can overlap safely.
+      final modelReady = channel.invokeMethod<void>('installModel', {
+        'request': request,
+      });
+      unawaited(modelReady.catchError((Object _) {}));
       String path;
       if (uri.scheme == 'file') {
         path = uri.toFilePath();
-        if (path.endsWith('.musyn-stems.mov')) return path;
       } else {
         if (uri.scheme != 'https')
           throw const FormatException('Unsupported audio source');
@@ -243,6 +296,10 @@ class NativeVocalPreparation {
             if (bytes > 120 * 1024 * 1024)
               throw const FormatException('Audio exceeds separation limit');
             sink.add(chunk);
+            final total = response.contentLength;
+            if (total != null && total > 0) {
+              progress('Saving audio for Sing Along', bytes / total);
+            }
           }
           await sink.flush();
         } finally {
@@ -254,19 +311,25 @@ class NativeVocalPreparation {
       final digest = await sha256.bind(File(path).openRead()).first;
       // Content identity prevents a cached mix from another recording being reused.
       final key = sha256.convert(utf8.encode('$digest|light-v1')).toString();
+      progress('Finishing Sing Along setup', 0);
+      await modelReady;
+      if (_request != request) throw const FormatException('Selection changed');
       final result = await channel.invokeMethod<String>('prepare', {
         'path': path,
         'key': key,
         'request': request,
+        'alias': alias,
       });
       if (result == null)
         throw const FormatException('No separated audio returned');
+      complete = true;
       return result;
     } finally {
       client.close();
       if (identical(_client, client)) _client = null;
       if (temporary != null && await temporary.exists())
         await temporary.delete();
+      if (!complete && _request == request) await cancel();
     }
   }
 }

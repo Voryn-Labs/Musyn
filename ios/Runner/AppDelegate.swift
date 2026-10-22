@@ -8,7 +8,10 @@ import Security
 import CryptoKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+@objc class AppDelegate: FlutterAppDelegate {
+  // One headless-capable engine serves iPhone and CarPlay, including a launch
+  // originating from the car before any iPhone window has been connected.
+  let musynEngine = FlutterEngine(name: "musyn", project: nil, allowHeadlessExecution: true)
   private let motion = MusynMotionArtwork()
   private var sing: MusynSingBridge?
   private var motionChannel: FlutterMethodChannel?
@@ -26,12 +29,15 @@ import CryptoKit
   ) -> Bool {
     // AVAudioSession is configured in Dart via audio_session to avoid fighting
     // MPRemoteCommandCenter / lock-screen controls.
+    musynEngine.run()
+    GeneratedPluginRegistrant.register(with: musynEngine)
+    configureMusynBridges()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MusynRemoteFavorites") else { return }
+  private func configureMusynBridges() {
+    guard let registrar = musynEngine.registrar(forPlugin: "MusynRemoteFavorites") else { return }
+    MusynCarPlay.shared.configure(messenger: registrar.messenger())
     registrar.register(MusynAudioRouteFactory(), withId: "com.vorynlabs.musyn/audio_route")
     let channel = FlutterMethodChannel(
       name: "com.vorynlabs.musyn/remote_favorites", binaryMessenger: registrar.messenger())

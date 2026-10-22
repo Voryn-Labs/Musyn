@@ -8,6 +8,14 @@ Open Lyrics or the player More menu → Sing along. iOS 18+ downloads a pinned, 
 
 No audio uploads. Temporary input and PCM files are removed when work ends. Prepared audio is cached locally (up to five tracks / 200 MB, with the current/recent file retained during replacement); the model remains in Application Support. A song/source change resets the feature. Track IDs, queue order, playback intent and current position survive a successful prepared-source installation; this does not add another history play. Both stems use shared 15% headroom and AAC encoding.
 
+## Startup improvements under development
+
+Prepared streaming audio is checked before downloading it again. Model setup
+and the source download overlap only after the Sing tap; the five model files
+are installed as one operation. First-time separation still processes the full
+track. See `SING_ALONG_ENGINE_RESEARCH.md` for the streaming-engine reference
+review and measured limitations. No Sing work runs before the user's tap.
+
 ## Lock screen
 
 Settings → Appearance offers independent **Lyrics in artist line** and **Lyrics in artwork** options. The More menu offers Off / Artist line / Artwork / Both. Artwork requires iOS 26. Timed lines are rendered locally as centered pink text, with the next line beneath, into a still preview and tiny silent native artwork clip. Tap the system lock-screen artwork to expand it. Musyn does not replace the iPhone clock, system controls or wallpaper. iOS owns layout, expansion, refresh and power/accessibility limits. Plain untimed lyrics keep the normal cover and metadata. Lyrics can be visible to others who see the lock screen. Turn both options off to restore normal metadata.

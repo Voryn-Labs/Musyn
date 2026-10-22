@@ -23,23 +23,35 @@ enum MusynVocalModel {
     let config = URLSessionConfiguration.ephemeral; config.httpCookieStorage = nil
     let session = URLSession(configuration: config)
     defer { session.invalidateAndCancel() }
-    for (index, entry) in files.enumerated() {
-      try Task.checkCancellation()
-      let destination = folder.appendingPathComponent(entry.0)
-      if let data = try? Data(contentsOf: destination), data.count == entry.1, SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == entry.2 { continue }
-      progress("Downloading vocal model (31 MB, once)", Double(index) / Double(files.count))
-      let remote = URL(string: "https://huggingface.co/My-Name-Is-Jeff/vitrine-sing/resolve/\(revision)/separator-light.mlmodelc/\(entry.0)")!
-      var request = URLRequest(url: remote); request.timeoutInterval = 120
-      let (temporary, response) = try await session.download(for: request)
-      defer { try? FileManager.default.removeItem(at: temporary) }
-      guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw MusynSingError.failed("Vocal model download unavailable") }
-      let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize
-      guard size == entry.1 else { throw MusynSingError.failed("Vocal model size did not match") }
-      let data = try Data(contentsOf: temporary)
-      guard data.count == entry.1, SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == entry.2 else { throw MusynSingError.failed("Vocal model checksum did not match") }
-      try Task.checkCancellation()
-      try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-      try data.write(to: destination, options: .atomic)
+    // The manifest has five files, not five separate setup phases. Fetch them
+    // together only after the user asks for Sing Along; verify every byte.
+    progress("Installing Sing Along model (31 MB, once)", 0)
+    try await withThrowingTaskGroup(of: Void.self) { group in
+      for entry in files {
+        group.addTask {
+          try Task.checkCancellation()
+          let destination = folder.appendingPathComponent(entry.0)
+          if let data = try? Data(contentsOf: destination), data.count == entry.1,
+            SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == entry.2 { return }
+          let remote = URL(string: "https://huggingface.co/My-Name-Is-Jeff/vitrine-sing/resolve/\(revision)/separator-light.mlmodelc/\(entry.0)")!
+          var request = URLRequest(url: remote); request.timeoutInterval = 120
+          let (temporary, response) = try await session.download(for: request)
+          defer { try? FileManager.default.removeItem(at: temporary) }
+          guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw MusynSingError.failed("Vocal model download unavailable") }
+          let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize
+          guard size == entry.1 else { throw MusynSingError.failed("Vocal model size did not match") }
+          let data = try Data(contentsOf: temporary)
+          guard data.count == entry.1, SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == entry.2 else { throw MusynSingError.failed("Vocal model checksum did not match") }
+          try Task.checkCancellation()
+          try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+          try data.write(to: destination, options: .atomic)
+        }
+      }
+      var complete = 0
+      for try await _ in group {
+        complete += 1
+        progress("Installing Sing Along model (31 MB, once)", Double(complete) / Double(files.count))
+      }
     }
     return folder
   }

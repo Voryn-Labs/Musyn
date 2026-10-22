@@ -161,4 +161,84 @@ void main() {
     expect(installed, isEmpty);
     expect(levels, isEmpty);
   });
+  test(
+    'selection and metadata updates never prepare or download vocals',
+    () async {
+      var calls = 0;
+      controller = make(
+        prepare: (_, _, _) async {
+          calls++;
+          return '/local/a.musyn-stems.mov';
+        },
+      );
+      controller.select(a);
+      controller.select(b);
+      await Future<void>.delayed(Duration.zero);
+      expect(calls, 0);
+      await controller.enable(b);
+      expect(calls, 1);
+      await controller.disable();
+      expect(calls, 1);
+    },
+  );
+  test('prepared-cache identity survives signed URL and queue ID rotation', () {
+    controller = make();
+    const item = MediaItem(
+      id: 'queue-a',
+      title: 'A',
+      extras: {
+        'ytid': 'abcdefghijk',
+        'resolvedSource': 'youtube',
+        'resolvedBitrate': 128,
+        'resolvedFormat': 'aac',
+      },
+    );
+    final first = NativeVocalPreparation.cacheIdentity(
+      item,
+      Uri.parse(
+        'https://a.googlevideo.com/videoplayback?id=recording&itag=140&expire=1',
+      ),
+    );
+    expect(first, isNotNull);
+    expect(
+      NativeVocalPreparation.cacheIdentity(
+        item.copyWith(id: 'queue-b'),
+        Uri.parse(
+          'https://b.googlevideo.com/videoplayback?id=recording&itag=140&expire=2',
+        ),
+      ),
+      first,
+    );
+    expect(
+      NativeVocalPreparation.cacheIdentity(
+        item,
+        Uri.parse('https://a.googlevideo.com/videoplayback?id=other&itag=140'),
+      ),
+      isNot(first),
+    );
+    expect(
+      NativeVocalPreparation.cacheIdentity(
+        item.copyWith(
+          extras: {
+            ...?item.extras,
+            'resolvedSource': 'jiosaavn',
+            'saavnId': 'different',
+          },
+        ),
+        Uri.parse('https://cdn.example/audio.m4a'),
+      ),
+      isNot(first),
+    );
+    expect(
+      NativeVocalPreparation.cacheIdentity(
+        a,
+        Uri.parse('https://unknown.example/audio'),
+      ),
+      isNull,
+    );
+    expect(
+      NativeVocalPreparation.cacheIdentity(item, Uri.file('/local/song.m4a')),
+      isNull,
+    );
+  });
 }
