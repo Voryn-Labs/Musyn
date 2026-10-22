@@ -41,7 +41,7 @@ https://voryn-labs.github.io/source.json
 
 ## Open source, open to ideas
 
-Built by **[Voryn Labs](https://voryn-labs.github.io/)** under [GPL-3.0](LICENSE). Based on the Musified/Musify lineage, with BitChord as an interface reference. [Credits](docs/CREDITS.md) · [Privacy](https://voryn-labs.github.io/musyn-privacy.html) · [Terms](https://voryn-labs.github.io/musyn-terms.html).
+Built by **[Voryn Labs](https://voryn-labs.github.io/)** under [GPL-3.0](LICENSE), with BitChord as an interface reference (evolved from the original Musify project). [Credits](docs/CREDITS.md) · [Privacy](https://voryn-labs.github.io/musyn-privacy.html) · [Terms](https://voryn-labs.github.io/musyn-terms.html).
 
 [Report a bug or suggest a feature](https://github.com/Voryn-Labs/Musyn/issues/new/choose). You can review and share diagnostic logs from Settings; nothing uploads automatically. Keep keys and account credentials out of reports. The download badge counts release asset downloads, not unique users.
 

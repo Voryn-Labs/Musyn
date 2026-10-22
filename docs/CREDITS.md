@@ -1,6 +1,6 @@
 # Credits
 
-Musyn is maintained by Voryn Labs under GPL-3.0. It develops an iOS music player from the Musified/Musify code lineage. Original Musify project: https://github.com/gokadzev/Musify.
+Musyn is maintained by Voryn Labs under GPL-3.0, developed as an iOS music player evolved from Musify.
 
 The current navigation/player visual work references BitChord: https://github.com/kushagrasinghx/BitChord (GPL-3.0). No addon modules are included.
 

@@ -1,4 +1,4 @@
-# Contributing to Musify
+# Contributing to Musyn
 
 Thank you for considering contributing to this project! We welcome and appreciate all contributions.
 
@@ -12,7 +12,7 @@ Thank you for considering contributing to this project! We welcome and appreciat
 
 ## Code of Conduct
 
-All contributors are expected to abide by our code of conduct. Please make sure to read and understand the [code of conduct](https://github.com/gokadzev/Musify/blob/master/CODE_OF_CONDUCT.md) before making a contribution.
+All contributors are expected to abide by our code of conduct. Please make sure to read and understand the [code of conduct](CODE_OF_CONDUCT.md) before making a contribution.
 
 ## Code Reviews
 

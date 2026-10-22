@@ -1,4 +1,4 @@
-# Code of Conduct for Musify
+# Code of Conduct for Musyn
 
 This project and its community are dedicated to providing a harassment-free experience for everyone, regardless of gender, gender identity and expression, sexual orientation, disability, physical appearance, body size, race, age, or religion. We do not tolerate harassment of participants in any form.
 
