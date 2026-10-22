@@ -1,20 +1,31 @@
-# Sing along and lock-screen lyrics
+# Sing Along — upcoming
 
-Musyn 0.3.5 (17) replaces the previous visual-only Sing along toggle with real, optional local vocal reduction.
+The slow experimental vocal-reduction flow is disabled in this build. The
+Lyrics microphone and player menu clearly label Sing Along as coming soon and
+open an informational preview. That preview cannot start downloads, model
+loading, preparation or an audio-source switch. Normal synced lyrics, line
+seeking and lock-screen lyrics remain available.
 
-## Use
+The intended feature reduces the singer's vocals while backing instruments keep
+playing, with timed lyrics and an adjustable vocal level. It must start quickly
+when explicitly requested. Stereo center cancellation is not an equivalent:
+it can suppress centered instruments too. No Sing work should run on ordinary
+Play, startup, track changes, or connecting CarPlay.
 
-Open Lyrics or the player More menu → Sing along. iOS 18+ downloads a pinned, checksum-verified 31 MB Mini-BS-RoFormer light model on first use, downloads the selected audio locally if needed, and prepares backing/vocal tracks while the original song continues. Keep Musyn open for preparation. Cancel or skip safely. Once ready, the Vocals slider changes only the separated voice track. The original mix remains available at the right end of the slider or by switching Sing along off. This is model-estimated separation, not access to studio stems or Apple Music Sing. It can leave residual vocals or affect instruments. Tracks must have finite duration up to 15 minutes; preparation speed depends on device, temperature and track length.
+## Work retained for development
 
-No audio uploads. Temporary input and PCM files are removed when work ends. Prepared audio is cached locally (up to five tracks / 200 MB, with the current/recent file retained during replacement); the model remains in Application Support. A song/source change resets the feature. Track IDs, queue order, playback intent and current position survive a successful prepared-source installation; this does not add another history play. Both stems use shared 15% headroom and AAC encoding.
+The batch separator from 0.3.5/0.3.6 is retained behind a disabled availability
+gate, including cache lookup before re-download, overlapping on-demand model and
+source setup, content checks, cancellation and separate backing/vocal gain.
+A rolling two-second PCM reader removes the full-track scratch-file decode and
+is covered by native ordering/tail/cancellation fixtures. This is groundwork;
+the exported-track player still waits for completion. It is **not** a finished
+near-instant streaming player.
 
-## Startup improvements under development
-
-Prepared streaming audio is checked before downloading it again. Model setup
-and the source download overlap only after the Sing tap; the five model files
-are installed as one operation. First-time separation still processes the full
-track. See `SING_ALONG_ENGINE_RESEARCH.md` for the streaming-engine reference
-review and measured limitations. No Sing work runs before the user's tap.
+See `SING_ALONG_ENGINE_RESEARCH.md` for the GPL-3.0 Vitrine streaming reference,
+benchmarks and remaining timeline/read-ahead work. Re-enable only after a real
+streaming consumer is integrated and startup, seek, skip, pause, background,
+voice/backing balance, memory and thermal behavior are verified on iPhone.
 
 ## Lock screen
 
@@ -22,7 +33,7 @@ Settings → Appearance offers independent **Lyrics in artist line** and **Lyric
 
 The native timeline continues from the canonical audio snapshot; lyric changes never reset elapsed time. Old lookups and old frame renders cannot replace a newly selected track. Currently published artwork files are excluded from cache deletion. Real album animation remains automatic where a confidently matched asset exists.
 
-## Validation
+## Historical experimental validation
 
 - 266 Flutter tests: quick-skip/stale preparation, cancellation during install/mix, vocal level, metadata/source identity and independent lyric destinations.
 - Production STFT round trip mean error 1.36e-8. Real public model inference and full ~9-second generated voice/music separation passed locally on macOS. Recombining two AAC stems produced 0.79% relative reconstruction error. This fixture does not establish subjective quality on all music.

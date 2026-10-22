@@ -3,7 +3,9 @@
 Native audio-category templates: Queue, Downloads, Favorites and Recently Played,
 with Apple's shared Now Playing screen. The car and phone use the same player,
 queue transactions and one headless-capable Flutter engine, including car-only
-cold launch. Lists are bounded to 100 rows and refresh only while connected.
+cold launch. Lists are bounded to 100 rows. Playback/library listeners and refresh timers
+exist only while connected; disconnected commands are rejected. A late startup
+handshake cannot overwrite a newer connection event.
 Selecting a library song queues its collection; queue selections retain the queue.
 Stale rows are revalidated against the live catalog. Setup and Sing stay on phone.
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,11 +13,16 @@ class CarPlayback extends UiPlayback {
   ];
   int? skipped;
   String? selected;
+  int browseCalls = 0;
   @override
   Future<List<MediaItem>> getChildren(
     String id, [
     Map<String, dynamic>? options,
-  ]) async => songs;
+  ]) async {
+    browseCalls++;
+    return songs;
+  }
+
   @override
   Future<void> skipToSong(int index) async {
     skipped = index;
@@ -58,6 +64,10 @@ void main() {
     () async {
       await Future<void>.delayed(const Duration(milliseconds: 120));
       expect(snapshots, isEmpty);
+      handler.queue.add(handler.songs);
+      handler.mediaItem.add(handler.songs.first);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(handler.browseCalls, 0);
       handler.songs = List.generate(
         130,
         (i) => MediaItem(id: '$i', title: 'Song $i'),
@@ -69,11 +79,45 @@ void main() {
       expect(sections, hasLength(4));
       expect(sections.first['items'], hasLength(100));
       await bridge.handle(const MethodCall('connection', false));
+      final browsed = handler.browseCalls;
       handler.queue.add(handler.songs);
       await Future<void>.delayed(const Duration(milliseconds: 120));
       expect(snapshots, hasLength(1));
+      expect(handler.browseCalls, browsed);
+      expect(
+        await bridge.handle(
+          const MethodCall('play', {
+            'category': AudioBrowseCatalog.rootQueue,
+            'id': '0',
+          }),
+        ),
+        false,
+      );
     },
   );
+  test('late startup handshake cannot undo a real car connection', () async {
+    await bridge.dispose();
+    final ready = Completer<bool>();
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'ready') return ready.future;
+      if (call.method == 'setState') snapshots.add(call.arguments as Map);
+      return null;
+    });
+    bridge = CarPlayBridge(channel: channel)..start(handler);
+    await bridge.handle(const MethodCall('connection', true));
+    ready.complete(false);
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    expect(snapshots, hasLength(1));
+    expect(
+      await bridge.handle(
+        const MethodCall('play', {
+          'category': AudioBrowseCatalog.rootQueue,
+          'id': 'a',
+        }),
+      ),
+      true,
+    );
+  });
   test(
     'queue selections follow IDs across reorder and reject removed entries',
     () async {

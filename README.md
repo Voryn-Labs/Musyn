@@ -14,7 +14,7 @@
 | Listen | Organize | Take it with you |
 | --- | --- | --- |
 | Keyless YouTube Music and optional user-configured JioSaavn AAC | Queue, favorites, folders and your own playlists | Offline tracks and playlist downloads |
-| Synced lyrics, line-timed sing-along and a focused full player | Home, moods/genres, search and actual chart playlists | Progress, cancellation, retry and saved-track search |
+| Synced lyrics, line seeking and a focused full player | Home, moods/genres, search and actual chart playlists | Progress, cancellation, retry and saved-track search |
 | Highest/balanced/data-saver YouTube options and JioSaavn 160/320 kbps | Optional YouTube Music account sync | Dark/light appearance, branded walkthrough and opt-in iOS 26 native glass |
 
 See [public-release validation](docs/PUBLIC_RELEASE_0.3.0.md), [privacy](https://voryn-labs.github.io/musyn-privacy.html) and [terms](https://voryn-labs.github.io/musyn-terms.html).
@@ -29,7 +29,7 @@ These are automated Flutter renders with fictional sample tracks and placeholder
 
 ## Install Musyn
 
-Musyn combines YouTube Music integration, offline downloads, synced lyrics and a queue you control. More providers can be introduced as the project grows. On iOS 26, animated album covers are found and cached automatically from Apple’s public pages, with no upload or extra account. Tracks without a confident match keep still covers. Glass navigation is optional. The player’s More menu offers lock-screen lyrics in the artist line, artwork, or both (artwork requires iOS 26). Sing along now separates vocals locally on iOS 18+: prepare a track, then adjust voice volume independently of the backing music. The 31 MB model downloads once; audio is never uploaded. Preparation is not instant and separation quality varies. [How Sing along works](docs/SING_ALONG.md).
+Musyn combines YouTube Music integration, offline downloads, synced lyrics and a queue you control. More providers can be introduced as the project grows. On iOS 26, animated album covers are found and cached automatically from Apple’s public pages, with no upload or extra account. Tracks without a confident match keep still covers. Glass navigation is optional. The player’s More menu offers lock-screen lyrics in the artist line, artwork, or both (artwork requires iOS 26). **Sing Along is upcoming:** reduce the singer’s vocals while the backing music and live lyrics continue. The slow experimental preparation flow is disabled while streaming startup is improved. Normal synced lyrics remain available. [Status and implementation notes](docs/SING_ALONG.md).
 
 **JioSaavn is optional.** Musyn supplies no media URL key. Add your own in Settings → JioSaavn; it stays in iOS Keychain. YouTube works without it. [Source and artwork setup](docs/SOURCES_AND_ARTWORK.md).
 

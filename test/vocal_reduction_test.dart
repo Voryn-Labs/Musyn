@@ -162,6 +162,35 @@ void main() {
     expect(levels, isEmpty);
   });
   test(
+    'upcoming availability gate never prepares, installs or changes audio',
+    () async {
+      var preparations = 0;
+      controller = VocalReductionController(
+        available: false,
+        prepare: (_, _, _) async {
+          preparations++;
+          return '/unused.musyn-stems.mov';
+        },
+        install: (id, _) async {
+          installed.add(id);
+          return true;
+        },
+        mix: (level) async {
+          levels.add(level);
+        },
+        cancel: () async {},
+      );
+      await controller.enable(a);
+      expect(preparations, 0);
+      expect(installed, isEmpty);
+      expect(levels, isEmpty);
+      expect(controller.wanted, isFalse);
+      expect(controller.phase, VocalPhase.off);
+      expect(controller.status, contains('coming soon'));
+      expect(vocalReduction.available, isFalse);
+    },
+  );
+  test(
     'selection and metadata updates never prepare or download vocals',
     () async {
       var calls = 0;

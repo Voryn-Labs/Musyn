@@ -24,7 +24,9 @@ class VocalReductionController extends ChangeNotifier {
     required this.install,
     required this.mix,
     required this.cancel,
+    this.available = true,
   });
+  final bool available;
   final VocalPrepare prepare;
   final Future<bool> Function(String id, String path) install;
   final Future<void> Function(double level) mix;
@@ -41,6 +43,7 @@ class VocalReductionController extends ChangeNotifier {
   static String identity(MediaItem item) =>
       '${item.id}|${item.extras?['resolvedSource']}|${item.extras?['resolvedBitrate']}';
   void select(MediaItem? item) {
+    if (!available) return;
     final key = item == null ? null : identity(item);
     if (key == _key) return;
     _key = key;
@@ -55,6 +58,13 @@ class VocalReductionController extends ChangeNotifier {
   }
 
   Future<void> enable(MediaItem item) {
+    if (!available) {
+      wanted = false;
+      phase = VocalPhase.off;
+      status = 'Sing Along is coming soon';
+      notifyListeners();
+      return Future.value();
+    }
     select(item);
     wanted = true;
     if (phase == VocalPhase.ready) return setLevel(0);
@@ -117,6 +127,7 @@ class VocalReductionController extends ChangeNotifier {
   }
 
   Future<void> setLevel(double value) async {
+    if (!available) return;
     if (!value.isFinite || phase != VocalPhase.ready) return;
     final epoch = _epoch;
     level = value.clamp(0, 1);
@@ -133,6 +144,7 @@ class VocalReductionController extends ChangeNotifier {
   }
 
   Future<void> disable() async {
+    if (!available) return;
     wanted = false;
     if (phase == VocalPhase.ready) {
       await setLevel(1);
@@ -335,7 +347,10 @@ class NativeVocalPreparation {
 }
 
 final _nativeVocals = NativeVocalPreparation();
+// Keep the slow experimental path unreachable from public UI and callers.
+// Re-enable only after streaming startup and phone acceptance are verified.
 final vocalReduction = VocalReductionController(
+  available: false,
   prepare: _nativeVocals.prepare,
   install: (id, path) => audioHandler.installVocalStems(id, path),
   mix: (value) => audioHandler.audioPlayer.setMusynVocalLevel(value),

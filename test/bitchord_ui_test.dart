@@ -719,14 +719,14 @@ void main() {
     expect(find.text('Continuous Autoplay Active'), findsNothing);
     await tester.tap(find.byIcon(CupertinoIcons.ellipsis));
     await tester.pumpAndSettle();
-    expect(find.text('Sing along'), findsOneWidget);
+    expect(find.text('Sing Along · Coming soon'), findsOneWidget);
     expect(find.text('Sleep timer'), findsOneWidget);
     await capture(tester, 'track-menu-dark');
     expect(tester.takeException(), isNull);
   });
 
   testWidgets(
-    'sing-along uses the current timed line and keeps skip controls',
+    'upcoming Sing Along is informational and leaves lyrics and transport usable',
     (tester) async {
       lastFetchedLyrics = 'Musyn Sessions - Midnight in motion';
       lyrics.value =
@@ -734,18 +734,21 @@ void main() {
       await render(tester, const NowPlayingPage());
       await tester.tap(find.bySemanticsLabel('Lyrics'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('sing-along-toggle')));
+      await tester.tap(find.byKey(const ValueKey('sing-along-upcoming')));
+      await tester.pumpAndSettle();
+      expect(find.text('Sing Along'), findsOneWidget);
+      expect(find.textContaining('Coming soon.'), findsOneWidget);
+      expect(
+        find.textContaining('We’re working on a faster start.'),
+        findsOneWidget,
+      );
+      await capture(tester, 'sing-along-upcoming-dark');
+      await tester.tap(find.text('Got it'));
       await tester.pumpAndSettle();
       expect(find.text('Sing this line'), findsOneWidget);
-      expect(find.text('Line-synced lyrics'), findsOneWidget);
       expect(find.bySemanticsLabel('Next track'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await capture(tester, 'sing-along-dark');
-      final original = handler.mediaItem.value!;
-      handler.mediaItem.add(original.copyWith(id: 'repeated-entry'));
-      await tester.pumpAndSettle();
-      expect(find.text('Line-synced lyrics'), findsNothing);
       expect(find.byIcon(CupertinoIcons.mic_fill), findsNothing);
+      expect(tester.takeException(), isNull);
       lastFetchedLyrics = null;
       lyrics.value = null;
     },

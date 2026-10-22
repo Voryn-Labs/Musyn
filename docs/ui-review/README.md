@@ -66,3 +66,9 @@ action inventory in `../../UI-FLOW-MAP.md`.
 ## 0.3.2 glass correction
 
 `iphone-*-glass-dark.png` exercise compact native-view bounds using a mocked platform surface; the real material requires a device check. `glass-selection-mid-transition.png` and `playback-pause-mid-transition.png` capture actual intermediate Flutter animation frames. The player renders now show transport controls directly over the background. [Scope and verification limits](../GLASS_FIXES_0.3.2.md).
+
+## Sing Along status
+
+Older `sing-along-dark.png` previews show the experimental stage. Sing Along is
+now marked upcoming; these older previews are not evidence of released fast
+vocal reduction. Current preview: [Sing Along — coming soon](sing-along-upcoming-dark.png).

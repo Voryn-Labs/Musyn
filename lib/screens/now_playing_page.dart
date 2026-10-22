@@ -13,7 +13,6 @@ import 'package:musyn/services/download_activity.dart';
 import 'package:musyn/services/lock_screen_lyrics.dart';
 import 'package:musyn/services/motion_artwork.dart';
 import 'package:musyn/services/settings_manager.dart';
-import 'package:musyn/services/vocal_reduction.dart';
 import 'package:musyn/theme/app_themes.dart';
 import 'package:musyn/theme/musyn_style.dart';
 import 'package:musyn/utilities/async_loader.dart';
@@ -33,7 +32,6 @@ import 'package:musyn/widgets/position_slider.dart';
 import 'package:musyn/widgets/queue_list_view.dart';
 import 'package:musyn/widgets/sleep_timer_picker.dart';
 import 'package:musyn/widgets/song_artwork.dart';
-import 'package:musyn/widgets/vocal_reduction_controls.dart';
 
 enum _PlayerPane { main, lyrics, queue }
 
@@ -49,9 +47,7 @@ class NowPlayingPage extends StatefulWidget {
 class _NowPlayingPageState extends State<NowPlayingPage>
     with SingleTickerProviderStateMixin {
   _PlayerPane _pane = _PlayerPane.main;
-  bool _singAlong = false;
   String? _lyricTrack;
-  String? _vocalSelection;
   Future<String?>? _lyrics;
   double _coverDrag = 0;
   double _horizontalDrag = 0;
@@ -65,6 +61,32 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   void dispose() {
     _sleeveX.dispose();
     super.dispose();
+  }
+
+  void _showSingAlongPreview() {
+    unawaited(
+      showCupertinoDialog<void>(
+        context: context,
+        builder: (dialog) => CupertinoAlertDialog(
+          title: const Text('Sing Along'),
+          content: const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Coming soon. Turn down the singer’s voice while the backing music '
+              'keeps playing, with live synced lyrics. We’re working on a faster '
+              'start. Synced lyrics are available now.',
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(dialog).pop(),
+              child: const Text('Got it'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   PlayerSheetRoute? get _sheet {
@@ -185,11 +207,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
         if (_pane == _PlayerPane.lyrics ||
             MediaQuery.orientationOf(context) == Orientation.landscape) {
           _lyrics ??= getSongLyrics(item.artist, item.title);
-        }
-        final vocalKey = VocalReductionController.identity(item);
-        if (_vocalSelection != vocalKey) {
-          _vocalSelection = vocalKey;
-          _singAlong = false;
         }
         final dark = isAppDarkMode(context);
 
@@ -569,39 +586,31 @@ class _NowPlayingPageState extends State<NowPlayingPage>
             padding: const EdgeInsets.fromLTRB(24, 0, 16, 0),
             child: Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
-                    _singAlong ? 'Sing along' : 'Lyrics',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    'Lyrics',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
                 Semantics(
-                  label: 'Sing along mode',
-                  selected: _singAlong,
+                  label: 'Sing Along, coming soon',
                   child: CupertinoButton(
-                    key: const ValueKey('sing-along-toggle'),
+                    key: const ValueKey('sing-along-upcoming'),
                     padding: const EdgeInsets.all(10),
-                    onPressed: () {
-                      setState(() => _singAlong = !_singAlong);
-                      unawaited(
-                        _singAlong
-                            ? vocalReduction.enable(item)
-                            : vocalReduction.disable(),
-                      );
-                    },
-                    child: Icon(
-                      _singAlong ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
-                      size: 22,
+                    onPressed: _showSingAlongPreview,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(CupertinoIcons.mic, size: 20),
+                        SizedBox(width: 6),
+                        Text('Soon', style: TextStyle(fontSize: 12)),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          if (_singAlong) VocalReductionControls(item: item),
           Expanded(
             child: AsyncLoader<String?>(
               future: _lyrics!,
@@ -628,7 +637,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
                 lyrics: lyrics ?? '',
                 isActive: true,
                 isFullScreen: true,
-                singAlong: _singAlong,
               ),
             ),
           ),
@@ -770,14 +778,9 @@ class _NowPlayingPageState extends State<NowPlayingPage>
           trackId: item.id,
           options: [
             PlayerOption(
-              'Sing along',
+              'Sing Along · Coming soon',
               'mic',
-              () => setState(() {
-                _pane = _PlayerPane.lyrics;
-                _singAlong = true;
-                unawaited(vocalReduction.enable(item));
-              }),
-              selected: _singAlong && _pane == _PlayerPane.lyrics,
+              _showSingAlongPreview,
             ),
             PlayerOption(
               'Lock-screen lyrics',

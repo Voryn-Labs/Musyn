@@ -64,14 +64,12 @@ enum MusynSingEngine {
   static func prepare(input: URL, output: URL, model: URL, progress: @escaping @Sendable (String, Double) -> Void) async throws -> URL {
     if await validCache(output) { return output }
     try? FileManager.default.removeItem(at: output)
-    let scratch = output.deletingPathExtension().appendingPathExtension("pcm.caf")
     let partial = output.deletingPathExtension().appendingPathExtension("partial.mov")
-    defer { try? FileManager.default.removeItem(at: scratch); try? FileManager.default.removeItem(at: partial) }
-    progress("Reading audio", 0)
-    try await decode(input, to: scratch)
+    defer { try? FileManager.default.removeItem(at: partial) }
+    // Decode only the next inference window; never create a full-track PCM
+    // scratch file or wait for all samples before the first prediction.
+    let audio = try await MusynAudioWindowReader(input: input)
     try Task.checkCancellation()
-    let audio = try AVAudioFile(forReading: scratch, commonFormat: .pcmFormatFloat32, interleaved: true)
-    guard audio.length > 0, Double(audio.length) / rate <= 900 else { throw MusynSingError.failed("Vocal reduction supports tracks up to 15 minutes") }
     progress("Loading vocal separator", 0)
     let configuration = MLModelConfiguration(); configuration.computeUnits = .all
     let separator = try await MLModel.load(contentsOf: model, configuration: configuration)
@@ -87,20 +85,16 @@ enum MusynSingEngine {
     writer.add(music); writer.add(vocals)
     guard writer.startWriting() else { throw writer.error ?? MusynSingError.failed("Stem encoder failed") }
     writer.startSession(atSourceTime: .zero)
-    let step = 66150, overlap = MusynVocalDSP.frames - step
+    let step = MusynAudioWindowReader.step, overlap = MusynVocalDSP.frames - step
     var previous = [Float]()
     var position: AVAudioFramePosition = 0
     do {
-      while position < audio.length {
+      while let window = try audio.next() {
         try Task.checkCancellation()
         if ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue { throw MusynSingError.failed("The phone is too warm; try vocal reduction later") }
-        audio.framePosition = position
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: AVAudioFrameCount(MusynVocalDSP.frames)) else { throw MusynSingError.failed("Audio buffer unavailable") }
-        try audio.read(into: buffer)
-        let count = Int(buffer.frameLength)
-        guard let source = buffer.floatChannelData?[0], count > 0 else { throw MusynSingError.failed("Invalid decoded audio") }
-        var original = [Float](repeating: 0, count: MusynVocalDSP.frames * 2)
-        original.withUnsafeMutableBufferPointer { $0.baseAddress!.update(from: source, count: count * 2) }
+        position = window.position
+        let count = window.count
+        let original = window.samples
         let tensor = try dsp.encode(original)
         let features = try MLDictionaryFeatureProvider(dictionary: ["spectrum": tensor])
         let prediction = try await separator.prediction(from: features)
@@ -121,7 +115,7 @@ enum MusynSingEngine {
         try await append(Array(voice.prefix(emit * 2)), to: vocals, at: position, writer: writer)
         try await append(background, to: music, at: position, writer: writer)
         position += AVAudioFramePosition(emit)
-        progress("Separating vocals on this device", Double(position) / Double(audio.length))
+        progress("Separating vocals on this device", min(1, Double(position) / (audio.duration * rate)))
       }
       music.markAsFinished(); vocals.markAsFinished()
       await writer.finishWriting()
@@ -138,30 +132,6 @@ enum MusynSingEngine {
     guard let tracks = try? await asset.loadTracks(withMediaType: .audio), tracks.count == 2,
       let duration = try? await asset.load(.duration), duration.seconds.isFinite, duration.seconds > 0, duration.seconds <= 901 else { return false }
     return true
-  }
-  private static func decode(_ input: URL, to output: URL) async throws {
-    let asset = AVURLAsset(url: input)
-    let duration = try await asset.load(.duration)
-    guard duration.seconds.isFinite, duration.seconds > 0, duration.seconds <= 900 else { throw MusynSingError.failed("Vocal reduction needs a finite track up to 15 minutes") }
-    let tracks = try await asset.loadTracks(withMediaType: .audio)
-    guard !tracks.isEmpty else { throw MusynSingError.failed("No audio track") }
-    let reader = try AVAssetReader(asset: asset)
-    let settings: [String: Any] = [AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: rate, AVNumberOfChannelsKey: 2,
-      AVLinearPCMIsFloatKey: true, AVLinearPCMBitDepthKey: 32, AVLinearPCMIsNonInterleaved: false]
-    let source = AVAssetReaderAudioMixOutput(audioTracks: tracks, audioSettings: settings)
-    reader.add(source)
-    let file = try AVAudioFile(forWriting: output, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: true)
-    guard reader.startReading() else { throw reader.error ?? MusynSingError.failed("Audio reader failed") }
-    while let sample = source.copyNextSampleBuffer() {
-      try Task.checkCancellation()
-      guard let data = CMSampleBufferGetDataBuffer(sample) else { throw MusynSingError.failed("Audio data unavailable") }
-      let frames = CMSampleBufferGetNumSamples(sample)
-      guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(frames)), let pointer = buffer.floatChannelData?[0] else { throw MusynSingError.failed("Audio buffer unavailable") }
-      buffer.frameLength = AVAudioFrameCount(frames)
-      guard CMBlockBufferGetDataLength(data) == frames * 8, CMBlockBufferCopyDataBytes(data, atOffset: 0, dataLength: frames * 8, destination: pointer) == kCMBlockBufferNoErr else { throw MusynSingError.failed("Audio format changed") }
-      try file.write(from: buffer)
-    }
-    guard reader.status == .completed else { throw reader.error ?? MusynSingError.failed("Audio decode failed") }
   }
   private static func append(_ pcm: [Float], to input: AVAssetWriterInput, at position: AVAudioFramePosition, writer: AVAssetWriter) async throws {
     while !input.isReadyForMoreMediaData {
@@ -185,5 +155,99 @@ enum MusynSingEngine {
     guard CMSampleBufferCreateReady(allocator: kCFAllocatorDefault, dataBuffer: block, formatDescription: description,
       sampleCount: pcm.count / 2, sampleTimingEntryCount: 1, sampleTimingArray: &timing,
       sampleSizeEntryCount: 1, sampleSizeArray: &frameSize, sampleBufferOut: &sample) == noErr, let sample = sample, input.append(sample) else { throw writer.error ?? MusynSingError.failed("Stem encoder rejected audio") }
+  }
+}
+
+
+/// Sequential, bounded PCM windows for both export and a future live consumer.
+/// No model, download or reader exists until a user-requested preparation calls it.
+@available(iOS 18.0, macOS 15.0, *)
+final class MusynAudioWindowReader {
+  static let step = 66150
+  struct Window {
+    let samples: [Float]
+    let count: Int
+    let position: AVAudioFramePosition
+  }
+  let duration: Double
+  private let file: AVAudioFile
+  private let converter: AVAudioConverter
+  private let format: AVAudioFormat
+  private var pending: AVAudioPCMBuffer?
+  private var pendingOffset = 0
+  private var buffered = [Float]()
+  private var emitted = 0
+  private var previousEmit = 0
+  private var finished = false
+  private(set) var copiedFrames = 0
+
+  init(input: URL) async throws {
+    file = try AVAudioFile(forReading: input, commonFormat: .pcmFormatFloat32, interleaved: true)
+    duration = Double(file.length) / file.processingFormat.sampleRate
+    guard duration.isFinite, duration > 0, duration <= 900,
+      let output = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 44100, channels: 2, interleaved: true),
+      let conversion = AVAudioConverter(from: file.processingFormat, to: output) else {
+      throw MusynSingError.failed("Vocal reduction needs a finite audio track up to 15 minutes")
+    }
+    format = output
+    converter = conversion
+    buffered.reserveCapacity(MusynVocalDSP.frames * 2)
+  }
+
+  private func readChunk() throws -> AVAudioPCMBuffer? {
+    guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 4096) else {
+      throw MusynSingError.failed("Audio buffer unavailable")
+    }
+    var conversionError: NSError?
+    var inputError: Error?
+    let status = converter.convert(to: buffer, error: &conversionError) { [file] packets, state in
+      if file.framePosition >= file.length { state.pointee = .endOfStream; return nil }
+      guard let input = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: max(1, AVAudioFrameCount(packets))) else {
+        inputError = MusynSingError.failed("Audio buffer unavailable")
+        state.pointee = .endOfStream; return nil
+      }
+      do { try file.read(into: input) }
+      catch { inputError = error; state.pointee = .endOfStream; return nil }
+      state.pointee = input.frameLength > 0 ? .haveData : .endOfStream
+      return input.frameLength > 0 ? input : nil
+    }
+    if let error = inputError ?? conversionError { throw error }
+    guard status != .error else { throw MusynSingError.failed("Audio conversion failed") }
+    if buffer.frameLength == 0 {
+      guard status == .endOfStream else { throw MusynSingError.failed("Audio decoder stopped early") }
+      return nil
+    }
+    return buffer
+  }
+
+  func next() throws -> Window? {
+    try Task.checkCancellation()
+    if previousEmit > 0 { buffered.removeFirst(previousEmit * 2); previousEmit = 0 }
+    while buffered.count < MusynVocalDSP.frames * 2 && !finished {
+      try Task.checkCancellation()
+      if pending == nil {
+        pending = try readChunk()
+        pendingOffset = 0
+        if pending == nil { finished = true; break }
+      }
+      guard let sample = pending, let data = sample.floatChannelData?[0] else {
+        throw MusynSingError.failed("Decoded audio unavailable")
+      }
+      let total = Int(sample.frameLength)
+      let frames = min(MusynVocalDSP.frames - buffered.count / 2, total - pendingOffset)
+      buffered.append(contentsOf: UnsafeBufferPointer(start: data.advanced(by: pendingOffset * 2), count: frames * 2))
+      copiedFrames += frames
+      pendingOffset += frames
+      if pendingOffset == total { pending = nil }
+      guard copiedFrames <= 44100 * 901 else { throw MusynSingError.failed("Decoded audio exceeds the track limit") }
+    }
+    guard !buffered.isEmpty else { return nil }
+    let count = buffered.count / 2
+    var samples = buffered
+    samples.append(contentsOf: repeatElement(0, count: (MusynVocalDSP.frames - count) * 2))
+    let position = emitted
+    previousEmit = min(Self.step, count)
+    emitted += previousEmit
+    return Window(samples: samples, count: count, position: AVAudioFramePosition(position))
   }
 }
