@@ -62,8 +62,7 @@ static browse categories, and superseded empty-playlist widget. The active lyric
 parser, synchronized view, theme and fetching remain in use. The dependency graph
 has no remaining unreachable handwritten app modules and no import cycles.
 
-See [VERIFICATION.md](VERIFICATION.md) for commands/results and
-[UI previews](docs/ui-review/README.md) for headless renders. Automated coverage
+See [UI previews](docs/ui-review/README.md) for headless renders. Automated coverage
 includes navigation, retry, cancellation, visible queue ordering, creation,
 pin/delete, settings persistence, light/dark themes, 320×568 at 1.8× text, and
 player landscape/drag behavior. Render fixtures use sample titles and placeholder

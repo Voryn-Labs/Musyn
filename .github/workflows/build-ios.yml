@@ -77,7 +77,7 @@ jobs:
             exit 1
           fi
           NOTES="docs/releases/${RELEASE_TAG#v}.md"
-          [ -f "$NOTES" ] || NOTES="docs/releases/0.1.0.md"
+          [ -f "$NOTES" ] || NOTES="docs/releases/0.3.0.md"
           gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn ${RELEASE_TAG#v} — Voryn Labs" --notes-file "$NOTES" --latest build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'

@@ -18,8 +18,7 @@ This is a fresh app; no legacy migration or URL schemes are shipped.
 Install the unsigned IPA using your own certificate/compatible signer or a
 compatible LiveContainer host. A successful unsigned build is not App Store
 signing, notarization, or physical-device playback acceptance. Keep the preview
-label until the native lock-screen/source/download checklist in VERIFICATION.md
-has been completed.
+label until device acceptance has been completed.
 
 Brand assets are in `assets/branding`. The source icon is opaque 1024×1024;
 iOS applies its own icon mask. Native launch and Flutter initialization show the
