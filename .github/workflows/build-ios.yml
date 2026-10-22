@@ -64,9 +64,9 @@ jobs:
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/ios/iphoneos/Runner.app/Info.plist)
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           python3 scripts/check_public_release.py --ipa build/ipa/Musyn.ipa
-          if [ "${{ inputs.prerelease || false }}" != "true" ]; then
-            python3 scripts/release_feed.py --ipa build/ipa/Musyn.ipa --tag "v$VERSION"
-          fi
+          FEED_TAG="${{ inputs.release_tag }}"
+          if [ -z "$FEED_TAG" ]; then FEED_TAG="v$VERSION"; fi
+          python3 scripts/release_feed.py --ipa build/ipa/Musyn.ipa --tag "$FEED_TAG"
       - uses: actions/upload-artifact@v4
         with:
           name: Musyn-ios-${{ github.run_number }}
@@ -92,9 +92,9 @@ jobs:
           NOTES='Preview: local Smart Library with ratings, tags, moods, rule-based collections, smarter shuffle, curated accents and Home Screen widgets. Existing playback, downloads, lyrics and provider support remain available.'
           if [ "$PRERELEASE" = "true" ]; then
             gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn ${RELEASE_TAG#v} Preview — Voryn Labs" --notes "$NOTES" --prerelease build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256
-            exit 0
+          else
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn ${RELEASE_TAG#v} — Voryn Labs" --notes "$NOTES" --latest build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
           fi
-          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Musyn ${RELEASE_TAG#v} — Voryn Labs" --notes "$NOTES" --latest build/ipa/Musyn.ipa build/ipa/Musyn.ipa.sha256 source.json apps.json
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add source.json apps.json
