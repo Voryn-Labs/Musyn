@@ -9,56 +9,52 @@
 </p>
 <p align="center"><a href="https://voryn-labs.github.io/musyn.html">Meet Musyn</a> · <a href="https://github.com/Voryn-Labs/Musyn/releases/latest/download/Musyn.ipa">Download unsigned IPA</a> · <a href="https://voryn-labs.github.io/source.json">Installer source</a> · <a href="https://voryn-labs.github.io/musyn-privacy.html">Privacy</a></p>
 
-## A player that keeps the music in view
+## Your music. Your way.
 
-| Listen | Organize | Take it with you |
-| --- | --- | --- |
-| Keyless YouTube Music and optional user-configured JioSaavn AAC | Queue, favorites, folders and your own playlists | Offline tracks and playlist downloads |
-| Synced lyrics, line seeking and a focused full player | Home, moods/genres, search and actual chart playlists | Progress, cancellation, retry and saved-track search |
-| Highest/balanced/data-saver YouTube options and JioSaavn 160/320 kbps | Optional YouTube Music account sync | Dark/light appearance, branded walkthrough and opt-in iOS 26 native glass |
+- **Stream your favorites** — YouTube Music without API keys, plus optional JioSaavn AAC up to 320 kbps.
+- **Take music offline** — song and playlist downloads, source and quality preferences, progress and retry.
+- **Follow every line** — synced lyrics, lyric seeking and optional lock-screen lyrics.
+- **Make the queue yours** — play next, reorder, shuffle, favorites, playlists and folders.
+- **Bring your YouTube library** — connect YouTube Music for liked music and playlist sync.
+- **Enjoy the player** — portrait and landscape layouts, light/dark themes, and optional glass and automatic animated artwork on iOS 26. Covers stay still when no matching animation is available.
+- **Listen with CarPlay** — browse your queue, downloads, favorites and recent tracks. Requires CarPlay-enabled signing.
 
-See [public-release validation](docs/PUBLIC_RELEASE_0.3.0.md), [privacy](https://voryn-labs.github.io/musyn-privacy.html) and [terms](https://voryn-labs.github.io/musyn-terms.html).
-
-AAC is compressed audio; 320 kbps is **not lossless**. Provider availability and catalogue results can vary. No addon integration is included.
+**Coming soon: Sing Along.** Turn down the singer’s voice while the backing music and live lyrics continue. We’re improving startup speed; vocal reduction is currently disabled. Synced lyrics work now.
 
 ## A look inside
 
-<p><img src="docs/ui-review/home-dark.png" width="210" alt="Musyn Home"><img src="docs/ui-review/player-dark.png" width="210" alt="Musyn player"><img src="docs/ui-review/downloads-dark.png" width="210" alt="Musyn download manager"></p>
+<p><img src="docs/ui-review/home-dark.png" width="210" alt="Musyn Home"><img src="docs/ui-review/player-dark.png" width="210" alt="Musyn player"><img src="docs/ui-review/downloads-dark.png" width="210" alt="Musyn downloads"></p>
 
-These are automated Flutter renders with fictional sample tracks and placeholder artwork. They show layout, not a device playback test. [More previews](docs/ui-review/README.md).
+UI previews with sample tracks and placeholder artwork. [More views](docs/ui-review/README.md).
 
-## Install Musyn
+## Get Musyn
 
-Musyn combines YouTube Music integration, offline downloads, synced lyrics and a queue you control. More providers can be introduced as the project grows. On iOS 26, animated album covers are found and cached automatically from Apple’s public pages, with no upload or extra account. Tracks without a confident match keep still covers. Glass navigation is optional. The player’s More menu offers lock-screen lyrics in the artist line, artwork, or both (artwork requires iOS 26). **Sing Along is upcoming:** reduce the singer’s vocals while the backing music and live lyrics continue. The slow experimental preparation flow is disabled while streaming startup is improved. Normal synced lyrics remain available. [Status and implementation notes](docs/SING_ALONG.md).
+**[Download 0.3.7](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.7)** · iOS 15+ · Unsigned IPA
 
-**JioSaavn is optional.** Musyn supplies no media URL key. Add your own in Settings → JioSaavn; it stays in iOS Keychain. YouTube works without it. [Source and artwork setup](docs/SOURCES_AND_ARTWORK.md).
+Sign the IPA with your preferred compatible installer. Add the shared Voryn Labs source to browse **Musyn and Cloudified**:
 
-Requires **iOS 15+**. Download `Musyn.ipa` and its SHA-256 checksum from the [latest release](https://github.com/Voryn-Labs/Musyn/releases/latest). The IPA is **unsigned**. Use your own signing identity with a compatible installer, or import it into a compatible LiveContainer version. AltStore PAL cannot install this unsigned build. Installer and host restrictions still apply.
+```text
+https://voryn-labs.github.io/source.json
+```
 
-One Voryn Labs source for **Musyn and Cloudified**: `https://voryn-labs.github.io/source.json`. The maintainer refreshes the shared catalog manually after publishing new app releases.
+**Optional JioSaavn:** add your own authorized media URL key in Settings → JioSaavn. Setup search phrase: **“JioSaavn media URL key.”** Musyn supplies no key; YouTube works without one. [Setup guide](docs/SOURCES_AND_ARTWORK.md).
 
-Identity: `com.vorynlabs.musyn` · publisher **Voryn Labs**. This is a fresh identity with no legacy migration. The download badge measures release asset requests, not unique users or installations.
+## Open source, open to ideas
 
-## Build and contribute
+Built by **[Voryn Labs](https://voryn-labs.github.io/)** under [GPL-3.0](LICENSE). Based on the Musified/Musify lineage, with BitChord as an interface reference. [Credits](docs/CREDITS.md) · [Privacy](https://voryn-labs.github.io/musyn-privacy.html) · [Terms](https://voryn-labs.github.io/musyn-terms.html).
+
+[Report a bug or suggest a feature](https://github.com/Voryn-Labs/Musyn/issues/new/choose). You can review and share diagnostic logs from Settings; nothing uploads automatically. Keep keys and account credentials out of reports. The download badge counts release asset downloads, not unique users.
+
+<details>
+<summary>Build it yourself</summary>
+
+Use Flutter 3.47.7 and full Xcode. [Build guide](docs/BUILD.md).
 
 ```sh
 flutter pub get
 flutter analyze
 flutter test
-python3 scripts/verify_branding.py
 flutter build ios --release --no-codesign
 ```
 
-Pinned CI toolchain: Flutter 3.47.7 / Dart 3.13.5. iOS builds require full Xcode. CI selects Xcode 26.0.1. Optional iOS 26 glass and automatic animated artwork use public Apple metadata and native APIs; earlier versions keep the standard UI. Native dependencies use Swift Package Manager. GitHub Actions builds and verifies the IPA, generates its source feed from the actual binary, and publishes a regular release only when requested. Existing releases are never silently replaced. See [build/release notes](docs/BUILD.md), [flow map](UI-FLOW-MAP.md) and [verification](VERIFICATION.md).
-
-Automated tests cover playback coordination and UI flows. Physical iPhone lock-screen playback, interruptions, real provider availability and installer behavior still require acceptance; no universal reliability claim is made.
-
-## Credits and license
-
-Maintained by **Voryn Labs** under [GPL-3.0](LICENSE). Developed from the Musified/Musify lineage; the interface work references BitChord. Upstream authors, vendored libraries and providers retain their credits and rights. [Full credits](docs/CREDITS.md). Music and artwork remain the property of their respective owners.
-
-## Support and contributing
-
-Use **Settings → Storage & diagnostics → Diagnostic Logs** to review a redacted preview, choose a public dpaste upload, or open a GitHub issue draft. Nothing uploads automatically. [Report a bug](https://github.com/Voryn-Labs/Musyn/issues/new/choose), [request a feature](https://github.com/Voryn-Labs/Musyn/issues/new/choose), or read [SECURITY.md](SECURITY.md) for private disclosures.
-
-Please include the app/build and iOS version, installer, reproduction steps and expected behavior. Never share provider keys, account cookies or signing credentials. The download counter measures release asset requests from currently published releases, not unique installations.
+</details>
