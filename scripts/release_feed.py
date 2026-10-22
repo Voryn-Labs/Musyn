@@ -17,11 +17,15 @@ assert info['CFBundleDisplayName'] == 'Musyn', info
 version = info['CFBundleShortVersionString']
 assert args.tag == f'v{version}' or args.tag.startswith(f'v{version}-')
 display_version = args.tag[1:]
+is_preview = '-' in display_version
+description = ('Preview — local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets.'
+               if is_preview else
+               'Stable — multi-source playback, offline downloads, synced lyrics and a focused player.')
 feed = json.loads(Path('source.json').read_text())
 url = f'https://github.com/Voryn-Labs/Musyn/releases/download/{args.tag}/Musyn.ipa'
 release = {'version': display_version, 'buildVersion': str(info['CFBundleVersion']), 'date': datetime.datetime.now(datetime.timezone.utc).isoformat(),
            'downloadURL': url, 'size': args.ipa.stat().st_size, 'minOSVersion': '15.0',
-           'localizedDescription': 'Musyn Preview with local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets.'}
+           'localizedDescription': description}
 previous = feed.get('apps', [{}])[0].get('versions', []) if feed.get('apps') else []
 versions = [release, *[item for item in previous if item.get('version') != display_version]]
 feed['apps'] = [{'name': 'Musyn', 'bundleIdentifier': info['CFBundleIdentifier'],

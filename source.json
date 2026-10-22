@@ -22,7 +22,7 @@
           "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.4.0-beta.1/Musyn.ipa",
           "size": 12489421,
           "minOSVersion": "15.0",
-          "localizedDescription": "Musyn Preview with local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets."
+          "localizedDescription": "Preview \u2014 local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets."
         },
         {
           "version": "0.3.7",
@@ -31,7 +31,7 @@
           "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.3.7/Musyn.ipa",
           "size": 12433343,
           "minOSVersion": "15.0",
-          "localizedDescription": "Musyn by Voryn Labs. Multi-source playback, offline downloads, synced lyrics and a focused player."
+          "localizedDescription": "Stable \u2014 multi-source playback, offline downloads, synced lyrics and a focused player."
         }
       ],
       "appPermissions": {
@@ -43,7 +43,7 @@
       },
       "version": "0.4.0-beta.1",
       "versionDate": "2026-10-22T15:38:03+00:00",
-      "versionDescription": "Musyn Preview with local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets.",
+      "versionDescription": "Preview \u2014 local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets.",
       "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.4.0-beta.1/Musyn.ipa",
       "size": 12489421,
       "minOSVersion": "15.0"
