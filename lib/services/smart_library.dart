@@ -318,7 +318,7 @@ class SmartLibrary extends ChangeNotifier {
       ?.toString()
       .toLowerCase()
       .replaceAll(RegExp(r'\([^)]*(feat|remaster)[^)]*\)'), '')
-      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .replaceAll(RegExp('[^a-z0-9]+'), ' ')
       .trim() ?? '';
 
   String _localId(String prefix) =>

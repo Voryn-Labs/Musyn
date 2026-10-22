@@ -159,7 +159,7 @@ class _SmartLibraryPageState extends State<SmartLibraryPage> {
 
   Future<void> _createCollection() async {
     final name = TextEditingController();
-    int rating = 4;
+    var rating = 4;
     await showCupertinoModalPopup<void>(context: context, builder: (sheet) =>
       StatefulBuilder(builder: (context, setSheet) => CupertinoActionSheet(
         title: const Text('New smart collection'),

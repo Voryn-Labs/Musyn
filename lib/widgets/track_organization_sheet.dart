@@ -181,7 +181,7 @@ class _TrackOrganizationSheetState extends State<_TrackOrganizationSheet> {
   Widget _chip(String text, bool selected, VoidCallback tap) =>
       CupertinoButton(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        minSize: 0,
+        minimumSize: Size.zero,
         color: selected
             ? CupertinoTheme.of(context).primaryColor
             : CupertinoColors.systemGrey5.resolveFrom(context),

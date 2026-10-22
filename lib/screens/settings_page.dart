@@ -348,10 +348,10 @@ class SettingsPage extends StatelessWidget {
       context,
       'Home Screen widgets',
       [
-        CupertinoListTile.notched(
-          title: const Text('Now Playing & Library'),
-          subtitle: const Text('Add from the iPhone Home Screen editor'),
-          trailing: const Icon(CupertinoIcons.square_grid_2x2),
+        const CupertinoListTile.notched(
+          title: Text('Now Playing & Library'),
+          subtitle: Text('Add from the iPhone Home Screen editor'),
+          trailing: Icon(CupertinoIcons.square_grid_2x2),
         ),
       ],
       footer:
