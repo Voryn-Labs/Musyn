@@ -16,6 +16,15 @@
       "tintColor": "FFC5A7",
       "versions": [
         {
+          "version": "0.9.0-beta.1",
+          "buildVersion": "21",
+          "date": "2026-11-04T13:42:22.606115+00:00",
+          "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.9.0-beta.1/Musyn.ipa",
+          "size": 12490132,
+          "minOSVersion": "15.0",
+          "localizedDescription": "Preview \u2014 fixes for downloaded playback, stalled stream switching and Previous Track. Includes Smart Library and Home Screen widgets."
+        },
+        {
           "version": "0.4.0-beta.1",
           "buildVersion": "20",
           "date": "2026-10-22T15:38:03+00:00",
@@ -41,11 +50,11 @@
         ],
         "privacy": {}
       },
-      "version": "0.4.0-beta.1",
-      "versionDate": "2026-10-22T15:38:03+00:00",
-      "versionDescription": "Preview \u2014 local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets.",
-      "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.4.0-beta.1/Musyn.ipa",
-      "size": 12489421,
+      "version": "0.9.0-beta.1",
+      "versionDate": "2026-11-04T13:42:22.606115+00:00",
+      "versionDescription": "Preview \u2014 fixes for downloaded playback, stalled stream switching and Previous Track. Includes Smart Library and Home Screen widgets.",
+      "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.9.0-beta.1/Musyn.ipa",
+      "size": 12490132,
       "minOSVersion": "15.0"
     }
   ],
