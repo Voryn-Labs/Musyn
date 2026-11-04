@@ -1018,7 +1018,7 @@
         _processingState = psIdle;
     }
     [self broadcastPlaybackEvent];
-    if (_loadResult && playerItem == _player.currentItem) {
+    if (_loadResult && (playerItem == nil || playerItem == _player.currentItem)) {
         _loadResult(flutterError);
         _loadResult = nil;
     }

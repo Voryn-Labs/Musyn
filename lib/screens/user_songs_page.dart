@@ -41,6 +41,11 @@ class _UserSongsPageState extends State<UserSongsPage> {
     return list;
   }
 
+  List<Map> _playbackSongs(List songs) => [
+    for (final song in songs.cast<Map>())
+      if (widget.page == 'offline') {...song, 'forceSource': 'offline'} else song,
+  ];
+
   @override
   Widget build(BuildContext context) {
     if (!const {
@@ -210,7 +215,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
                 'ytid': '',
                 'title': title,
                 'source': 'user-created',
-                'list': sortedList,
+                'list': _playbackSongs(sortedList),
               };
               audioHandler.playPlaylistSong(playlist: playlist, songIndex: 0);
             },
@@ -221,9 +226,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
                   ? userOfflineSongs.value
                   : userRecentlyPlayed.value;
               if (songs.isEmpty) return;
-              final candidates = List<Map>.from(
-                _getDisplayList(songs).whereType<Map>(),
-              );
+              final candidates = _playbackSongs(_getDisplayList(songs));
               final shuffled = smartShuffleEnabled.value
                   ? SmartLibrary.instance.smartShuffle(candidates)
                   : (candidates..shuffle());
@@ -308,7 +311,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
           'ytid': '',
           'title': title,
           'source': 'user-created',
-          'list': songs,
+          'list': _playbackSongs(songs),
         };
 
         return SliverList(

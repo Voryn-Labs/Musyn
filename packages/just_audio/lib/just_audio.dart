@@ -1757,18 +1757,18 @@ class AudioPlayer {
 
       subscribeToEvents(platform);
 
-      try {
-        final initialSeekValues = pluginLoadRequest?.initialSeekValues ??
-            (index: currentIndex, position: position);
-        final duration = await _load(
-          platform,
-          _playlist,
-          initialSeekValues: initialSeekValues,
-        );
-        durationCompleter.complete(duration);
-      } catch (e, stackTrace) {
-        durationCompleter.completeError(e, stackTrace);
-      }
+      final initialSeekValues = pluginLoadRequest?.initialSeekValues ??
+          (index: currentIndex, position: position);
+      // The platform can accept commands before its first item is ready.
+      // A replacement load must be able to interrupt a stalled first stream.
+      unawaited(_load(
+        platform,
+        _playlist,
+        initialSeekValues: initialSeekValues,
+      ).then<void>(
+        durationCompleter.complete,
+        onError: durationCompleter.completeError,
+      ));
 
       return platform;
     }

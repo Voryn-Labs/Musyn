@@ -2961,7 +2961,12 @@ class MusynAudioHandler extends PlaybackController {
         _emitOptimisticLoadingState(song: targetSong, queueIndex: targetIndex);
         await _requestQueueIndex(targetIndex);
       } else if (_hub.queue.history.isNotEmpty && _navCursor == null) {
-        final lastSong = cloneMap(_hub.queue.history.removeAt(0));
+        final currentId = currentSong?['ytid']?.toString();
+        final historyIndex = _hub.queue.history.indexWhere(
+          (song) => song['ytid']?.toString() != currentId,
+        );
+        if (historyIndex < 0) return;
+        final lastSong = cloneMap(_hub.queue.history.removeAt(historyIndex));
         _hub.queue.items.insert(0, lastSong);
         _hub.queue.currentIndex = 0;
         _updateQueueMediaItems();

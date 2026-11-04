@@ -329,7 +329,12 @@ class _DownloadsPageState extends State<DownloadsPage> {
   void _play(List<Map> saved, {int index = 0}) {
     unawaited(
       audioHandler.playPlaylistSong(
-        playlist: {'title': 'Downloads', 'list': saved},
+        playlist: {
+          'title': 'Downloads',
+          'list': [
+            for (final song in saved) {...song, 'forceSource': 'offline'},
+          ],
+        },
         songIndex: index,
       ),
     );
