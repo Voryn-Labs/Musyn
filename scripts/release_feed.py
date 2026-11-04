@@ -18,7 +18,7 @@ version = info['CFBundleShortVersionString']
 assert args.tag == f'v{version}' or args.tag.startswith(f'v{version}-')
 display_version = args.tag[1:]
 is_preview = '-' in display_version
-description = ('Preview — local Smart Library, ratings, tags, moods, smart shuffle and Home Screen widgets.'
+description = ('Preview — fixes for downloaded playback, stalled stream switching and Previous Track. Includes Smart Library and Home Screen widgets.'
                if is_preview else
                'Stable — multi-source playback, offline downloads, synced lyrics and a focused player.')
 feed = json.loads(Path('source.json').read_text())
