@@ -118,7 +118,14 @@ class MotionArtwork extends ChangeNotifier {
     }
     _automatic?.select(
       item,
-      enabled: supported && motionArtworkEnabled.value && !offlineMode.value,
+      // Downloaded playback must remain independent of a weak connection.
+      // Keep already-downloaded static artwork, but do not start an automatic
+      // motion-artwork lookup while the audio source is local.
+      enabled:
+          supported &&
+          motionArtworkEnabled.value &&
+          !offlineMode.value &&
+          item?.extras?['isOffline'] != true,
     );
   }
 

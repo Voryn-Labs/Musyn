@@ -115,7 +115,11 @@ class MusynAudioHandler extends PlaybackController {
 
   @override
   Future<void> primeSong(Map song) async {
-    if (offlineMode.value || _currentLoadingTransitionId != -1) return;
+    if (offlineMode.value ||
+        _playback.lastInstalledWasOffline ||
+        _currentLoadingTransitionId != -1) {
+      return;
+    }
     final copy = Map.from(song);
     final cover = mapToMediaItem(copy).artUri;
     if (cover != null) unawaited(_warmCover(cover));
@@ -1064,7 +1068,11 @@ class MusynAudioHandler extends PlaybackController {
 
   Future<void> _backgroundAddSongsToQueue() async {
     // Fire and forget - this runs as a background task without blocking playback
-    if (offlineMode.value || !playNextSongAutomatically.value) return;
+    if (offlineMode.value ||
+        _playback.lastInstalledWasOffline ||
+        !playNextSongAutomatically.value) {
+      return;
+    }
     if (_backgroundFetchInProgress) return;
     // Fill the queue while audio is still playing. Waiting until the last
     // song ends means a 6s related-song fetch in silence, which iOS kills.
@@ -1100,6 +1108,7 @@ class MusynAudioHandler extends PlaybackController {
 
           if (selection != _selectionRevision ||
               offlineMode.value ||
+              _playback.lastInstalledWasOffline ||
               !playNextSongAutomatically.value) {
             return;
           }
@@ -1107,6 +1116,7 @@ class MusynAudioHandler extends PlaybackController {
           for (final song in songsToAdd) {
             if (selection != _selectionRevision ||
                 offlineMode.value ||
+                _playback.lastInstalledWasOffline ||
                 !playNextSongAutomatically.value)
               return;
             final alreadyInQueue = _hub.queue.items.any(
@@ -1650,7 +1660,8 @@ class MusynAudioHandler extends PlaybackController {
         _eagerPreparedForNextIndex = null;
         _completion.clearConsecutiveErrors();
         _preloadUpcomingSongs();
-        if (playNextSongAutomatically.value) {
+        if (playNextSongAutomatically.value &&
+            !_playback.lastInstalledWasOffline) {
           unawaited(_backgroundAddSongsToQueue());
         }
       } else {
@@ -1665,7 +1676,8 @@ class MusynAudioHandler extends PlaybackController {
           _eagerPreparedForNextIndex = null;
           _completion.clearConsecutiveErrors();
           _preloadUpcomingSongs();
-          if (playNextSongAutomatically.value) {
+          if (playNextSongAutomatically.value &&
+              !_playback.lastInstalledWasOffline) {
             unawaited(_backgroundAddSongsToQueue());
           }
         } else {
@@ -1725,13 +1737,24 @@ class MusynAudioHandler extends PlaybackController {
   // --- Preload (via hub) ---
 
   void _preloadUpcomingSongs() {
-    if (_currentLoadingTransitionId != -1) return;
+    // A downloaded track must be a genuinely local playback path. On a weak
+    // connection, speculative artwork/stream requests can remain pending for
+    // seconds (whereas airplane mode fails them immediately), creating the
+    // exact "local song stutters only when online" failure mode.
+    if (_currentLoadingTransitionId != -1 ||
+        offlineMode.value ||
+        _playback.lastInstalledWasOffline) {
+      return;
+    }
     unawaited(_warmUpcomingArtwork());
-    if (offlineMode.value) return;
 
     Future.microtask(() async {
       try {
-        if (_currentLoadingTransitionId != -1) return;
+        if (_currentLoadingTransitionId != -1 ||
+            offlineMode.value ||
+            _playback.lastInstalledWasOffline) {
+          return;
+        }
         final songs = _hub.upcomingPreloadCandidates(
           offlineModeEnabled: offlineMode.value,
         );
@@ -1758,7 +1781,11 @@ class MusynAudioHandler extends PlaybackController {
   /// Warming only the immediate next song left the one after it cold, so
   /// lock-screen playback died on song 2 when that handoff needed a fetch.
   void _eagerlyPrepareNextTrack() {
-    if (offlineMode.value || _currentLoadingTransitionId != -1) return;
+    if (offlineMode.value ||
+        _playback.lastInstalledWasOffline ||
+        _currentLoadingTransitionId != -1) {
+      return;
+    }
     if (_eagerPreparedForNextIndex == _hub.queue.currentIndex) return;
     _eagerPreparedForNextIndex = _hub.queue.currentIndex;
     _preloadUpcomingSongs();

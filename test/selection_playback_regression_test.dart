@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:musyn/services/audio/musyn_audio_handler.dart';
+import 'package:musyn/services/library_state.dart';
 import 'package:musyn/services/settings_manager.dart';
 import 'queue_recommendation_race_test.dart' show ProbePlayer;
 
@@ -47,6 +48,7 @@ void main() {
         );
     offlineMode.value = false;
     playNextSongAutomatically.value = false;
+    userOfflineSongs.value = [];
     resolve = (song, _) async {
       song['resolvedSource'] = 'youtube';
       return 'https://audio.example/${song['ytid']}.m4a';
@@ -62,7 +64,41 @@ void main() {
     await handler.dispose();
     await Hive.close();
     await directory.delete(recursive: true);
+    userOfflineSongs.value = [];
   });
+  test(
+    'downloaded playback does not start speculative network work',
+    () async {
+      final file = File('${directory.path}/downloaded.m4a');
+      await file.writeAsBytes(List.filled(60000, 1));
+      userOfflineSongs.value = [
+        {...a, 'audioPath': file.path, 'artworkPath': ''},
+      ];
+      var requests = 0;
+      resolve = (song, _) async {
+        requests++;
+        return 'https://audio.example/${song['ytid']}.m4a';
+      };
+      playNextSongAutomatically.value = true;
+
+      await handler.playPlaylistSong(
+        playlist: {
+          'title': 'Downloads',
+          'list': [a, b],
+        },
+        songIndex: 0,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(player.installed.last, startsWith('file:'));
+      expect(
+        requests,
+        0,
+        reason:
+            'A local track must not resolve recommendations or the next online stream',
+      );
+    },
+  );
   test(
     'new selection silences old audio before publishing new artwork',
     () async {
