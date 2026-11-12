@@ -18,18 +18,9 @@
         {
           "version": "1.0.0",
           "buildVersion": "22",
-          "date": "2026-11-12T03:50:33.143352+00:00",
+          "date": "2026-11-12T04:14:30.396870+00:00",
           "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v1.0.0/Musyn.ipa",
           "size": 12489818,
-          "minOSVersion": "15.0",
-          "localizedDescription": "Stable \u2014 multi-source playback, offline downloads, synced lyrics and a focused player."
-        },
-        {
-          "version": "0.3.7",
-          "buildVersion": "19",
-          "date": "2026-10-22T05:21:34.816936+00:00",
-          "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v0.3.7/Musyn.ipa",
-          "size": 12433343,
           "minOSVersion": "15.0",
           "localizedDescription": "Stable \u2014 multi-source playback, offline downloads, synced lyrics and a focused player."
         }
@@ -42,7 +33,7 @@
         "privacy": {}
       },
       "version": "1.0.0",
-      "versionDate": "2026-11-12T03:50:33.143352+00:00",
+      "versionDate": "2026-11-12T04:14:30.396870+00:00",
       "versionDescription": "Stable \u2014 multi-source playback, offline downloads, synced lyrics and a focused player.",
       "downloadURL": "https://github.com/Voryn-Labs/Musyn/releases/download/v1.0.0/Musyn.ipa",
       "size": 12489818,
