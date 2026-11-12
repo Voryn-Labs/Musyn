@@ -25,9 +25,9 @@
 
 ## Get Musyn
 
-**[Download 0.3.7](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.3.7)** · iOS 15+ · Unsigned IPA
+**[Download Musyn 1.0.0](https://github.com/Voryn-Labs/Musyn/releases/tag/v1.0.0)** · iOS 15+ · Unsigned IPA
 
-[Musyn 0.9 Preview](https://github.com/Voryn-Labs/Musyn/releases/tag/v0.9.0-beta.1) includes fixes for downloaded playback and the Previous Track button, plus Smart Library and Home Screen widgets.
+Musyn 1.0.0 includes more reliable downloaded playback after connection changes, a corrected Previous Track action, local Smart Library tools, and Home Screen widgets.
 
 Sign the IPA with your preferred compatible installer. Add the shared Voryn Labs source to browse **Musyn and Cloudified**:
 

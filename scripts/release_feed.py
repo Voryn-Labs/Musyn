@@ -27,7 +27,12 @@ release = {'version': display_version, 'buildVersion': str(info['CFBundleVersion
            'downloadURL': url, 'size': args.ipa.stat().st_size, 'minOSVersion': '15.0',
            'localizedDescription': description}
 previous = feed.get('apps', [{}])[0].get('versions', []) if feed.get('apps') else []
-versions = [release, *[item for item in previous if item.get('version') != display_version]]
+# Keep historical stable releases available in the app feed, but never carry
+# preview builds into the stable feed when publishing a stable version.
+previous = [item for item in previous
+            if '-' not in item.get('version', '')
+            and item.get('version') != display_version]
+versions = [release, *previous]
 feed['apps'] = [{'name': 'Musyn', 'bundleIdentifier': info['CFBundleIdentifier'],
     'developerName': 'Voryn Labs', 'subtitle': 'Music, in your rhythm.',
     'localizedDescription': 'A focused iPhone music player with YouTube Music, JioSaavn AAC, synced lyrics and offline downloads. Sign or import the unsigned IPA with a compatible installer.',
