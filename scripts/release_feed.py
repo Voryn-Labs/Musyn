@@ -12,6 +12,12 @@ parser.add_argument('--tag', required=True)
 args = parser.parse_args()
 with zipfile.ZipFile(args.ipa) as archive:
     info = plistlib.loads(archive.read('Payload/Runner.app/Info.plist'))
+    widget_info = plistlib.loads(
+        archive.read('Payload/Runner.app/PlugIns/MusynWidgets.appex/Info.plist')
+    )
+    for key in ('CFBundleShortVersionString', 'CFBundleVersion'):
+        if widget_info.get(key) != info.get(key) or not info.get(key):
+            raise SystemExit(f'MusynWidgets {key} must match the main app')
 assert info['CFBundleIdentifier'] == 'com.vorynlabs.musyn', info
 assert info['CFBundleDisplayName'] == 'Musyn', info
 version = info['CFBundleShortVersionString']
